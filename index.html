@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v10</title>
+<title>FG Gestión OTs v11</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V10</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V11</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver">v10</div>
+    <div class="sb-ver">v11</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -844,8 +844,9 @@ function parsearPag(txt){
   else if(/\bINSTALAR\b/i.test(txt))ot.tipo_tarea=ot.es_cambio_domicilio?'CAMBIO_DOMICILIO':'INSTALAR';
   else if(/\bDESCONECTAR\b/i.test(txt))ot.tipo_tarea='DESCONECTAR';
   else ot.tipo_tarea='SERVICE';
-  // Fecha de impresión: "Imprimió:CFING 31/03/2026 18:42"
-  const mImpr=txt.match(/Imprimió[:\s]+\w+\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}:\d{2})/i);
+  // Fecha de impresión: buscar DD/MM/YYYY HH:MM (único datetime con hora en el PDF)
+  // En PDF.js el "31/03/2026 18:42" aparece ANTES de "Imprimió:CFING" en el stream
+  const mImpr=txt.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}:\d{2})\b/);
   if(mImpr)ot.fecha_impresion=`${mImpr[3]}-${mImpr[2]}-${mImpr[1]}T${mImpr[4]}:00`;
 
   const todFechas=[...txt.matchAll(/(\d{2})\/(\d{2})\/(20\d{2})/g)];
@@ -855,9 +856,14 @@ function parsearPag(txt){
   const mAsig=txt.match(/[Aa]signaci.n[:\s]+(\d{2})\/(\d{2})\/(20\d{2})/);
   if(mAsig)ot.fecha_asignacion_giga=`${mAsig[3]}-${mAsig[2]}-${mAsig[1]}`;
   else if(ot.fecha_emision)ot.fecha_asignacion_giga=ot.fecha_emision;
-  // TAG — buscar en todo el texto, flexible
-  const mTag=txt.match(/\bTag[:\s]+(\d{4,})/i);
-  if(mTag)ot.tag=mTag[1];
+  // TAG: estrategia indexOf (más confiable que regex para PDFs con encoding raro)
+  const tagIdx=txt.toLowerCase().indexOf('tag:');
+  if(tagIdx>-1){
+    const afterTag=txt.slice(tagIdx+4,tagIdx+25).replace(/\s/g,'');
+    const mTagNum=afterTag.match(/^(\d{4,7})/);
+    if(mTagNum)ot.tag=mTagNum[1];
+  }
+  if(!ot.tag){const mTag2=txt.match(/\bTag\b[^0-9\n\r]{0,8}(\d{4,7})\b/i);if(mTag2)ot.tag=mTag2[1];}
 
   const todosNums=[...txt.matchAll(/\b(\d{11})\b/g)];
   for(const m of todosNums){
@@ -868,13 +874,27 @@ function parsearPag(txt){
   }
 
   // DOMICILIO — lookahead ampliado para cubrir "Telefono:" además de "Telef."
-  const mDomA=txt.match(/3\d{2}[\-]?\d{7}\s+([A-Z][A-Z0-9\s\.\(\)\/\-,]{5,80}?\d{3,5}[A-Z0-9\s\.\(\)\/\-,]{0,60}?)(?=\s+(?:Domicilio:|Telef|Cliente:|Barrio:|Cantidad|Mano|Localidad:))/i);
-  const mDomB=txt.match(/[Dd]omicilio:\s*(?:Telef\.\d[\s]+)?([A-Z0-9][^\n\r]{4,80}?)(?=\s+(?:Telef(?:ono)?[\.:]|Cliente:|Barrio:|Nodo:|Localidad:|Cantidad|Mano))/i);
-  let mDom=null;
-  if(mDomA&&mDomA[1].length>5)mDom=mDomA;
-  else if(mDomB&&mDomB[1].length>5&&!/^Telef/i.test(mDomB[1]))mDom=mDomB;
-  if(mDom){
-    ot.domicilio=mDom[1].replace(/\s+/g,' ').trim();
+  // DOMICILIO: 3 estrategias en cascada
+  let domTxt='';
+  // Estrategia 1: indexOf entre "domicilio:" y next label (más robusto para REPARAR)
+  const domIdx=txt.toLowerCase().indexOf('domicilio:');
+  if(domIdx>-1){
+    const afterDom=txt.slice(domIdx+10,domIdx+200);
+    // Buscar hasta el primer label conocido
+    const nextLabel=afterDom.search(/\b(?:Telefono|Barrio:|Nodo:|Localidad:|Cantidad|Mano\s+de|Técnico|Telef\.)/i);
+    let raw=nextLabel>-1?afterDom.slice(0,nextLabel):afterDom.slice(0,100);
+    raw=raw.replace(/\s*(Telefono|Cliente|Activo|Inactivo)\s*[:\s]*/gi,' ').replace(/\s{2,}/g,' ').trim();
+    if(raw.length>5&&!/^(Telef|Barrio|Nodo|Localid|Cliente)/i.test(raw))domTxt=raw;
+  }
+  // Estrategia 2: regex clásico (funciona para INSTALAR)
+  if(!domTxt){
+    const mDomA=txt.match(/3\d{2}[\-]?\d{7}\s+([A-Z][A-Z0-9\s\.\(\)\/\-,]{5,80}?\d{3,5}[A-Z0-9\s\.\(\)\/\-,]{0,60}?)(?=\s+(?:Domicilio:|Telef|Cliente:|Barrio:|Cantidad|Mano|Localidad:))/i);
+    const mDomB=txt.match(/[Dd]omicilio:\s*(?:Telef\.\d[\s]+)?([A-Z0-9][^\n\r]{4,80}?)(?=\s+(?:Telef(?:ono)?[\.:]|Cliente:|Barrio:|Nodo:|Localidad:|Cantidad|Mano))/i);
+    if(mDomA&&mDomA[1].length>5)domTxt=mDomA[1];
+    else if(mDomB&&mDomB[1].length>5&&!/^(Telef|Barrio|Nodo)/i.test(mDomB[1]))domTxt=mDomB[1];
+  }
+  if(domTxt){
+    ot.domicilio=domTxt.replace(/\s+/g,' ').trim();
     const dp=parseDomicilio(ot.domicilio);
     ot.calle=dp.calle;ot.numero_domicilio=dp.numero;ot.obs_domicilio=dp.obs;
   }
