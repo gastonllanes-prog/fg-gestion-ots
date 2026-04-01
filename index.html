@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v3</title>
+<title>FG Gestión OTs v5</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
@@ -139,7 +139,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V3</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V5</div>
   </div>
 </div>
 
@@ -149,7 +149,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver">v3</div>
+    <div class="sb-ver">v5</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -555,29 +555,40 @@ async function verOT(num){
     let grupo=[];
     if(ot.grupo_id)grupo=await sbGet('ordenes_trabajo',`?grupo_id=eq.${ot.grupo_id}&select=numero_ot,tipo_item,estados_ot(nombre)&order=orden_cierre`)||[];
     const cl=ot.clientes||{};
+    // Calcular estado del grupo
+    const grupoCompleto=grupo.length>0&&grupo.every(g=>g.estados_ot?.nombre==='FINALIZADA'||g.estados_ot?.nombre==='NO_REALIZADA'||g.estados_ot?.nombre==='DEVUELTA_GIGARED');
     body.innerHTML=`
       <div class="ot-detail-header">
-        <div style="font-size:22px;font-weight:900;color:#2563eb">${ot.numero_ot}</div>
-        <div style="font-size:12px;font-weight:600;color:#64748b;margin-top:2px">${ot.tipo_tarea||''} · ${ot.tipo_item||''}</div>
-        <div style="margin-top:.5rem">${badgeE(ot.estados_ot?.nombre||'')}</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.5rem">
+          <div style="font-size:24px;font-weight:900;color:#2563eb;letter-spacing:-.5px">${cl.codigo_gigared||'—'}</div>
+          <div>${badgeE(ot.estados_ot?.nombre||'')}</div>
+        </div>
+        <div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:.25rem">${cl.apellido||''}, ${cl.nombre||''}</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:.35rem">
+          ${grupo.map(g=>`<span style="background:rgba(37,99,235,.1);color:#2563eb;font-weight:700;padding:2px 8px;border-radius:6px;margin-right:4px;font-size:12px">${numOT(g.numero_ot)}</span>`).join('')}
+        </div>
+        <div style="font-size:12px;color:#94a3b8">${ot.tipo_tarea||''} · ${ot.tipo_item||''}</div>
       </div>
       <div class="ot-info-grid">
-        <div class="ot-info-item"><div class="ot-info-label">Cliente</div><div class="ot-info-val">${cl.apellido||''}, ${cl.nombre||''}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Código</div><div class="ot-info-val">${cl.codigo_gigared||'—'}</div></div>
         <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Domicilio</div><div class="ot-info-val">${cl.domicilio||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Tel 1</div><div class="ot-info-val"><a href="tel:${(cl.telefono1||'').replace(/\D/g,'')}" style="color:#2563eb">${cl.telefono1||'—'}</a></div></div>
         <div class="ot-info-item"><div class="ot-info-label">Tel 2</div><div class="ot-info-val"><a href="tel:${(cl.telefono2||'').replace(/\D/g,'')}" style="color:#2563eb">${cl.telefono2||'—'}</a></div></div>
         <div class="ot-info-item"><div class="ot-info-label">Nodo</div><div class="ot-info-val">${cl.nodo||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${cl.localidad||'—'}</div></div>
-        ${ot.tag?`<div class="ot-info-item"><div class="ot-info-label">Tag/Precinto</div><div class="ot-info-val" style="color:#7c3aed;font-weight:700">${ot.tag}</div></div>`:''}
-        <div class="ot-info-item"><div class="ot-info-label">Emisión</div><div class="ot-info-val">${fmtF(ot.fecha_emision)}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Fecha trabajo</div><div class="ot-info-val">${fmtF(ot.fecha_trabajo)}</div></div>
-        ${ot.grupos_ot?.cuadrillas?`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val">🔧 ${ot.grupos_ot.cuadrillas.nombre}</div></div>`:''}
+        ${ot.tag?`<div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val" style="color:#7c3aed;font-weight:700">${ot.tag}</div></div>`:'<div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val">—</div></div>'}
+        <div class="ot-info-item"><div class="ot-info-label">Emisión Gigared</div><div class="ot-info-val">${ot.fecha_emision?fmtF(ot.fecha_emision):'—'}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Cargado al sistema</div><div class="ot-info-val">${fmtF(ot.created_at?.slice(0,10))}</div></div>
+        ${ot.grupos_ot?.cuadrillas?`
+          <div class="ot-info-item"><div class="ot-info-label">Cuadrilla asignada</div><div class="ot-info-val">🔧 ${ot.grupos_ot.cuadrillas.nombre}</div></div>
+          <div class="ot-info-item"><div class="ot-info-label">Fecha asignación</div><div class="ot-info-val">${ot.grupos_ot?.fecha_asignacion?fmtF(ot.grupos_ot.fecha_asignacion.slice(0,10)):'—'}</div></div>
+          <div class="ot-info-item"><div class="ot-info-label">Fecha de trabajo</div><div class="ot-info-val">${ot.fecha_trabajo?fmtF(ot.fecha_trabajo):'—'}</div></div>
+          <div class="ot-info-item"><div class="ot-info-label">Fecha finalización</div><div class="ot-info-val">${ot.fecha_fin?fmtF(ot.fecha_fin.slice(0,10)):'—'}</div></div>
+        `:'<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val" style="color:#94a3b8">Sin asignar</div></div>'}
       </div>
-      ${ot.obs_gigared?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#92400e"><strong>Obs:</strong> ${ot.obs_gigared}</div>`:''}
-      ${ot.es_cambio_domicilio?`<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:.6rem 1rem;margin-bottom:1rem;font-size:13px;color:#92400e">⚠️ <strong>Cambio de domicilio</strong></div>`:''}
+      ${ot.obs_gigared?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#92400e"><strong>Obs Gigared:</strong> ${ot.obs_gigared}</div>`:''}
+      ${ot.es_cambio_domicilio?`<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:.6rem 1rem;margin-bottom:1rem;font-size:13px;color:#92400e">⚠️ <strong>Cambio de domicilio</strong> — verificar desconexión del domicilio anterior</div>`:''}
       ${items.length?`<div class="card" style="margin-bottom:.75rem"><div class="card-title">Items contratados</div>${items.map(i=>`<div class="row"><span>${i.descripcion}</span><span style="font-weight:700">x${i.cantidad}</span></div>`).join('')}</div>`:''}
-      ${grupo.length>1?`<div class="card"><div class="card-title">Grupo · ${grupo.length} OTs</div>${grupo.map(g=>`<div class="ot-grupo-item" style="cursor:pointer" onclick="cerrarModal('ot-modal');setTimeout(()=>verOT('${g.numero_ot}'),200)"><div class="ot-grupo-num">${numOT(g.numero_ot)}</div><div class="ot-grupo-tipo">${g.tipo_item||'—'}</div>${badgeE(g.estados_ot?.nombre||'')}</div>`).join('')}</div>`:''}
+      ${grupo.length>=1?`<div class="card"><div class="card-title">Grupo · ${grupo.length} OT${grupo.length>1?'s':''}</div>${grupo.map(g=>`<div class="ot-grupo-item" style="cursor:pointer" onclick="cerrarModal('ot-modal');setTimeout(()=>verOT('${g.numero_ot}'),200)"><div class="ot-grupo-num">${numOT(g.numero_ot)}</div><div class="ot-grupo-tipo">${g.tipo_item||'—'}</div>${badgeE(g.estados_ot?.nombre||'')}</div>`).join('')}</div>`:''}
     `;
     const est=ot.estados_ot?.nombre||'';
     let btns='';
@@ -742,9 +753,10 @@ function parsearPag(txt){
   ot.telefono2=telArr[1]||'';
 
   // OBS GIGARED
-  const rObs=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio)[^\n\r]{5,180})/i;
+  // OBS GIGARED: solo hasta el numero de cliente o maximo 120 chars
+  const rObs=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio)[^\n\r]{5,120}?)(?=\s+\d{11}|\s+Materiales|\s*$)/i;
   const mObs=txt.match(rObs);
-  if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim().slice(0,200);
+  if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim();
 
   const ri=detectarItems(txt);
   ot.items=ri.items;
