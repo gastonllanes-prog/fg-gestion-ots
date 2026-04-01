@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v6</title>
+<title>FG Gestión OTs v7</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -43,7 +43,7 @@ body.app-ready #main-content{display:flex}
 @media(min-width:769px){#mobile-topbar{display:none!important}#sidebar-overlay{display:none!important}}
 .ph{display:flex;align-items:center;gap:14px;margin-bottom:1.75rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
 .ph-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-.ph-icon.blue{background:rgba(37,99,235,.1)}.ph-icon.amber{background:rgba(217,119,6,.1)}.ph-icon.gray{background:var(--bg3)}
+.ph-icon.blue{background:rgba(37,99,235,.1)}.ph-icon.amber{background:rgba(217,119,6,.1)}.ph-icon.gray{background:var(--bg3)}.ph-icon.orange{background:rgba(234,88,12,.1)}
 .ph-title{font-size:20px;font-weight:800;letter-spacing:-.3px}.ph-sub{font-size:13px;color:#64748b;margin-top:4px}
 .card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem;margin-bottom:.9rem;box-shadow:var(--card-shadow)}
 .card-title{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.9rem}
@@ -56,6 +56,7 @@ body.app-ready #main-content{display:flex}
 .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn-primary:hover{background:var(--accent-hover)}
 .btn-sm{padding:6px 12px;font-size:13px;border-radius:8px}
 .btn-green{border-color:rgba(22,163,74,.3);color:#16a34a;background:rgba(22,163,74,.06)}
+.btn-orange{border-color:rgba(234,88,12,.3);color:#ea580c;background:rgba(234,88,12,.06)}
 .nav{display:flex;gap:6px;margin-bottom:1rem;overflow-x:auto;scrollbar-width:none}
 .ntab{padding:7px 14px;border:1px solid var(--border);border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;background:transparent;color:#64748b;font-family:inherit}
 .ntab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -63,6 +64,7 @@ body.app-ready #main-content{display:flex}
 .b-blue{background:rgba(37,99,235,.1);color:#2563eb}.b-green{background:rgba(22,163,74,.1);color:#16a34a}
 .b-amber{background:rgba(217,119,6,.1);color:#d97706}.b-red{background:rgba(220,38,38,.1);color:#dc2626}
 .b-gray{background:#f1f5f9;color:#64748b}.b-purple{background:rgba(124,58,237,.1);color:#7c3aed}
+.b-orange{background:rgba(234,88,12,.1);color:#ea580c}
 .row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border2)}
 .row:last-child{border-bottom:none}
 .loading{text-align:center;padding:2rem;color:#94a3b8;font-size:14px}
@@ -93,12 +95,14 @@ tr:hover td{background:rgba(37,99,235,.02)}
 @media(min-width:600px){.modal{border-radius:20px;align-self:center;max-height:85vh}}
 .ot-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1rem 1.25rem;margin-bottom:.6rem;box-shadow:var(--card-shadow);cursor:pointer;display:flex;align-items:center;gap:14px;transition:border-color .15s}
 .ot-card:hover{border-color:rgba(37,99,235,.3)}
+.ot-card.rep-card{border-left:3px solid #ea580c}
 .ot-card-num{font-size:13px;font-weight:800;color:#2563eb;min-width:60px}
 .ot-card-body{flex:1;min-width:0}
 .ot-card-cliente{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ot-card-dom{font-size:12px;color:#64748b;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ot-card-right{text-align:right;flex-shrink:0}
 .ot-detail-header{background:linear-gradient(135deg,#eff6ff,#e0f2fe);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem}
+.ot-detail-header.rep-header{background:linear-gradient(135deg,#fff7ed,#ffedd5)}
 .ot-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem}
 .ot-info-item{background:#f8fafc;border-radius:10px;padding:.6rem .875rem}
 .ot-info-label{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
@@ -110,7 +114,8 @@ tr:hover td{background:rgba(37,99,235,.02)}
 .empty-state{text-align:center;padding:3rem 1rem;color:#94a3b8}
 .empty-state-icon{font-size:40px;margin-bottom:.75rem}
 .form-2col{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start}
-@media(max-width:768px){.form-2col{grid-template-columns:1fr}}
+.form-3col{display:grid;grid-template-columns:2fr 1fr 2fr;gap:.75rem;align-items:start}
+@media(max-width:768px){.form-2col,.form-3col{grid-template-columns:1fr}}
 .drop-zone{border:2px dashed rgba(37,99,235,.3);border-radius:16px;padding:2.5rem;text-align:center;cursor:pointer;transition:all .2s;background:rgba(37,99,235,.02)}
 .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(37,99,235,.05)}
 .import-prog-wrap{background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:1rem 1.25rem;margin:1rem 0}
@@ -122,7 +127,11 @@ tr:hover td{background:rgba(37,99,235,.02)}
 .ptable td{padding:7px 10px;border-bottom:1px solid var(--border2);vertical-align:middle}
 .ptable tr.pnew td{background:#f0fdf4}
 .ptable tr.pexist td{background:#fefce8}
+.ptable tr.pnew-rep td{background:#fff7ed}
 .ptable tr.pgroup td{background:#eff6ff;font-weight:700;color:#2563eb;font-size:11px;padding:5px 10px}
+/* Reparacion highlight */
+.rep-info-box{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:13px;color:#9a3412}
+.rep-info-box strong{color:#c2410c}
 </style>
 </head>
 <body>
@@ -138,7 +147,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V6</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V7</div>
   </div>
 </div>
 
@@ -148,7 +157,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver">v6</div>
+    <div class="sb-ver">v7</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -188,6 +197,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <select class="filter-select" id="ot-fil-tipo" onchange="buscarOTs()">
       <option value="">Todos los tipos</option>
       <option value="INSTALAR">Instalar</option>
+      <option value="REPARACION">Reparación</option>
       <option value="DESCONECTAR">Desconectar</option>
       <option value="SERVICE">Service</option>
       <option value="CAMBIO_DOMICILIO">Cambio domicilio</option>
@@ -278,12 +288,13 @@ tr:hover td{background:rgba(37,99,235,.02)}
         <div style="font-size:14px;font-weight:600" id="import-prev-titulo">OTs extraídas</div>
         <div style="display:flex;gap:6px">
           <span class="badge b-green" id="prev-nuevas">0 nuevas</span>
+          <span class="badge b-orange" id="prev-reparaciones">0 reparaciones</span>
           <span class="badge b-amber" id="prev-exist">0 ya existen</span>
         </div>
       </div>
       <div class="preview-wrap">
         <table class="ptable">
-          <thead><tr><th>N° OT</th><th>Tipo</th><th>Cliente</th><th>Domicilio</th><th>Loc.</th><th>Nodo</th><th>Item</th><th></th></tr></thead>
+          <thead><tr><th>N° OT</th><th>Tipo</th><th>Cliente</th><th>Domicilio</th><th>Loc.</th><th>Nodo</th><th>Tag</th><th></th></tr></thead>
           <tbody id="prev-tbody"></tbody>
         </table>
       </div>
@@ -304,21 +315,47 @@ tr:hover td{background:rgba(37,99,235,.02)}
 
 <!-- MODAL MANUAL -->
 <div class="modal-overlay hidden" id="manual-modal">
-  <div class="modal" style="max-width:600px">
+  <div class="modal" style="max-width:620px">
     <div class="modal-title">OT manual <button class="modal-close" onclick="cerrarModal('manual-modal')">✕</button></div>
     <div class="form-2col">
       <div class="fg"><label>Número OT</label><input id="m-num" placeholder="005-00302495"/></div>
-      <div class="fg"><label>Tipo</label><select id="m-tipo"><option value="INSTALAR">Instalar</option><option value="DESCONECTAR">Desconectar</option><option value="SERVICE">Service</option><option value="CAMBIO_DOMICILIO">Cambio domicilio</option></select></div>
+      <div class="fg"><label>Tipo</label>
+        <select id="m-tipo" onchange="toggleManualRep()">
+          <option value="INSTALAR">Instalar</option>
+          <option value="REPARACION">Reparación</option>
+          <option value="DESCONECTAR">Desconectar</option>
+          <option value="SERVICE">Service</option>
+          <option value="CAMBIO_DOMICILIO">Cambio domicilio</option>
+        </select>
+      </div>
       <div class="fg"><label>Código cliente</label><input id="m-cod" placeholder="00500098504"/></div>
       <div class="fg"><label>Apellido, Nombre</label><input id="m-nombre" placeholder="PETRUFF, CLELIA"/></div>
-      <div class="fg" style="grid-column:1/-1"><label>Domicilio</label><input id="m-dom" placeholder="DERQUI (61) 01871 Dpto:1 A AV CENTENARIO"/></div>
-      <div class="fg"><label>Localidad</label><input id="m-loc" placeholder="POSADAS"/></div>
-      <div class="fg"><label>Nodo</label><input id="m-nodo" placeholder="H1F144"/></div>
-      <div class="fg"><label>Teléfono 1</label><input id="m-tel1" placeholder="376-4334004"/></div>
+      <!-- Domicilio separado en 3 partes -->
+      <div class="fg" style="grid-column:1/-1">
+        <label>Calle</label>
+        <input id="m-calle" placeholder="LOS LAPACHOS PERITO MORENO"/>
+      </div>
+      <div class="fg"><label>Número</label><input id="m-numdom" placeholder="00455"/></div>
+      <div class="fg"><label>Obs. dirección (entre calles, etc.)</label><input id="m-obsdom" placeholder="ENTRE LINEO Y LOS JAZMINES"/></div>
+      <div class="fg"><label>Barrio</label><input id="m-barrio" placeholder="GARUPA CENTRO"/></div>
+      <div class="fg"><label>Localidad</label><input id="m-loc" placeholder="GARUPA"/></div>
+      <div class="fg"><label>Nodo</label><input id="m-nodo" placeholder="H3F007"/></div>
+      <div class="fg"><label>Teléfono 1</label><input id="m-tel1" placeholder="376-4531676"/></div>
       <div class="fg"><label>Teléfono 2</label><input id="m-tel2"/></div>
       <div class="fg"><label>Fecha emisión</label><input type="date" id="m-fecha"/></div>
-      <div class="fg"><label>Tag/Precinto</label><input id="m-tag" placeholder="565857"/></div>
+      <div class="fg"><label>Tag/Precinto</label><input id="m-tag" placeholder="656345"/></div>
       <div class="fg" style="grid-column:1/-1"><label>Obs. Gigared</label><input id="m-obs" placeholder="Contrata Internet 100 megas..."/></div>
+      <!-- Campos extra para Reparación -->
+      <div id="m-rep-fields" style="display:none;grid-column:1/-1">
+        <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:12px;color:#9a3412">
+          🔧 <strong>Campos de Reparación</strong>
+        </div>
+        <div class="form-2col">
+          <div class="fg" style="grid-column:1/-1"><label>Síntoma / Tarea</label><input id="m-sintoma" placeholder="INST Reubicar Acometida"/></div>
+          <div class="fg" style="grid-column:1/-1"><label>Observación de trabajo</label><input id="m-obstrap" placeholder="cambiar acometida 4531676"/></div>
+          <div class="fg" style="grid-column:1/-1"><label>Equipo instalado (MAC + Marca)</label><input id="m-equipo" placeholder="1C60D2F96288 FIBERHOME"/></div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-primary" style="flex:2" onclick="guardarManual()">Guardar</button>
@@ -405,6 +442,22 @@ const PAGE_SIZE=30;
 const fmtF=d=>{if(!d)return'—';const f=new Date(d+'T12:00:00');return f.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})};
 const numOT=n=>n?n.replace('005-','').replace(/^0+/,''):n;
 
+// Parsear domicilio en partes: calle, numero, obs
+function parseDomicilio(dom){
+  if(!dom)return{calle:'',numero:'',obs:''};
+  dom=dom.trim();
+  // Patrón: "TEXTO 00455 TEXTO ADICIONAL"
+  const m=dom.match(/^(.+?)\s+(\d{4,6})\s*(.*)$/);
+  if(m)return{calle:m[1].trim(),numero:m[2].trim(),obs:m[3].replace(/^[-·\s]+/,'').trim()};
+  return{calle:dom,numero:'',obs:''};
+}
+
+// Mostrar/ocultar campos de reparación en formulario manual
+function toggleManualRep(){
+  const tipo=document.getElementById('m-tipo').value;
+  document.getElementById('m-rep-fields').style.display=tipo==='REPARACION'?'':'none';
+}
+
 // AUTH
 async function doLogin(){
   const email=document.getElementById('l-email').value.trim();
@@ -413,13 +466,11 @@ async function doLogin(){
   const spin=document.getElementById('l-spin');
   if(!email||!pass){err.textContent='Completá email y contraseña';return;}
   spin.style.display='inline-block';err.textContent='';
-  // Login local de emergencia
   const USUARIOS_LOCAL=[
     {id:1,nombre:'Gaston Llanes',email:'gastonllanes@gmail.com',password:'admin123',rol:'superadmin',activo:true}
   ];
   const local=USUARIOS_LOCAL.find(u=>u.email===email&&u.password===pass&&u.activo);
   if(local){CU=local;sessionStorage.setItem('cu',JSON.stringify(CU));spin.style.display='none';iniciarApp();return;}
-  // Intentar login por base de datos
   try{
     const d=await sbGet('usuarios',`?email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(pass)}&activo=eq.true`);
     if(!d||!d.length){err.textContent='Email o contraseña incorrectos';spin.style.display='none';return;}
@@ -488,6 +539,12 @@ function badgeE(n){
   return`<span class="badge ${m[n]||'b-gray'}">${(n||'').replace(/_/g,' ')}</span>`;
 }
 
+function badgeTipo(t){
+  const m={INSTALAR:'b-blue',REPARACION:'b-orange',DESCONECTAR:'b-red',SERVICE:'b-purple',CAMBIO_DOMICILIO:'b-amber'};
+  const label={INSTALAR:'Instalar',REPARACION:'Reparación',DESCONECTAR:'Desconectar',SERVICE:'Service',CAMBIO_DOMICILIO:'Cambio dom.'};
+  return`<span class="badge ${m[t]||'b-gray'}" style="font-size:10px">${label[t]||t||'—'}</span>`;
+}
+
 // DASHBOARD
 async function renderDashboard(){
   try{
@@ -505,8 +562,8 @@ async function renderDashboard(){
     document.getElementById('dash-asig').textContent=a;
     document.getElementById('dash-fin').textContent=f;
     document.getElementById('dash-repro').textContent=r;
-    const pend=await sbGet('ordenes_trabajo','?select=numero_ot,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&order=created_at.desc&limit=8')||[];
-    const hoyOTs=await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&fecha_trabajo=eq.${hoy}&order=created_at`)||[];
+    const pend=await sbGet('ordenes_trabajo','?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&order=created_at.desc&limit=8')||[];
+    const hoyOTs=await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&fecha_trabajo=eq.${hoy}&order=created_at`)||[];
     renderMini('dash-lista-pend',pend.filter(o=>o.estados_ot?.nombre==='PENDIENTE'));
     renderMini('dash-lista-hoy',hoyOTs);
   }catch(e){console.error(e);}
@@ -515,7 +572,12 @@ async function renderDashboard(){
 function renderMini(id,ots){
   const el=document.getElementById(id);
   if(!ots.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Sin OTs</div></div>';return;}
-  el.innerHTML=ots.map(o=>`<div class="ot-grupo-item" style="cursor:pointer" onclick="verOT('${o.numero_ot}')"><div class="ot-grupo-num">${numOT(o.numero_ot)}</div><div class="ot-grupo-tipo" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.clientes?o.clientes.apellido+', '+o.clientes.nombre:'—'}</div>${badgeE(o.estados_ot?.nombre||'')}</div>`).join('');
+  el.innerHTML=ots.map(o=>`<div class="ot-grupo-item" style="cursor:pointer" onclick="verOT('${o.numero_ot}')">
+    <div class="ot-grupo-num">${numOT(o.numero_ot)}</div>
+    <div class="ot-grupo-tipo" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.clientes?o.clientes.apellido+', '+o.clientes.nombre:'—'}</div>
+    ${o.tipo_tarea==='REPARACION'?'<span style="font-size:10px;color:#ea580c;font-weight:700;margin-right:4px">🔧REP</span>':''}
+    ${badgeE(o.estados_ot?.nombre||'')}
+  </div>`).join('');
 }
 
 // OTs LISTA
@@ -525,34 +587,35 @@ async function renderOTs(){
   try{
     const tipo=document.getElementById('ot-fil-tipo').value;
     const estFil=document.getElementById('ot-fil-estado').value;
-    // Cargar grupos con sus OTs y cliente
-    let p=`?select=id,estado_id,fecha_trabajo,fecha_asignacion,estados_ot(nombre),cuadrillas(nombre),clientes(codigo_gigared,apellido,nombre,domicilio,localidad,nodo,telefono1),lotes_importacion(fecha_importacion)&order=created_at.desc&limit=${PAGE_SIZE}&offset=${OT_PAGE*PAGE_SIZE}`;
+    let p=`?select=id,estado_id,fecha_trabajo,fecha_asignacion,estados_ot(nombre),cuadrillas(nombre),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1),lotes_importacion(fecha_importacion)&order=created_at.desc&limit=${PAGE_SIZE}&offset=${OT_PAGE*PAGE_SIZE}`;
     const grupos=await sbGet('grupos_ot',p)||[];
     if(!grupos.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No hay OTs cargadas. Importá un PDF para empezar.</div></div>';return;}
-    // Para cada grupo cargar sus OTs
     const gruposConOTs=await Promise.all(grupos.map(async g=>{
       let opOTs=`?grupo_id=eq.${g.id}&select=numero_ot,tipo_tarea,tipo_item,estados_ot(nombre)&order=orden_cierre`;
       if(tipo)opOTs+=`&tipo_tarea=eq.${tipo}`;
       g.ordenes=await sbGet('ordenes_trabajo',opOTs)||[];
       return g;
     }));
-    // Filtrar grupos que tengan al menos una OT con el estado seleccionado
     const filtrados=estFil?gruposConOTs.filter(g=>g.ordenes.some(o=>o.estados_ot?.nombre===estFil)):gruposConOTs;
     if(!filtrados.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No se encontraron OTs con ese filtro</div></div>';return;}
     el.innerHTML=filtrados.map(g=>{
       const cl=g.clientes||{};
+      const esRep=g.ordenes.some(o=>o.tipo_tarea==='REPARACION');
       const ests=g.ordenes.map(o=>o.estados_ot?.nombre||'PENDIENTE');
       const estGrupo=ests.every(e=>e==='FINALIZADA')?'FINALIZADA':ests.some(e=>e==='PENDIENTE')?'PENDIENTE':ests.some(e=>e==='ASIGNADA'||e==='EN_PROCESO')?'ASIGNADA':'PENDIENTE';
-      return `<div class="ot-card" onclick="verOT('${g.ordenes[0]?.numero_ot||''}')">
+      // Mostrar domicilio: si hay calle separada usarla, sino el campo domicilio
+      const domDisplay=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||cl.localidad||'');
+      return `<div class="ot-card${esRep?' rep-card':''}" onclick="verOT('${g.ordenes[0]?.numero_ot||''}')">
         <div style="min-width:80px">
           <div style="font-size:13px;font-weight:800;color:#2563eb">${cl.codigo_gigared||'—'}</div>
           <div style="font-size:10px;color:#94a3b8;margin-top:2px">${cl.nodo||''}</div>
+          ${cl.barrio?`<div style="font-size:9px;color:#94a3b8">${cl.barrio}</div>`:''}
         </div>
         <div class="ot-card-body">
           <div class="ot-card-cliente">${cl.apellido||''}, ${cl.nombre||''}</div>
-          <div class="ot-card-dom">${cl.domicilio||cl.localidad||''}</div>
+          <div class="ot-card-dom">${domDisplay}</div>
           <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
-            ${g.ordenes.map(o=>`<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:rgba(37,99,235,.1);color:#2563eb">${numOT(o.numero_ot)} ${o.tipo_item||''}</span>`).join('')}
+            ${g.ordenes.map(o=>`<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:${o.tipo_tarea==='REPARACION'?'rgba(234,88,12,.12)':'rgba(37,99,235,.1)'};color:${o.tipo_tarea==='REPARACION'?'#ea580c':'#2563eb'}">${numOT(o.numero_ot)} ${o.tipo_tarea==='REPARACION'?'🔧':''} ${o.tipo_item||''}</span>`).join('')}
           </div>
         </div>
         <div class="ot-card-right">
@@ -583,27 +646,56 @@ async function verOT(num){
     let grupo=[];
     if(ot.grupo_id)grupo=await sbGet('ordenes_trabajo',`?grupo_id=eq.${ot.grupo_id}&select=numero_ot,tipo_item,estados_ot(nombre)&order=orden_cierre`)||[];
     const cl=ot.clientes||{};
-    // Calcular estado del grupo
-    const grupoCompleto=grupo.length>0&&grupo.every(g=>g.estados_ot?.nombre==='FINALIZADA'||g.estados_ot?.nombre==='NO_REALIZADA'||g.estados_ot?.nombre==='DEVUELTA_GIGARED');
+    const esRep=ot.tipo_tarea==='REPARACION';
+
+    // Construir display de domicilio
+    const domCalle=cl.calle||'';
+    const domNum=cl.numero_domicilio||'';
+    const domObs=cl.obs_domicilio||'';
+    const domFull=cl.domicilio||'';
+    let domHtml='';
+    if(domCalle){
+      domHtml=`<div style="font-weight:600">${domCalle}${domNum?' <span style="color:#64748b">N° '+domNum+'</span>':''}</div>`;
+      if(domObs)domHtml+=`<div style="font-size:12px;color:#64748b;margin-top:2px">${domObs}</div>`;
+      if(cl.barrio)domHtml+=`<div style="font-size:11px;color:#94a3b8;margin-top:1px">${cl.barrio}</div>`;
+    }else{
+      domHtml=`<div style="font-weight:600">${domFull||'—'}</div>`;
+      if(cl.barrio)domHtml+=`<div style="font-size:11px;color:#94a3b8;margin-top:1px">${cl.barrio}</div>`;
+    }
+
     body.innerHTML=`
-      <div class="ot-detail-header">
+      <div class="ot-detail-header${esRep?' rep-header':''}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.5rem">
-          <div style="font-size:24px;font-weight:900;color:#2563eb;letter-spacing:-.5px">${cl.codigo_gigared||'—'}</div>
+          <div style="font-size:24px;font-weight:900;color:${esRep?'#ea580c':'#2563eb'};letter-spacing:-.5px">${cl.codigo_gigared||'—'}</div>
           <div>${badgeE(ot.estados_ot?.nombre||'')}</div>
         </div>
         <div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:.25rem">${cl.apellido||''}, ${cl.nombre||''}</div>
         <div style="font-size:13px;color:#64748b;margin-bottom:.35rem">
           ${grupo.map(g=>`<span style="background:rgba(37,99,235,.1);color:#2563eb;font-weight:700;padding:2px 8px;border-radius:6px;margin-right:4px;font-size:12px">${numOT(g.numero_ot)}</span>`).join('')}
         </div>
-        <div style="font-size:12px;color:#94a3b8">${ot.tipo_tarea||''} · ${ot.tipo_item||''}</div>
+        <div style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px">
+          ${badgeTipo(ot.tipo_tarea)} <span>${ot.tipo_item||''}</span>
+        </div>
       </div>
+
+      ${esRep&&(ot.sintoma_reportado||ot.obs_trabajo)?`
+        <div class="rep-info-box">
+          ${ot.sintoma_reportado?`<div style="margin-bottom:.35rem"><strong>🔧 Tarea:</strong> ${ot.sintoma_reportado}</div>`:''}
+          ${ot.obs_trabajo?`<div><strong>📋 Obs. trabajo:</strong> ${ot.obs_trabajo}</div>`:''}
+        </div>
+      `:''}
+
       <div class="ot-info-grid">
-        <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Domicilio</div><div class="ot-info-val">${cl.domicilio||'—'}</div></div>
+        <div class="ot-info-item" style="grid-column:1/-1">
+          <div class="ot-info-label">Domicilio</div>
+          <div class="ot-info-val">${domHtml}</div>
+        </div>
         <div class="ot-info-item"><div class="ot-info-label">Tel 1</div><div class="ot-info-val"><a href="tel:${(cl.telefono1||'').replace(/\D/g,'')}" style="color:#2563eb">${cl.telefono1||'—'}</a></div></div>
         <div class="ot-info-item"><div class="ot-info-label">Tel 2</div><div class="ot-info-val"><a href="tel:${(cl.telefono2||'').replace(/\D/g,'')}" style="color:#2563eb">${cl.telefono2||'—'}</a></div></div>
         <div class="ot-info-item"><div class="ot-info-label">Nodo</div><div class="ot-info-val">${cl.nodo||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${cl.localidad||'—'}</div></div>
-        ${ot.tag?`<div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val" style="color:#7c3aed;font-weight:700">${ot.tag}</div></div>`:'<div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val">—</div></div>'}
+        <div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val" style="color:${ot.tag?'#7c3aed':'#94a3b8'};font-weight:700">${ot.tag||'—'}</div></div>
+        ${esRep&&ot.equipo_instalado?`<div class="ot-info-item"><div class="ot-info-label">Equipo instalado</div><div class="ot-info-val" style="font-family:monospace;font-size:12px">${ot.equipo_instalado}</div></div>`:''}
         <div class="ot-info-item"><div class="ot-info-label">Emisión Gigared</div><div class="ot-info-val">${ot.fecha_emision?fmtF(ot.fecha_emision):'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Asignación Gigared</div><div class="ot-info-val">${ot.fecha_asignacion_giga?fmtF(ot.fecha_asignacion_giga):'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Cargado al sistema</div><div class="ot-info-val">${fmtF(ot.created_at?.slice(0,10))}</div></div>
@@ -614,9 +706,10 @@ async function verOT(num){
           <div class="ot-info-item"><div class="ot-info-label">Fecha finalización</div><div class="ot-info-val">${ot.fecha_fin?fmtF(ot.fecha_fin.slice(0,10)):'—'}</div></div>
         `:'<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val" style="color:#94a3b8">Sin asignar</div></div>'}
       </div>
-      ${ot.obs_gigared?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#92400e"><strong>Obs Gigared:</strong> ${ot.obs_gigared}</div>`:''}
+
+      ${ot.obs_gigared?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#92400e"><strong>${esRep?'Servicios contratados':'Obs Gigared'}:</strong> ${ot.obs_gigared}</div>`:'' }
       ${ot.es_cambio_domicilio?`<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:.6rem 1rem;margin-bottom:1rem;font-size:13px;color:#92400e">⚠️ <strong>Cambio de domicilio</strong> — verificar desconexión del domicilio anterior</div>`:''}
-      ${items.length?`<div class="card" style="margin-bottom:.75rem"><div class="card-title">Items contratados</div>${items.map(i=>`<div class="row"><span>${i.descripcion}</span><span style="font-weight:700">x${i.cantidad}</span></div>`).join('')}</div>`:''}
+      ${items.length?`<div class="card" style="margin-bottom:.75rem"><div class="card-title">${esRep?'Servicios contratados (referencia)':'Items contratados'}</div>${items.map(i=>`<div class="row"><span>${i.descripcion}</span><span style="font-weight:700">x${i.cantidad}</span></div>`).join('')}</div>`:''}
       ${grupo.length>=1?`<div class="card"><div class="card-title">Grupo · ${grupo.length} OT${grupo.length>1?'s':''}</div>${grupo.map(g=>`<div class="ot-grupo-item" style="cursor:pointer" onclick="cerrarModal('ot-modal');setTimeout(()=>verOT('${g.numero_ot}'),200)"><div class="ot-grupo-num">${numOT(g.numero_ot)}</div><div class="ot-grupo-tipo">${g.tipo_item||'—'}</div>${badgeE(g.estados_ot?.nombre||'')}</div>`).join('')}</div>`:''}
     `;
     const est=ot.estados_ot?.nombre||'';
@@ -624,7 +717,7 @@ async function verOT(num){
     if(est!=='FINALIZADA'&&est!=='ELIMINADA_SISTEMA'){
       if(!ot.grupos_ot?.cuadrillas)btns+=`<button class="btn btn-primary" onclick="abrirAsignar(${ot.grupo_id||ot.id})">📍 Asignar</button>`;
       btns+=`<button class="btn" onclick="abrirCambiarEstado(${ot.id},'${est}')">↕ Estado</button>`;
-      if(est==='ASIGNADA'||est==='EN_PROCESO')btns+=`<button class="btn btn-green" onclick="abrirCierre(${ot.id},'${ot.numero_ot}')">✓ Cerrar</button>`;
+      if(est==='ASIGNADA'||est==='EN_PROCESO')btns+=`<button class="btn btn-green" onclick="abrirCierre(${ot.id},'${ot.numero_ot}','${ot.tipo_tarea||''}')">✓ Cerrar</button>`;
     }
     footer.innerHTML=btns;
   }catch(e){body.innerHTML=`<p style="color:#dc2626">${e.message}</p>`;}
@@ -717,45 +810,35 @@ function parsearPag(txt){
   const mN=txt.match(/ORDEN\s+DE\s+TRABAJO\s*:\s*(005-\d+)/i);
   if(!mN)return null;
   ot.numero_ot=mN[1];
-  // Barcode del numero de OT para excluirlo al buscar el cliente
   const otBC=ot.numero_ot.replace('005-00','00500').replace('005-0','00500');
 
-  // Tipo tarea
+  // TIPO DE TAREA — detectar REPARAR primero
   ot.es_cambio_domicilio=/cambio\s+de\s+domicilio/i.test(txt)||/por\s+cambio\s+de\s+domicilio/i.test(txt);
-  if(/\bINSTALAR\b/i.test(txt))ot.tipo_tarea=ot.es_cambio_domicilio?'CAMBIO_DOMICILIO':'INSTALAR';
+  if(/\bREPARAR\b/i.test(txt))ot.tipo_tarea='REPARACION';
+  else if(/\bINSTALAR\b/i.test(txt))ot.tipo_tarea=ot.es_cambio_domicilio?'CAMBIO_DOMICILIO':'INSTALAR';
   else if(/\bDESCONECTAR\b/i.test(txt))ot.tipo_tarea='DESCONECTAR';
   else ot.tipo_tarea='SERVICE';
 
-  // Fecha emision — buscar patron DD/MM/YYYY cerca de "Emisi" o "31/03" etc
-  // En PDF.js puede venir como "Emision: 31/03/2026" o "31/03/2026 ... Emision:"
+  // Fechas
   const todFechas=[...txt.matchAll(/(\d{2})\/(\d{2})\/(20\d{2})/g)];
-  // La fecha de emision suele ser la que aparece cerca de "Emisi" o "Asignaci"
   const mFe=txt.match(/[Ee]misi.n[:\s]+(\d{2})\/(\d{2})\/(20\d{2})/);
   if(mFe)ot.fecha_emision=`${mFe[3]}-${mFe[2]}-${mFe[1]}`;
-  else if(todFechas.length>0){
-    // Usar la primera fecha que encontremos
-    const f=todFechas[0];
-    ot.fecha_emision=`${f[3]}-${f[2]}-${f[1]}`;
-  }
-
-  // Fecha asignacion Gigared (cuando nos asignaron la OT)
+  else if(todFechas.length>0){const f=todFechas[0];ot.fecha_emision=`${f[3]}-${f[2]}-${f[1]}`;}
   const mAsig=txt.match(/[Aa]signaci.n[:\s]+(\d{2})\/(\d{2})\/(20\d{2})/);
   if(mAsig)ot.fecha_asignacion_giga=`${mAsig[3]}-${mAsig[2]}-${mAsig[1]}`;
   else if(ot.fecha_emision)ot.fecha_asignacion_giga=ot.fecha_emision;
 
-  // Tag
+  // Tag/Precinto
   const mTag=txt.match(/Tag:\s*(\d{5,})/);
   if(mTag)ot.tag=mTag[1];
 
-  // CODIGO CLIENTE - buscar todos los numeros de 11 digitos excepto el barcode de la OT
-  // El nombre del cliente SIEMPRE tiene formato "APELLIDO , NOMBRE" con coma
+  // CODIGO CLIENTE
   const todosNums=[...txt.matchAll(/\b(\d{11})\b/g)];
   for(const m of todosNums){
     const num=m[1];
     if(num===otBC)continue;
     const pos=m.index+11;
     const despues=txt.slice(pos,pos+100).replace(/\s+/g,' ').trim();
-    // El nombre del cliente siempre tiene coma: "APELLIDO , NOMBRE" o "APELLIDO, NOMBRE"
     const nmM=despues.match(/^\s*([A-Z\xC1\xC9\xCD\xD3\xDA\xDC\xD1][A-Z\xC1\xC9\xCD\xD3\xDA\xDC\xD1a-z\xe1\xe9\xed\xf3\xfa\xfc\xf1\s]+?)\s*,\s*([A-Z\xC1\xC9\xCD\xD3\xDA\xDC\xD1][A-Z\xC1\xC9\xCD\xD3\xDA\xDC\xD1a-z\xe1\xe9\xed\xf3\xfa\xfc\xf1\s]{1,40}?)(?=\s+(?:Domicilio|Conexi|Activo|Desconexi|\d{3}|$))/);
     if(nmM){
       ot.codigo_cliente=num;
@@ -765,84 +848,93 @@ function parsearPag(txt){
     }
   }
 
-  // DOMICILIO - texto entre "Domicilio:" y el siguiente campo
-  // DOMICILIO — estrategia multiple porque PDF.js puede dar distintos ordenes
-  // A: phone → address → labels (address tiene numeros de 4-5 digitos)
+  // DOMICILIO
   const mDomA=txt.match(/3\d{2}[\-]?\d{7}\s+([A-Z][A-Z0-9\s\.\(\)\/\-,]{5,80}?\d{3,5}[A-Z0-9\s\.\(\)\/\-,]{0,60}?)(?=\s+(?:Domicilio:|Telef\.|Cliente:|Barrio:|Cantidad|Mano|Localidad:))/i);
-  // B: "Domicilio:" seguido opcionalmente de "Telef.X" luego la direccion
   const mDomB=txt.match(/[Dd]omicilio:\s*(?:Telef\.\d[\s]+)?([A-Z0-9][^\n\r]{4,80}?)(?=\s+(?:Telef\.|Cliente:|Barrio:|Nodo:|Localidad:|Cantidad|Mano))/i);
   let mDom=null;
   if(mDomA&&mDomA[1].length>5)mDom=mDomA;
   else if(mDomB&&mDomB[1].length>5&&!/^Telef/i.test(mDomB[1]))mDom=mDomB;
-  if(mDom)ot.domicilio=mDom[1].replace(/\s+/g,' ').trim();
+  if(mDom){
+    ot.domicilio=mDom[1].replace(/\s+/g,' ').trim();
+    // Separar en partes
+    const dp=parseDomicilio(ot.domicilio);
+    ot.calle=dp.calle;
+    ot.numero_domicilio=dp.numero;
+    ot.obs_domicilio=dp.obs;
+  }
 
-  // NODO - patron especifico H1F144, H3F293, H1N202, etc.
+  // NODO
   const mNod=txt.match(/\b(H\d[A-Z]\d{3})\b/);
   if(mNod)ot.nodo=mNod[1];
-  else{
-    const mNod2=txt.match(/[Nn]odo:\s*([A-Z0-9]+)/);
-    if(mNod2)ot.nodo=mNod2[1];
-  }
+  else{const mNod2=txt.match(/[Nn]odo:\s*([A-Z0-9]+)/);if(mNod2)ot.nodo=mNod2[1];}
 
-  // LOCALIDAD - buscar POSADAS o GARUPA directamente (son las 2 ciudades)
+  // LOCALIDAD
   if(/\bPOSADAS\b/i.test(txt))ot.localidad='POSADAS';
   else if(/\bGARUPA\b/i.test(txt))ot.localidad='GARUPA';
-  else{
-    const mLoc=txt.match(/[Ll]ocalidad:\s*([A-Z]+)/);
-    if(mLoc&&mLoc[1]!=='MISIONES')ot.localidad=mLoc[1];
-    else ot.localidad='POSADAS';
-  }
+  else{const mLoc=txt.match(/[Ll]ocalidad:\s*([A-Z]+)/);if(mLoc&&mLoc[1]!=='MISIONES')ot.localidad=mLoc[1];else ot.localidad='POSADAS';}
 
   // BARRIO
   if(/GARUPA\s+CENTRO/i.test(txt))ot.barrio='GARUPA CENTRO';
   else if(/CENTRO\s*-/i.test(txt))ot.barrio='CENTRO';
 
-  // PROVINCIA
   ot.provincia='MISIONES';
 
-  // TELEFONOS - buscar numeros de 10 digitos que empiezan con 3
+  // TELEFONOS
   const tels=new Set();
-  // Formato con guion: 376-4367791 o 376-XXXXXXX
   const rTel=/3\d{2}[-\s]?\d{7}/g;
   let mT;
   while((mT=rTel.exec(txt))!==null){
     const n=mT[0].replace(/[\s\-]/g,'');
     if(n.length>=10&&n.length<=11)tels.add(n);
   }
-  // Remover el numero de cliente si por casualidad matcheo
   if(ot.codigo_cliente)tels.delete(ot.codigo_cliente);
-  // Remover años y numeros de OT
   const telArr=[...tels].filter(t=>!t.startsWith('2026')&&!t.startsWith('2025')&&t.startsWith('3'));
   ot.telefono1=telArr[0]||'';
   ot.telefono2=telArr[1]||'';
 
-  // OBS GIGARED
-  // OBS GIGARED: solo hasta el numero de cliente o maximo 120 chars
+  // OBS GIGARED (instalaciones)
   const rObs=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio)[^\n\r]{5,120}?)(?=\s+\d{11}|\s+Materiales|\s*$)/i;
   const mObs=txt.match(rObs);
   if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim();
 
-  const ri=detectarItems(txt);
+  // CAMPOS ESPECÍFICOS DE REPARACIÓN
+  if(ot.tipo_tarea==='REPARACION'){
+    // Obs de trabajo (lo que escribe la técnica: "cambiar acometida...", "remplazar...")
+    const mObsTrab=txt.match(/((?:cambiar|remplazar|reemplazar|reubicar|realizar\s+el\s+ingreso)[^\n\r]{5,150})/i);
+    if(mObsTrab)ot.obs_trabajo=mObsTrab[0].replace(/\s+/g,' ').trim();
+
+    // Síntoma reportado
+    const mSint=txt.match(/[Ss][íi]ntoma\s+reportado[:\s]+([^\n\r]{3,100})/);
+    if(mSint)ot.sintoma_reportado=mSint[1].replace(/\s+/g,' ').trim();
+
+    // Equipo instalado (MAC 12 hex chars + Marca)
+    const mEq=txt.match(/\b([0-9A-Fa-f]{12})\s+(FIBERHOME|ARRIS\/MOTOROLA|ARRIS|MOTOROLA|CISCO|UBEE|TECHNICOLOR|SAGEMCOM)/i);
+    if(mEq)ot.equipo_instalado=mEq[1].toUpperCase()+' '+mEq[2].toUpperCase();
+
+    // Para reparaciones, obs_gigared = obs_trabajo (servicios contratados van en items)
+    if(!ot.obs_gigared&&ot.obs_trabajo)ot.obs_gigared=ot.obs_trabajo;
+  }
+
+  const ri=detectarItems(txt,ot.tipo_tarea);
   ot.items=ri.items;
   ot.tipo_item=ri.tipo_item;
   return ot;
 }
 
-function detectarItems(txt){
+function detectarItems(txt, tipoTarea){
   const items=[];
   let tipo_item='BASICA';
-  // Deteccion por patrones especificos del equipo
   if(/\bONU\s+FO\s+\d+\/\d+\s+MB\b|\bFO\s+\d+\/\d+\s+MB\s+ONU\b|\bFO\s+\d+\/\d+\s+MB\b|\bONU\s+FO\s+\d+/i.test(txt))tipo_item='ONU';
   else if(/\bCM\s+\d+\/\d+\s+MB\b|\bCablemodem\s+CM/i.test(txt))tipo_item='CABLEMODEM';
   else if(/\binstalaci.n\s+b.sica\b/i.test(txt))tipo_item='BASICA';
   else if(/\bboca\s+adicional\b/i.test(txt)&&!/\binstalaci.n\s+b.sica\b/i.test(txt))tipo_item='BOCA_ADICIONAL';
   else if(/\bdesconect/i.test(txt))tipo_item='DESCONEXION';
-  // Extraer items — buscar entre "Cantidad Descripcion" y "Mano de obra"
+  if(tipoTarea==='REPARACION')tipo_item='REPARACION';
+
   const ini=txt.search(/[Cc]antidad\s+[Dd]escripci.n/);
   const fin=txt.search(/[Mm]ano\s+de\s+obra/);
   const bloque=ini>-1&&fin>ini?txt.slice(ini,fin):txt.slice(0,600);
   const vistos=new Set();
-  // Buscar patrones: 1 o 2 numeros seguidos de descripcion
   const rItem=/(\b[1-9]\b)\s+(?:[1-9]\s+)?([A-Za-z][A-Za-z\s\/\.\(\)\-]{3,70}?)(?=\s{3,}|\s+\b[1-9]\b|$)/g;
   let mI;
   while((mI=rItem.exec(bloque))!==null){
@@ -856,12 +948,11 @@ function detectarItems(txt){
   return{items,tipo_item};
 }
 
-
+let DBG='';
 function verTextoCrudo(){
   const d=document.getElementById('debug-txt');
   const a=document.getElementById('debug-area');
   if(d.style.display==='none'){
-    // Mostrar primera pagina del texto crudo
     const pags=DBG.split(/___PAG\d+___/);
     a.value='=== PAGINA 1 ===\n'+(pags[1]||'(vacío)')+'\n\n=== PAGINA 2 ===\n'+(pags[2]||'(vacío)');
     d.style.display='';
@@ -873,25 +964,28 @@ function mostrarPreview(ots){
   document.getElementById('import-s2').style.display='';
   const nv=ots.filter(o=>!o.existe).length;
   const ex=ots.filter(o=>o.existe).length;
+  const rep=ots.filter(o=>!o.existe&&o.tipo_tarea==='REPARACION').length;
   document.getElementById('prev-nuevas').textContent=nv+' nuevas';
   document.getElementById('prev-exist').textContent=ex+' ya existen';
+  document.getElementById('prev-reparaciones').textContent=rep+' reparaciones';
   document.getElementById('import-prev-titulo').textContent=ots.length+' OTs extraídas de '+(new Set(ots.map(o=>o.codigo_cliente).filter(Boolean)).size)+' clientes';
-  // Agrupar por cliente
   const grupos={};
   ots.forEach(o=>{const k=o.codigo_cliente||o.numero_ot;if(!grupos[k])grupos[k]=[];grupos[k].push(o);});
   let html='';
-  const tipoBadge={BASICA:'b-blue',CABLEMODEM:'b-green',ONU:'b-purple',DECODIFICADOR:'b-amber',BOCA_ADICIONAL:'b-gray',DESCONEXION:'b-red'};
+  const tipoBadge={BASICA:'b-blue',CABLEMODEM:'b-green',ONU:'b-purple',DECODIFICADOR:'b-amber',BOCA_ADICIONAL:'b-gray',DESCONEXION:'b-red',REPARACION:'b-orange'};
   for(const[,gr] of Object.entries(grupos)){
     if(gr.length>1)html+=`<tr class="pgroup"><td colspan="8">👤 ${gr[0].apellido||''} ${gr[0].nombre||''} — ${gr.length} OTs en grupo</td></tr>`;
     for(const o of gr){
-      html+=`<tr class="${o.existe?'pexist':'pnew'}">
-        <td style="font-weight:700;color:${o.existe?'#d97706':'#2563eb'}">${numOT(o.numero_ot)}</td>
-        <td><span class="badge b-gray" style="font-size:10px">${o.tipo_tarea||''}</span></td>
+      const esRep=o.tipo_tarea==='REPARACION';
+      const rowClass=o.existe?'pexist':esRep?'pnew-rep':'pnew';
+      html+=`<tr class="${rowClass}">
+        <td style="font-weight:700;color:${o.existe?'#d97706':esRep?'#ea580c':'#2563eb'}">${numOT(o.numero_ot)}</td>
+        <td>${badgeTipo(o.tipo_tarea)}</td>
         <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.apellido||''} ${o.nombre||''}</td>
-        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#64748b">${o.domicilio||'—'}</td>
+        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#64748b">${o.calle?o.calle+(o.numero_domicilio?' '+o.numero_domicilio:''):(o.domicilio||'—')}</td>
         <td style="font-size:11px">${o.localidad||'—'}</td>
         <td style="font-size:11px;font-weight:600">${o.nodo||'—'}</td>
-        <td><span class="badge ${tipoBadge[o.tipo_item]||'b-gray'}" style="font-size:10px">${o.tipo_item||'—'}</span></td>
+        <td style="font-size:11px;color:#7c3aed;font-weight:600">${o.tag||'—'}</td>
         <td style="font-size:11px;color:${o.existe?'#d97706':'#16a34a'}">${o.existe?'Ya existe':'Nueva'}</td>
       </tr>`;
     }
@@ -924,9 +1018,26 @@ async function confirmarImport(){
           const upd={};
           if(gr[0].telefono1&&gr[0].telefono1!==ex[0].telefono1){upd.telefono1=gr[0].telefono1;upd.datos_anteriores={...ex[0].datos_anteriores||{},tel1_ant:ex[0].telefono1};}
           if(gr[0].telefono2&&gr[0].telefono2!==ex[0].telefono2)upd.telefono2=gr[0].telefono2;
+          // Actualizar domicilio desglosado si no lo tenía
+          if(gr[0].calle&&!ex[0].calle){upd.calle=gr[0].calle;upd.numero_domicilio=gr[0].numero_domicilio||'';upd.obs_domicilio=gr[0].obs_domicilio||'';}
+          if(gr[0].barrio&&!ex[0].barrio)upd.barrio=gr[0].barrio;
           if(Object.keys(upd).length){upd.fecha_ultima_actualizacion=new Date().toISOString();await sbPatch('clientes',`?id=eq.${cliId}`,upd);}
         }else{
-          const c=await sbPost('clientes',{codigo_gigared:gr[0].codigo_cliente,apellido:gr[0].apellido||'',nombre:gr[0].nombre||'',domicilio:gr[0].domicilio||'',barrio:gr[0].barrio||'',localidad:gr[0].localidad||'',provincia:gr[0].provincia||'MISIONES',nodo:gr[0].nodo||'',telefono1:gr[0].telefono1||'',telefono2:gr[0].telefono2||''});
+          const c=await sbPost('clientes',{
+            codigo_gigared:gr[0].codigo_cliente,
+            apellido:gr[0].apellido||'',
+            nombre:gr[0].nombre||'',
+            domicilio:gr[0].domicilio||'',
+            calle:gr[0].calle||'',
+            numero_domicilio:gr[0].numero_domicilio||'',
+            obs_domicilio:gr[0].obs_domicilio||'',
+            barrio:gr[0].barrio||'',
+            localidad:gr[0].localidad||'',
+            provincia:gr[0].provincia||'MISIONES',
+            nodo:gr[0].nodo||'',
+            telefono1:gr[0].telefono1||'',
+            telefono2:gr[0].telefono2||''
+          });
           cliId=(Array.isArray(c)?c[0]:c)?.id;
         }
       }
@@ -935,7 +1046,28 @@ async function confirmarImport(){
       for(let idx=0;idx<gr.length;idx++){
         const o=gr[idx];
         try{
-          const ot=await sbPost('ordenes_trabajo',{numero_ot:o.numero_ot,grupo_id:gId,cliente_id:cliId,tipo_tarea:o.tipo_tarea||'INSTALAR',tipo_item:o.tipo_item||'BASICA',orden_cierre:idx,estado_id:ePend?.id,fecha_emision:o.fecha_emision||null,fecha_asignacion_giga:o.fecha_asignacion_giga||null,obs_gigared:o.obs_gigared||null,tag:o.tag||null,es_cambio_domicilio:o.es_cambio_domicilio||false});
+          // Construir objeto OT — los campos nuevos fallan silenciosamente si no existen en DB
+          const otData={
+            numero_ot:o.numero_ot,
+            grupo_id:gId,
+            cliente_id:cliId,
+            tipo_tarea:o.tipo_tarea||'INSTALAR',
+            tipo_item:o.tipo_item||'BASICA',
+            orden_cierre:idx,
+            estado_id:ePend?.id,
+            fecha_emision:o.fecha_emision||null,
+            fecha_asignacion_giga:o.fecha_asignacion_giga||null,
+            obs_gigared:o.obs_gigared||null,
+            tag:o.tag||null,
+            es_cambio_domicilio:o.es_cambio_domicilio||false
+          };
+          // Campos de reparación (requieren columnas en DB - ver SQL migrations)
+          if(o.tipo_tarea==='REPARACION'){
+            if(o.sintoma_reportado)otData.sintoma_reportado=o.sintoma_reportado;
+            if(o.obs_trabajo)otData.obs_trabajo=o.obs_trabajo;
+            if(o.equipo_instalado)otData.equipo_instalado=o.equipo_instalado;
+          }
+          const ot=await sbPost('ordenes_trabajo',otData);
           const otId=(Array.isArray(ot)?ot[0]:ot)?.id;
           if(otId&&o.items?.length){for(const it of o.items){try{await sbPost('ot_items_contratados',{ot_id:otId,descripcion:it.descripcion,cantidad:it.cantidad});}catch(e){}}}
           ok++;
@@ -951,6 +1083,7 @@ async function confirmarImport(){
 function abrirManual(){
   document.getElementById('m-fecha').value=new Date().toISOString().slice(0,10);
   document.getElementById('manual-err').textContent='';document.getElementById('manual-ok').textContent='';
+  document.getElementById('m-rep-fields').style.display='none';
   abrirModal('manual-modal');
 }
 async function guardarManual(){
@@ -961,17 +1094,55 @@ async function guardarManual(){
     const ePend=ESTADOS.find(e=>e.nombre==='PENDIENTE');
     const cod=document.getElementById('m-cod').value.trim();
     const nm=document.getElementById('m-nombre').value.trim().split(',');
+    const tipo=document.getElementById('m-tipo').value;
     let cliId=null;
     if(cod){
       const ex=await sbGet('clientes',`?codigo_gigared=eq.${cod}`)||[];
       if(ex.length)cliId=ex[0].id;
-      else{const c=await sbPost('clientes',{codigo_gigared:cod,apellido:(nm[0]||'').trim(),nombre:(nm[1]||'').trim(),domicilio:document.getElementById('m-dom').value.trim(),localidad:document.getElementById('m-loc').value.trim(),nodo:document.getElementById('m-nodo').value.trim(),telefono1:document.getElementById('m-tel1').value.trim(),telefono2:document.getElementById('m-tel2').value.trim()});cliId=(Array.isArray(c)?c[0]:c)?.id;}
+      else{
+        const calle=document.getElementById('m-calle').value.trim();
+        const numdom=document.getElementById('m-numdom').value.trim();
+        const obsdom=document.getElementById('m-obsdom').value.trim();
+        const domFull=calle+(numdom?' '+numdom:'')+(obsdom?' '+obsdom:'');
+        const c=await sbPost('clientes',{
+          codigo_gigared:cod,
+          apellido:(nm[0]||'').trim(),
+          nombre:(nm[1]||'').trim(),
+          domicilio:domFull,
+          calle:calle,
+          numero_domicilio:numdom,
+          obs_domicilio:obsdom,
+          barrio:document.getElementById('m-barrio').value.trim(),
+          localidad:document.getElementById('m-loc').value.trim(),
+          nodo:document.getElementById('m-nodo').value.trim(),
+          telefono1:document.getElementById('m-tel1').value.trim(),
+          telefono2:document.getElementById('m-tel2').value.trim()
+        });
+        cliId=(Array.isArray(c)?c[0]:c)?.id;
+      }
     }
     const ex=await sbGet('ordenes_trabajo',`?numero_ot=eq.${num}`)||[];
     if(ex.length){err.textContent='Ya existe esa OT';return;}
     const g=await sbPost('grupos_ot',{cliente_id:cliId,estado_id:ePend?.id});
     const gId=(Array.isArray(g)?g[0]:g)?.id;
-    await sbPost('ordenes_trabajo',{numero_ot:num,grupo_id:gId,cliente_id:cliId,tipo_tarea:document.getElementById('m-tipo').value,tipo_item:'BASICA',estado_id:ePend?.id,fecha_emision:document.getElementById('m-fecha').value||null,obs_gigared:document.getElementById('m-obs').value.trim(),tag:document.getElementById('m-tag').value.trim()||null});
+    const otData={
+      numero_ot:num,grupo_id:gId,cliente_id:cliId,
+      tipo_tarea:tipo,
+      tipo_item:tipo==='REPARACION'?'REPARACION':'BASICA',
+      estado_id:ePend?.id,
+      fecha_emision:document.getElementById('m-fecha').value||null,
+      obs_gigared:document.getElementById('m-obs').value.trim(),
+      tag:document.getElementById('m-tag').value.trim()||null
+    };
+    if(tipo==='REPARACION'){
+      const sint=document.getElementById('m-sintoma').value.trim();
+      const obst=document.getElementById('m-obstrap').value.trim();
+      const eq=document.getElementById('m-equipo').value.trim();
+      if(sint)otData.sintoma_reportado=sint;
+      if(obst)otData.obs_trabajo=obst;
+      if(eq)otData.equipo_instalado=eq;
+    }
+    await sbPost('ordenes_trabajo',otData);
     document.getElementById('manual-ok').textContent='✓ Guardada';
     setTimeout(()=>{cerrarModal('manual-modal');irA('ots');},1200);
   }catch(e){err.textContent='Error: '+e.message;}
@@ -1036,9 +1207,10 @@ async function guardarAsignacion(){
 }
 
 // CIERRE
-async function abrirCierre(otId,numot){
+async function abrirCierre(otId,numot,tipoTarea){
   document.getElementById('cierre-err').textContent='';
-  document.getElementById('cierre-titulo').innerHTML=`Cerrar OT ${numOT(numot)} <button class="modal-close" onclick="cerrarModal('cierre-modal')">✕</button>`;
+  const esRep=tipoTarea==='REPARACION';
+  document.getElementById('cierre-titulo').innerHTML=`${esRep?'🔧 ':''}Cerrar OT ${numOT(numot)} <button class="modal-close" onclick="cerrarModal('cierre-modal')">✕</button>`;
   const body=document.getElementById('cierre-body');
   body.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   body.dataset.otId=otId;
@@ -1052,8 +1224,10 @@ async function abrirCierre(otId,numot){
     const cats={};
     (servs||[]).forEach(s=>{if(!cats[s.categoria])cats[s.categoria]=[];cats[s.categoria].push(s);});
     body.innerHTML=`
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px">
-        <strong>${ot.numero_ot}</strong> — ${ot.clientes?.apellido}, ${ot.clientes?.nombre} | <span style="color:#64748b">${ot.tipo_item||ot.tipo_tarea}</span>
+      <div style="background:${esRep?'#fff7ed':'#f0fdf4'};border:1px solid ${esRep?'#fed7aa':'#bbf7d0'};border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px">
+        <strong>${ot.numero_ot}</strong> — ${ot.clientes?.apellido}, ${ot.clientes?.nombre}
+        ${esRep?'<span style="color:#ea580c;font-weight:700;margin-left:8px">🔧 REPARACIÓN</span>':''}
+        ${ot.sintoma_reportado?`<div style="font-size:12px;color:#64748b;margin-top:3px">Tarea: ${ot.sintoma_reportado}</div>`:''}
       </div>
       <div class="card">
         <div class="card-title">Materiales usados (solo cantidades usadas)</div>
@@ -1063,7 +1237,7 @@ async function abrirCierre(otId,numot){
         <div class="card-title">Mano de obra</div>
         ${Object.entries(cats).map(([cat,ss])=>`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin:.6rem 0 .2rem">${cat}</div>${ss.map(s=>`<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border2)"><span style="flex:1;font-size:13px">${s.nombre}</span><input type="number" min="0" value="0" style="width:52px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center" data-sid="${s.id}" class="si"/></div>`).join('')}`).join('')}
       </div>
-      <div class="fg"><label>Observaciones</label><input id="cierre-obs" placeholder="Opcional..."/></div>
+      <div class="fg"><label>Observaciones del cierre</label><input id="cierre-obs" placeholder="Opcional..."/></div>
     `;
   }catch(e){body.innerHTML=`<p style="color:#dc2626">${e.message}</p>`;}
 }
@@ -1096,7 +1270,10 @@ async function renderClientes(){
     let p='?order=apellido&limit=100';if(loc)p+=`&localidad=eq.${loc}`;
     const d=await sbGet('clientes',p)||[];
     if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-text">Sin clientes</div></div>';return;}
-    el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Código</th><th>Cliente</th><th>Domicilio</th><th>Localidad</th><th>Nodo</th><th>Tel</th></tr></thead><tbody>${d.map(c=>`<tr><td style="font-weight:700;color:#2563eb">${c.codigo_gigared}</td><td style="font-weight:600">${c.apellido||''}, ${c.nombre||''}</td><td style="font-size:12px;color:#64748b">${c.domicilio||'—'}</td><td>${c.localidad||'—'}</td><td style="font-size:12px">${c.nodo||'—'}</td><td style="font-size:12px">${c.telefono1||'—'}</td></tr>`).join('')}</tbody></table></div>`;
+    el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Código</th><th>Cliente</th><th>Calle</th><th>N°</th><th>Barrio</th><th>Localidad</th><th>Nodo</th><th>Tel</th></tr></thead><tbody>${d.map(c=>{
+      const calle=c.calle||c.domicilio||'—';
+      return`<tr><td style="font-weight:700;color:#2563eb">${c.codigo_gigared}</td><td style="font-weight:600">${c.apellido||''}, ${c.nombre||''}</td><td style="font-size:12px;color:#64748b">${calle}</td><td style="font-size:12px">${c.numero_domicilio||'—'}</td><td style="font-size:11px;color:#94a3b8">${c.barrio||'—'}</td><td>${c.localidad||'—'}</td><td style="font-size:12px">${c.nodo||'—'}</td><td style="font-size:12px">${c.telefono1||'—'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
 let cT=null;function buscarClientes(){clearTimeout(cT);cT=setTimeout(renderClientes,300);}
