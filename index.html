@@ -653,84 +653,172 @@ function parsearOTs(txt){
 function parsearPag(txt){
   if(!txt)return null;
   const ot={};
-  // Número OT
+
+  // ── Número de OT ──────────────────────────────────────────────
   const mN=txt.match(/ORDEN\s+DE\s+TRABAJO\s*:\s*(005-\d+)/i);
   if(!mN)return null;
   ot.numero_ot=mN[1];
-  // Tipo tarea
+
+  // ── Tipo de tarea ─────────────────────────────────────────────
   ot.es_cambio_domicilio=/cambio\s+de\s+domicilio/i.test(txt)||/por\s+cambio\s+de\s+domicilio/i.test(txt);
   if(/\bINSTALAR\b/i.test(txt)){ot.tipo_tarea=ot.es_cambio_domicilio?'CAMBIO_DOMICILIO':'INSTALAR';}
   else if(/\bDESCONECTAR\b/i.test(txt))ot.tipo_tarea='DESCONECTAR';
   else ot.tipo_tarea='SERVICE';
-  // Fecha emisión
+
+  // ── Fecha emisión ─────────────────────────────────────────────
   const mFe=txt.match(/[Ee]misi[oó]n:\s*(\d{2})\/(\d{2})\/(\d{4})/);
   if(mFe)ot.fecha_emision=`${mFe[3]}-${mFe[2]}-${mFe[1]}`;
-  // Tag
-  const mTag=txt.match(/Tag:\s*(\d{4,})/);
+
+  // ── Tag/Precinto ─────────────────────────────────────────────
+  const mTag=txt.match(/Tag:\s*(\d{5,})/);
   if(mTag)ot.tag=mTag[1];
-  // Código cliente + nombre
-  const mCli=txt.match(/(\d{11,15})\s+([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑa-záéíóúüñ\s,\.]{3,50}?)\s+(Conexi[oó]n Pendiente|Activo|Desconexi[oó]n Pendiente)/);
+
+  // ── CÓDIGO CLIENTE ────────────────────────────────────────────
+  // Los códigos de cliente tienen el patrón 005000XXXXX o 005001XXXXX
+  // Los códigos de OT tienen el patrón 005002XXXXX, 005003XXXXX, etc.
+  // Además el código de cliente SIEMPRE va seguido del nombre en MAYÚSCULAS
+  // y luego "Conexión Pendiente", "Activo" o "Desconexión Pendiente"
+  
+  // Primero buscar específicamente: número de 11 dígitos + APELLIDO , NOMBRE + estado
+  // Usamos una regex que NO confunda con el número de OT del código de barras
+  const rCli = /\b(0050[01]\d{6})\s+((?:[A-ZÁÉÍÓÚÜÑA-Z][A-ZÁÉÍÓÚÜÑA-Za-záéíóúüñ]*[\s,\.]*){1,8}?)\s+(?:Conexi.n Pendiente|Activo|Desconexi.n Pendiente)/;
+  const mCli = txt.match(rCli);
   if(mCli){
-    ot.codigo_cliente=mCli[1];
-    const nm=mCli[2].trim();
-    const pts=nm.split(',');
-    ot.apellido=(pts[0]||'').trim();
-    ot.nombre=(pts[1]||'').trim();
+    ot.codigo_cliente = mCli[1].trim();
+    const nm = mCli[2].trim().replace(/\s+/g,' ');
+    const pts = nm.split(',');
+    ot.apellido = (pts[0]||'').trim();
+    ot.nombre   = (pts[1]||'').trim();
+  } else {
+    // Fallback: buscar cualquier número de 11 dígitos seguido de nombre y estado
+    // Excluimos explícitamente el número de OT del barcode
+    const otNum = ot.numero_ot.replace('005-','005').replace(/-/g,'');
+    const rCli2 = /\b(\d{11})\s+((?:[A-ZÁÉÍÓÚÜÑA-Z][^\d]{2,40}?))\s+(?:Conexi.n Pendiente|Activo|Desconexi.n Pendiente)/;
+    const m2 = txt.replace(otNum,'').match(rCli2);
+    if(m2&&m2[1]!==otNum){
+      ot.codigo_cliente = m2[1].trim();
+      const nm = m2[2].trim().replace(/\s+/g,' ');
+      const pts = nm.split(',');
+      ot.apellido = (pts[0]||'').trim();
+      ot.nombre   = (pts[1]||'').trim();
+    }
   }
-  // Domicilio
-  const mDom=txt.match(/[Dd]omicilio:\s*(.+?)(?=\s+Telef|\s+Barrio|\s+Nodo|\s+Cantidad|\n)/);
-  if(mDom)ot.domicilio=mDom[1].replace(/\s+/g,' ').trim();
-  // Nodo
-  const mNod=txt.match(/[Nn]odo:\s*([A-Z0-9]+)/);
-  if(mNod)ot.nodo=mNod[1];
-  // Localidad
-  const mLoc=txt.match(/[Ll]ocalidad:\s*([A-ZÁÉÍÓÚÑ]+)/);
-  if(mLoc)ot.localidad=mLoc[1];
-  // Provincia
-  const mPr=txt.match(/[Pp]rovincia:\s*([A-ZÁÉÍÓÚÑ]+)/);
-  if(mPr)ot.provincia=mPr[1];
-  // Teléfonos
-  const tels=[];
-  const rT=/Telef?(?:\.|\s)(?:[12])?[\s:]*\s*(3\d{2}[\-\d]{7,})/g;
-  let mT;
-  while((mT=rT.exec(txt))!==null)if(!tels.includes(mT[1]))tels.push(mT[1]);
-  // Teléfonos al final
-  const mT2=txt.match(/Telef\.2\s+(3[\d\-]{9,})/);
-  if(mT2&&!tels.includes(mT2[1]))tels.push(mT2[1]);
-  // Teléfonos en obs gigared
-  const mObsT=txt.match(/[Tt]el[^\d]*(3\d{2}[\d\s\-]{7,})/);
-  if(mObsT){const n=mObsT[1].replace(/[\s\-]/g,'').slice(0,11);if(n.startsWith('3')&&!tels.some(t=>t.replace(/\D/g,'')===n))tels.push(n);}
-  ot.telefono1=tels[0]||'';
-  ot.telefono2=tels[1]||'';
-  // Obs gigared
-  const mObs=txt.match(/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio|Cambio\s+de\s+domicilio)[^]{5,150}?)(?=\n|\r|Materiales)/i);
-  if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim().slice(0,200);
-  // Items y tipo_item
-  const ri=detectarItems(txt);
-  ot.items=ri.items;
-  ot.tipo_item=ri.tipo_item;
+
+  // ── Domicilio ─────────────────────────────────────────────────
+  const mDom = txt.match(/[Dd]omicilio:\s*([\w\s\.\(\)\/]+?)(?=\s{2,}|\s+Telef|\s+Barrio|\s+Nodo|\s+Localidad)/);
+  if(mDom) ot.domicilio = mDom[1].replace(/\s+/g,' ').trim();
+
+  // ── Barrio ────────────────────────────────────────────────────
+  const mBa = txt.match(/[Bb]arrio:\s*([A-ZÁÉÍÓÚÜÑ][^\n\r]{2,30}?)(?=\s{2,}|\s+Nodo|\s+Localidad)/);
+  if(mBa) ot.barrio = mBa[1].replace(/\s+/g,' ').trim();
+  // Detectar barrio del nodo si no se encontró
+  if(!ot.barrio){
+    if(/GARUPA CENTRO/i.test(txt)) ot.barrio='GARUPA CENTRO';
+    else if(/CENTRO\s*-/i.test(txt)) ot.barrio='CENTRO';
+  }
+
+  // ── Nodo ──────────────────────────────────────────────────────
+  const mNod = txt.match(/[Nn]odo:\s*([A-Z0-9]+)/);
+  if(mNod) ot.nodo = mNod[1];
+
+  // ── Localidad ─────────────────────────────────────────────────
+  const mLoc = txt.match(/[Ll]ocalidad:\s*([A-ZÁÉÍÓÚÑ]+)/);
+  if(mLoc) ot.localidad = mLoc[1];
+
+  // ── Provincia ─────────────────────────────────────────────────
+  const mPr = txt.match(/[Pp]rovincia:\s*([A-ZÁÉÍÓÚÑ]+)/);
+  if(mPr) ot.provincia = mPr[1];
+  else ot.provincia = 'MISIONES';
+
+  // ── Teléfonos ─────────────────────────────────────────────────
+  const tels = new Set();
+  // Telef.1 y Telef.2 explícitos
+  const rTelf = /Telef\.?\s*[12]?\s*[\s:]+(3\d{2}[\-\d]{6,9})/g;
+  let mTf;
+  while((mTf=rTelf.exec(txt))!==null){
+    const n = mTf[1].replace(/[\s\-]/g,'');
+    if(n.length>=10) tels.add(n);
+  }
+  // Teléfonos en la línea de observaciones (Tel XXXXXXXXXX)
+  const rObsTel = /[Tt]el[\s\.\-]+(3\d{2}[\d\s\-]{6,12})/g;
+  let mOT;
+  while((mOT=rObsTel.exec(txt))!==null){
+    const nums = mOT[1].match(/3\d{9}/g)||[];
+    nums.forEach(n=>tels.add(n));
+  }
+  const telArr = [...tels];
+  ot.telefono1 = telArr[0]||'';
+  ot.telefono2 = telArr[1]||'';
+
+  // ── Observaciones Gigared ─────────────────────────────────────
+  // Es la línea que viene antes del bloque del cliente, entre "Materiales :" y el nombre
+  const rObs = /((?:Contrata|ALTAS\s*WEB|solicita[^\n]*|agrega[^\n]*|Por\s+cambio[^\n]*)[^\n\r]{5,180})/i;
+  const mObs = txt.match(rObs);
+  if(mObs) ot.obs_gigared = mObs[1].replace(/\s+/g,' ').trim().slice(0,200);
+
+  // ── Items y tipo_item ─────────────────────────────────────────
+  const ri = detectarItems(txt);
+  ot.items     = ri.items;
+  ot.tipo_item = ri.tipo_item;
+
   return ot;
 }
 
 function detectarItems(txt){
-  const items=[];
-  let tipo_item='BASICA';
-  // Detección directa por patrones claros del PDF
-  if(/FO\s+\d+\/\d+\s+MB\s+ONU|ONU\s+FO\s+\d+/i.test(txt))tipo_item='ONU';
-  else if(/FO\s+\d+\/\d+\s+MB/i.test(txt))tipo_item='ONU';
-  else if(/CM\s+\d+\/\d+\s+MB\s*\(IP\s+Privada\)|Cablemodem\s+CM/i.test(txt))tipo_item='CABLEMODEM';
-  else if(/Pack\s+digital\s+Plus/i.test(txt)&&/instalaci[oó]n\s+b[aá]sica/i.test(txt))tipo_item='BASICA';
-  else if(/\binstalaci[oó]n\s+b[aá]sica\b/i.test(txt))tipo_item='BASICA';
-  else if(/\bboca\s+adicional\b/i.test(txt)&&!/instalaci[oó]n\s+b[aá]sica/i.test(txt))tipo_item='BOCA_ADICIONAL';
-  // Extraer items de la sección de cantidades
-  const mArea=txt.match(/[Cc]antidad\s+[Dd]escripci[oó]n[^]*?(?=[Cc]antidad\s+[Dd]escripci[oó]n)/);
-  const area=mArea?mArea[0]:txt.slice(0,500);
-  const lineas=area.split(/\s{2,}|\n/);
-  for(const lin of lineas){
-    const m=lin.match(/^\s*(\d+)\s+(.{4,60})\s*$/);
-    if(m){const c=parseInt(m[1]),d=m[2].trim();if(c>0&&c<100&&d.length>3)items.push({cantidad:c,descripcion:d});}
+  const items = [];
+  let tipo_item = 'BASICA';
+
+  // Detección de tipo por contenido específico del equipo asignado
+  // Estos patrones son muy específicos y fiables
+  if(/\bONU\s+FO\s+\d+\/\d+\s+MB\b|\bFO\s+\d+\/\d+\s+MB\s+ONU\b|\bFO\s+\d+\/\d+\s+MB\b/i.test(txt)){
+    tipo_item = 'ONU';
+  } else if(/\bCM\s+\d+\/\d+\s+MB\b.*\(IP\s+Privada\)|\bCablemodem\s+CM\s+\d+/i.test(txt)){
+    tipo_item = 'CABLEMODEM';
+  } else if(/\bFO\s+500\/250\s+MB\b/i.test(txt)){
+    tipo_item = 'ONU';
+  } else if(/Pack\s+digital\s+Plus/i.test(txt) && /instalaci.n\s+b.sica/i.test(txt)){
+    tipo_item = 'BASICA'; // tiene básica + pack = instalación con deco
+  } else if(/instalaci.n\s+b.sica/i.test(txt)){
+    tipo_item = 'BASICA';
+  } else if(/boca\s+adicional/i.test(txt) && !/instalaci.n\s+b.sica/i.test(txt)){
+    tipo_item = 'BOCA_ADICIONAL';
+  } else if(/desconect/i.test(txt)){
+    tipo_item = 'DESCONEXION';
   }
-  return{items,tipo_item};
+
+  // Extraer items contratados — buscar en el bloque entre las dos columnas "Cantidad Descripción"
+  // En el PDF hay dos columnas, PDF.js los extrae linealmente
+  // Patrón: número chico (1-4) seguido de texto descriptivo
+  const bloqueItems = (() => {
+    // Buscar el área entre "Cantidad Descripción" (primera) y "Mano de obra"
+    const ini = txt.search(/[Cc]antidad\s+[Dd]escripci.n/);
+    const fin = txt.search(/[Mm]ano\s+de\s+obra/);
+    if(ini>-1 && fin>ini) return txt.slice(ini, fin);
+    if(ini>-1) return txt.slice(ini, ini+400);
+    return txt.slice(0, 600);
+  })();
+
+  // Extraer líneas tipo "1 Instalacion Basica" o "1 1 CM 100/20 MB..."
+  const lineas = bloqueItems.split(/\n|\r|(?<=\d)\s{3,}/);
+  const yaAgregados = new Set();
+  for(const lin of lineas){
+    const l = lin.trim();
+    // Patrón: opcionalmente "1 " al inicio, luego descripción
+    const m = l.match(/^(\d+)\s+(\d+\s+)?(.{4,80})$/);
+    if(m){
+      const cant = parseInt(m[1]);
+      const desc = (m[3]||'').trim().replace(/\s+/g,' ');
+      if(cant>0&&cant<20&&desc.length>3&&!yaAgregados.has(desc)){
+        // Filtrar las líneas que son solo números de cantidades sin descripción
+        if(!/^\d+$/.test(desc) && !/^[Cc]antidad/.test(desc)){
+          items.push({cantidad:cant, descripcion:desc});
+          yaAgregados.add(desc);
+        }
+      }
+    }
+  }
+
+  return {items, tipo_item};
 }
 
 function mostrarPreview(ots){
