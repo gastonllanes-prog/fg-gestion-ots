@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v7</title>
+<title>FG Gestión OTs v8</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -147,7 +147,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V7</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V8</div>
   </div>
 </div>
 
@@ -157,7 +157,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver">v7</div>
+    <div class="sb-ver">v8</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -602,10 +602,11 @@ async function renderOTs(){
       const cl=g.clientes||{};
       const esRep=g.ordenes.some(o=>o.tipo_tarea==='REPARACION');
       const ests=g.ordenes.map(o=>o.estados_ot?.nombre||'PENDIENTE');
-      const estGrupo=ests.every(e=>e==='FINALIZADA')?'FINALIZADA':ests.some(e=>e==='PENDIENTE')?'PENDIENTE':ests.some(e=>e==='ASIGNADA'||e==='EN_PROCESO')?'ASIGNADA':'PENDIENTE';
+      const estGrupo=ests.length===0?'PENDIENTE':ests.every(e=>e==='FINALIZADA')?'FINALIZADA':ests.some(e=>e==='PENDIENTE')?'PENDIENTE':ests.some(e=>e==='ASIGNADA'||e==='EN_PROCESO')?'ASIGNADA':'PENDIENTE';
       // Mostrar domicilio: si hay calle separada usarla, sino el campo domicilio
       const domDisplay=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||cl.localidad||'');
-      return `<div class="ot-card${esRep?' rep-card':''}" onclick="verOT('${g.ordenes[0]?.numero_ot||''}')">
+      if(!g.ordenes.length)return'';
+      return `<div class="ot-card${esRep?' rep-card':''}" onclick="verOT('${g.ordenes[0].numero_ot}')">`;
         <div style="min-width:80px">
           <div style="font-size:13px;font-weight:800;color:#2563eb">${cl.codigo_gigared||'—'}</div>
           <div style="font-size:10px;color:#94a3b8;margin-top:2px">${cl.nodo||''}</div>
@@ -1002,6 +1003,7 @@ async function confirmarImport(){
   const btn=document.getElementById('import-ok-btn');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Importando...';
   document.getElementById('import-err').textContent='';
+  const errores=[];
   try{
     const ePend=ESTADOS.find(e=>e.nombre==='PENDIENTE');
     const lote=await sbPost('lotes_importacion',{nombre_archivo:`pdf_${new Date().toISOString().slice(0,10)}`,usuario_id:CU.id,cantidad_ots:nuevas.length});
@@ -1071,11 +1073,15 @@ async function confirmarImport(){
           const otId=(Array.isArray(ot)?ot[0]:ot)?.id;
           if(otId&&o.items?.length){for(const it of o.items){try{await sbPost('ot_items_contratados',{ot_id:otId,descripcion:it.descripcion,cantidad:it.cantidad});}catch(e){}}}
           ok++;
-        }catch(e){console.warn('Error OT',o.numero_ot,e);}
+        }catch(e){
+          console.warn('Error OT',o.numero_ot,e);
+          errores.push(`OT ${o.numero_ot}: ${e.message}`);
+        }
       }
     }
     document.getElementById('import-ok-msg').textContent=`✓ ${ok} OTs importadas correctamente`;
-    setTimeout(()=>{cerrarModal('import-modal');irA('ots');},1500);
+    if(errores.length)document.getElementById('import-err').textContent=`⚠ ${errores.length} OTs fallaron: ${errores[0]}`;
+    setTimeout(()=>{cerrarModal('import-modal');irA('ots');},errores.length?3000:1500);
   }catch(e){document.getElementById('import-err').textContent='Error: '+e.message;btn.disabled=false;btn.textContent='✓ Importar OTs nuevas';}
 }
 
