@@ -951,10 +951,12 @@ function parsearPag(txt){
   const telArr=[...tels].filter(t=>!t.startsWith('2026')&&!t.startsWith('2025'));
   ot.telefono1=telArr[0]||'';ot.telefono2=telArr[1]||'';
 
-  // OBS GIGARED (para instalaciones: "Contrata...", "agrega...", "2 bocas...")
-  const rObsPat=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio|\d+\s+bocas?|Alta\s+web|Cambio\s+de|cliente\s+solicita)[^\n\r]{3,150}?)(?=\s+\d{11}|\s+Materiales|\s+Nombre\s+del|\s*$)/i;
-  const mObs=txt.match(rObsPat);
-  if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim();
+  // OBS GIGARED: solo para instalaciones (REPARAR lo setea desde obs_trabajo al final)
+  if(ot.tipo_tarea!=='REPARACION'){
+    const rObsPat=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio|\d+\s+bocas?|Alta\s+web|cliente\s+solicita)[^\n\r]{3,150}?)(?=\s+\d{11}|\s+Materiales|\s+Nombre\s+del|\s*$)/i;
+    const mObs=txt.match(rObsPat);
+    if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim();
+  }
 
   // CAMPOS ESPECÍFICOS DE REPARACIÓN
   if(ot.tipo_tarea==='REPARACION'){
