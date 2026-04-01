@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v11</title>
+<title>FG Gestión OTs v12</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V11</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V12</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver">v11</div>
+    <div class="sb-ver">v12</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -643,34 +643,45 @@ async function renderOTs(){
     if(!ots.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div>No hay OTs. Importá un PDF para empezar.</div></div>';return;}
     const fmtDT=d=>{if(!d)return'—';try{const dt=new Date(d);return dt.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' '+dt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});}catch(e){return'—';}};
     const sortIcon=col=>`<span class="sort-icon">${OT_SORT===col?(OT_SORT_DIR==='asc'?'↑':'↓'):'↕'}</span>`;
+    // Agrupar por cliente
+    const cliMap={};
+    ots.forEach(o=>{
+      const k=o.clientes?.codigo_gigared||('_'+o.id);
+      if(!cliMap[k]){cliMap[k]={cl:o.clientes||{},ots:[],primerFecha:o.fecha_impresion};}
+      cliMap[k].ots.push(o);
+    });
     el.innerHTML=`<div class="ot-table-wrap"><table class="ot-table">
       <thead><tr>
-        <th onclick="sortOTs('numero_ot')" class="${OT_SORT==='numero_ot'?'sorted':''}">N° OT ${sortIcon('numero_ot')}</th>
         <th>N° Cliente</th>
-        <th>Nombre</th>
+        <th onclick="sortOTs('clientes.apellido')" class="${OT_SORT==='clientes.apellido'?'sorted':''}">Nombre ${sortIcon('clientes.apellido')}</th>
         <th>Dirección</th>
         <th>Localidad</th>
         <th>Nodo</th>
         <th>Teléfono</th>
-        <th onclick="sortOTs('tipo_tarea')" class="${OT_SORT==='tipo_tarea'?'sorted':''}">Tipo ${sortIcon('tipo_tarea')}</th>
-        <th>Estado</th>
+        <th>OTs</th>
         <th onclick="sortOTs('fecha_impresion')" class="${OT_SORT==='fecha_impresion'?'sorted':''}">F. Impresión ${sortIcon('fecha_impresion')}</th>
       </tr></thead>
-      <tbody>${ots.map(o=>{
-        const cl=o.clientes||{};
-        const esRep=o.tipo_tarea==='REPARACION';
+      <tbody>${Object.values(cliMap).map(({cl,ots:cOts,primerFecha})=>{
         const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
-        return `<tr class="${esRep?'rep-row':''}" onclick="verOT('${o.numero_ot}')">
-          <td class="ot-num-cell ${esRep?'rep':''}">${numOT(o.numero_ot)}</td>
-          <td style="font-size:12px;color:#2563eb;font-weight:600">${cl.codigo_gigared||'—'}</td>
+        const tieneRep=cOts.some(o=>o.tipo_tarea==='REPARACION');
+        // Contar por estado
+        const conteo={};cOts.forEach(o=>{const n=o.estados_ot?.nombre||'PENDIENTE';conteo[n]=(conteo[n]||0)+1;});
+        const badges=Object.entries(conteo).map(([n,c])=>`<span class="badge ${{'PENDIENTE':'b-amber','ASIGNADA':'b-blue','EN_PROCESO':'b-blue','FINALIZADA':'b-green','A_REPROGRAMAR':'b-amber','DEVUELTA_GIGARED':'b-red'}[n]||'b-gray'}" style="font-size:10px">${c} ${n.replace(/_/g,' ')}</span>`).join(' ');
+        // Pill de tipos de OT
+        const tipos=[...new Set(cOts.map(o=>o.tipo_tarea))].map(t=>badgeTipo(t)).join(' ');
+        return `<tr class="${tieneRep?'rep-row':''}" onclick="verOT('${cOts[0].numero_ot}')">
+          <td style="font-size:12px;color:#2563eb;font-weight:700">${cl.codigo_gigared||'—'}</td>
           <td class="ot-cli-cell">${cl.apellido||''}, ${cl.nombre||''}</td>
           <td class="ot-dom-cell" title="${dom}">${dom}</td>
           <td style="font-size:12px">${cl.localidad||'—'}</td>
           <td style="font-size:12px;font-weight:600">${cl.nodo||'—'}</td>
           <td style="font-size:12px"><a href="tel:${(cl.telefono1||'').replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#2563eb">${cl.telefono1||'—'}</a></td>
-          <td>${badgeTipo(o.tipo_tarea)}</td>
-          <td>${badgeE(o.estados_ot?.nombre||'')}</td>
-          <td style="font-size:11px;color:#64748b;white-space:nowrap">${fmtDT(o.fecha_impresion)}</td>
+          <td style="font-size:11px">
+            <div>${tipos}</div>
+            <div style="margin-top:3px">${badges}</div>
+            ${cOts.length>1?`<div style="font-size:10px;color:#94a3b8;margin-top:2px">${cOts.length} OTs · ${cOts.map(o=>`<span style="cursor:pointer;color:#2563eb" onclick="event.stopPropagation();verOT('${o.numero_ot}')">${numOT(o.numero_ot)}</span>`).join(', ')}</div>`:''}
+          </td>
+          <td style="font-size:11px;color:#64748b;white-space:nowrap">${fmtDT(primerFecha)}</td>
         </tr>`;
       }).join('')}</tbody>
     </table></div>`;
@@ -835,104 +846,133 @@ function parsearOTs(txt){
 function parsearPag(txt){
   if(!txt)return null;
   const ot={};
+
+  // NUMERO OT
   const mN=txt.match(/ORDEN\s+DE\s+TRABAJO\s*:\s*(005-\d+)/i);
   if(!mN)return null;
   ot.numero_ot=mN[1];
   const otBC=ot.numero_ot.replace('005-00','00500').replace('005-0','00500');
+
+  // TIPO DE TAREA
   ot.es_cambio_domicilio=/cambio\s+de\s+domicilio/i.test(txt)||/por\s+cambio\s+de\s+domicilio/i.test(txt);
   if(/\bREPARAR\b/i.test(txt))ot.tipo_tarea='REPARACION';
   else if(/\bINSTALAR\b/i.test(txt))ot.tipo_tarea=ot.es_cambio_domicilio?'CAMBIO_DOMICILIO':'INSTALAR';
   else if(/\bDESCONECTAR\b/i.test(txt))ot.tipo_tarea='DESCONECTAR';
   else ot.tipo_tarea='SERVICE';
-  // Fecha de impresión: buscar DD/MM/YYYY HH:MM (único datetime con hora en el PDF)
-  // En PDF.js el "31/03/2026 18:42" aparece ANTES de "Imprimió:CFING" en el stream
+
+  // FECHA IMPRESION: "005-00177173 31/03/2026 18:42 Página:"
+  // PDF.js junta la fecha y hora de impresión con espacio (son items separados)
   const mImpr=txt.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}:\d{2})\b/);
   if(mImpr)ot.fecha_impresion=`${mImpr[3]}-${mImpr[2]}-${mImpr[1]}T${mImpr[4]}:00`;
 
-  const todFechas=[...txt.matchAll(/(\d{2})\/(\d{2})\/(20\d{2})/g)];
-  const mFe=txt.match(/[Ee]misi.n[:\s]+(\d{2})\/(\d{2})\/(20\d{2})/);
-  if(mFe)ot.fecha_emision=`${mFe[3]}-${mFe[2]}-${mFe[1]}`;
-  else if(todFechas.length>0){const f=todFechas[0];ot.fecha_emision=`${f[3]}-${f[2]}-${f[1]}`;}
-  const mAsig=txt.match(/[Aa]signaci.n[:\s]+(\d{2})\/(\d{2})\/(20\d{2})/);
-  if(mAsig)ot.fecha_asignacion_giga=`${mAsig[3]}-${mAsig[2]}-${mAsig[1]}`;
-  else if(ot.fecha_emision)ot.fecha_asignacion_giga=ot.fecha_emision;
-  // TAG: estrategia indexOf (más confiable que regex para PDFs con encoding raro)
-  const tagIdx=txt.toLowerCase().indexOf('tag:');
-  if(tagIdx>-1){
-    const afterTag=txt.slice(tagIdx+4,tagIdx+25).replace(/\s/g,'');
-    const mTagNum=afterTag.match(/^(\d{4,7})/);
-    if(mTagNum)ot.tag=mTagNum[1];
+  // FECHA EMISION: en PDF.js el valor viene ANTES del label "Emisión:"
+  // "31/03/2026 Emisión: [tag] Tag:" → tomamos la fecha antes de "Emisión:"
+  const mFe2=txt.match(/(\d{2})\/(\d{2})\/(20\d{2})\s+Emisi/i);
+  if(mFe2)ot.fecha_emision=`${mFe2[3]}-${mFe2[2]}-${mFe2[1]}`;
+  else{
+    // Fallback: primera fecha del texto
+    const mFe=txt.match(/(\d{2})\/(\d{2})\/(20\d{2})/);
+    if(mFe)ot.fecha_emision=`${mFe[3]}-${mFe[2]}-${mFe[1]}`;
   }
-  if(!ot.tag){const mTag2=txt.match(/\bTag\b[^0-9\n\r]{0,8}(\d{4,7})\b/i);if(mTag2)ot.tag=mTag2[1];}
+  ot.fecha_asignacion_giga=ot.fecha_emision||null;
 
+  // TAG: en PDF.js el número viene ANTES del label "Tag:"
+  // "656123 Tag: GIGARED" → capturar número antes de "Tag:"
+  const mTag=txt.match(/(\d{4,7})\s+Tag:/i);
+  if(mTag)ot.tag=mTag[1];
+
+  // CODIGO CLIENTE: número de 11 dígitos seguido de APELLIDO, NOMBRE
   const todosNums=[...txt.matchAll(/\b(\d{11})\b/g)];
   for(const m of todosNums){
     const num=m[1];if(num===otBC)continue;
-    const despues=txt.slice(m.index+11,m.index+111).replace(/\s+/g,' ').trim();
-    const nmM=despues.match(/^\s*([A-ZÁÉÍÓÚÜN][A-ZÁÉÍÓÚÜÑ\s]+?)\s*,\s*([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑa-záéíóúüñ\s]{1,40}?)(?=\s+(?:Domicilio|Conexi|Activo|Desconexi|\d{3}|$))/);
+    const despues=txt.slice(m.index+11,m.index+120).replace(/\s+/g,' ').trim();
+    const nmM=despues.match(/^\s*([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ\s]+?)\s*,\s*([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑa-záéíóúüñ\s]{1,40}?)(?=\s+(?:Activo|Inactivo|Conexi|\d{3}|$))/);
     if(nmM){ot.codigo_cliente=num;ot.apellido=nmM[1].trim();ot.nombre=nmM[2].trim();break;}
   }
 
-  // DOMICILIO — lookahead ampliado para cubrir "Telefono:" además de "Telef."
-  // DOMICILIO: 3 estrategias en cascada
+  // DOMICILIO: estructura diferente en REPARAR vs INSTALAR
   let domTxt='';
-  // Estrategia 1: indexOf entre "domicilio:" y next label (más robusto para REPARAR)
-  const domIdx=txt.toLowerCase().indexOf('domicilio:');
-  if(domIdx>-1){
-    const afterDom=txt.slice(domIdx+10,domIdx+200);
-    // Buscar hasta el primer label conocido
-    const nextLabel=afterDom.search(/\b(?:Telefono|Barrio:|Nodo:|Localidad:|Cantidad|Mano\s+de|Técnico|Telef\.)/i);
-    let raw=nextLabel>-1?afterDom.slice(0,nextLabel):afterDom.slice(0,100);
-    raw=raw.replace(/\s*(Telefono|Cliente|Activo|Inactivo)\s*[:\s]*/gi,' ').replace(/\s{2,}/g,' ').trim();
-    if(raw.length>5&&!/^(Telef|Barrio|Nodo|Localid|Cliente)/i.test(raw))domTxt=raw;
+  const domLabelIdx=txt.indexOf('Domicilio:');
+
+  if(ot.tipo_tarea==='REPARACION'&&domLabelIdx>10){
+    // REPARAR: "...telefono / [DOMICILIO] Domicilio: Telefono: Cliente: Barrio:..."
+    // El domicilio está ANTES del label, después del último "/"
+    const before=txt.slice(0,domLabelIdx);
+    const slashIdx=before.lastIndexOf(' / ');
+    if(slashIdx>-1){
+      const afterSlash=before.slice(slashIdx+3).trim();
+      if(afterSlash.length>5&&/[A-ZÁÉÍÓÚÑ]/.test(afterSlash))domTxt=afterSlash;
+    }
+    // Fallback para REPARAR sin "/ " (formato "376-XXXX(Cel.) /")
+    if(!domTxt){
+      const m2=before.match(/[\d\(\)\-]+\([^)]+\)\s*\/\s*(.+)$/i);
+      if(m2&&m2[1].trim().length>5)domTxt=m2[1].trim();
+    }
   }
-  // Estrategia 2: regex clásico (funciona para INSTALAR)
-  if(!domTxt){
-    const mDomA=txt.match(/3\d{2}[\-]?\d{7}\s+([A-Z][A-Z0-9\s\.\(\)\/\-,]{5,80}?\d{3,5}[A-Z0-9\s\.\(\)\/\-,]{0,60}?)(?=\s+(?:Domicilio:|Telef|Cliente:|Barrio:|Cantidad|Mano|Localidad:))/i);
-    const mDomB=txt.match(/[Dd]omicilio:\s*(?:Telef\.\d[\s]+)?([A-Z0-9][^\n\r]{4,80}?)(?=\s+(?:Telef(?:ono)?[\.:]|Cliente:|Barrio:|Nodo:|Localidad:|Cantidad|Mano))/i);
-    if(mDomA&&mDomA[1].length>5)domTxt=mDomA[1];
-    else if(mDomB&&mDomB[1].length>5&&!/^(Telef|Barrio|Nodo)/i.test(mDomB[1]))domTxt=mDomB[1];
+
+  if(!domTxt&&domLabelIdx>-1){
+    // INSTALAR: "Domicilio: [DOMICILIO] Telef.1" → domicilio DESPUÉS del label
+    const after=txt.slice(domLabelIdx+10,domLabelIdx+200);
+    const nextLabel=after.search(/\b(?:Telef(?:\.|ono)?|Barrio:|Nodo:|Localidad:|Cantidad|Mano\s+de|MISIONES|Provincia)/i);
+    let raw=nextLabel>0?after.slice(0,nextLabel):(nextLabel===0?'':after.slice(0,100));
+    raw=raw.replace(/\s*(Telefono|Cliente|Activo|Inactivo|Conexi[oó]n)\s*[:\s]*/gi,' ').replace(/\s{2,}/g,' ').trim();
+    if(raw.length>5&&!/^(Telef|Barrio|Nodo|Localid|Cliente|Conexi)/i.test(raw))domTxt=raw;
   }
+
   if(domTxt){
     ot.domicilio=domTxt.replace(/\s+/g,' ').trim();
     const dp=parseDomicilio(ot.domicilio);
     ot.calle=dp.calle;ot.numero_domicilio=dp.numero;ot.obs_domicilio=dp.obs;
   }
-  const mNod=txt.match(/\b(H\d[A-Z]\d{3})\b/);
+
+  // NODO: patrón H1F207, H3F050, H1N163, etc.
+  const mNod=txt.match(/\b(H\d[A-Z]\d{3,4})\b/);
   if(mNod)ot.nodo=mNod[1];
-  else{const mN2=txt.match(/[Nn]odo:\s*([A-Z0-9]+)/);if(mN2)ot.nodo=mN2[1];}
+
+  // LOCALIDAD
   if(/\bPOSADAS\b/i.test(txt))ot.localidad='POSADAS';
   else if(/\bGARUPA\b/i.test(txt))ot.localidad='GARUPA';
   else ot.localidad='POSADAS';
+
+  // BARRIO
   if(/GARUPA\s+CENTRO/i.test(txt))ot.barrio='GARUPA CENTRO';
-  else if(/CENTRO\s*-/i.test(txt))ot.barrio='CENTRO';
+  else if(/\bCENTRO\b\s*-/i.test(txt)||/Barrio[:\s]+CENTRO/i.test(txt))ot.barrio='CENTRO';
+
   ot.provincia='MISIONES';
+
+  // TELEFONOS: buscar números de 10-11 dígitos
   const tels=new Set();
-  const rTel=/3\d{2}[-\s]?\d{7}/g;let mT;
-  while((mT=rTel.exec(txt))!==null){const n=mT[0].replace(/[\s\-]/g,'');if(n.length>=10&&n.length<=11)tels.add(n);}
+  const rTel=/(?:376|3\d{2}|11|15|011)[-\s]?\d{7,8}/g;let mT;
+  while((mT=rTel.exec(txt))!==null){
+    const n=mT[0].replace(/[\s\-]/g,'');
+    if(n.length>=10&&n.length<=11)tels.add(n);
+  }
   if(ot.codigo_cliente)tels.delete(ot.codigo_cliente);
-  const telArr=[...tels].filter(t=>t.startsWith('3')&&!t.startsWith('2026'));
+  const telArr=[...tels].filter(t=>!t.startsWith('2026')&&!t.startsWith('2025'));
   ot.telefono1=telArr[0]||'';ot.telefono2=telArr[1]||'';
-  const mObs=txt.match(/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio)[^\n\r]{5,120}?)(?=\s+\d{11}|\s+Materiales|\s*$)/i);
+
+  // OBS GIGARED (para instalaciones: "Contrata...", "agrega...", "2 bocas...")
+  const rObsPat=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio|\d+\s+bocas?|Alta\s+web|Cambio\s+de|cliente\s+solicita)[^\n\r]{3,150}?)(?=\s+\d{11}|\s+Materiales|\s+Nombre\s+del|\s*$)/i;
+  const mObs=txt.match(rObsPat);
   if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim();
+
+  // CAMPOS ESPECÍFICOS DE REPARACIÓN
   if(ot.tipo_tarea==='REPARACION'){
-    // OBS TRABAJO: el texto del recuadro (cambiar acometida, remplazar...)
-    const mObsTrab=txt.match(/((?:cambiar|remplazar|reemplazar|reubicar|realizar\s+el\s+ingreso|deja\s+ganancia)[^\n\r]{3,200})/i);
-    if(mObsTrab){
-      let obs=mObsTrab[1].replace(/\s+/g,' ').trim();
-      obs=obs.replace(/\s+\d{11}[\s\S]*$/,'').trim();
-      obs=obs.replace(/\s+[A-Z]{3,}\s+[A-Z,\s]{5,}(Activo|Inactivo)[\s\S]*$/i,'').trim();
-      if(obs.length>150)obs=obs.substring(0,150).trim();
-      ot.obs_trabajo=obs;
-    }
-    // SINTOMA: capturar texto entre 'Síntoma reportado:' y el primer item de mano de obra
-    const mSint=txt.match(/[Ss][íi]ntoma\s+reportado[:\s]+(.+?)(?=\s+(?:Reubic\b|Instalaci[oó]n\s+dom|Retenci[oó]n|Conector|Técnico|\$))/);
+    // OBS TRABAJO: texto antes de "Síntoma reportado:" que empieza con verbo de acción
+    const mObsTrab=txt.match(/((?:cambiar|remplazar|reemplazar|reubicar|realizar\s+el\s+ingreso|deja\s+ganancia)[^\n\r]{3,150}?)(?=\s+S[íi]ntoma\s+reportado)/i);
+    if(mObsTrab)ot.obs_trabajo=mObsTrab[1].replace(/\s+/g,' ').trim();
+
+    // SINTOMA: texto entre "Síntoma reportado:" y "Materiales :"
+    const mSint=txt.match(/S[íi]ntoma\s+reportado[:\s]+(.+?)(?=\s+Materiales\s*:)/i);
     if(mSint)ot.sintoma_reportado=mSint[1].replace(/\s+/g,' ').trim().substring(0,80);
-    // EQUIPO
+
+    // EQUIPO: MAC address (12 hex) + Marca. Aparece al FINAL del texto en REPARAR.
     const mEq=txt.match(/\b([0-9A-Fa-f]{12})\s+(FIBERHOME|ARRIS\/MOTOROLA|ARRIS|MOTOROLA|CISCO|UBEE)/i);
     if(mEq)ot.equipo_instalado=mEq[1].toUpperCase()+' '+mEq[2].toUpperCase();
+
     if(!ot.obs_gigared&&ot.obs_trabajo)ot.obs_gigared=ot.obs_trabajo;
   }
+
   const ri=detectarItems(txt,ot.tipo_tarea);
   ot.items=ri.items;ot.tipo_item=ri.tipo_item;
   return ot;
@@ -1023,7 +1063,16 @@ async function confirmarImport(){
           const upd={};
           if(gr[0].telefono1&&gr[0].telefono1!==ex[0].telefono1)upd.telefono1=gr[0].telefono1;
           if(gr[0].telefono2&&gr[0].telefono2!==ex[0].telefono2)upd.telefono2=gr[0].telefono2;
-          if(gr[0].calle&&!ex[0].calle){upd.calle=gr[0].calle;upd.numero_domicilio=gr[0].numero_domicilio||'';upd.obs_domicilio=gr[0].obs_domicilio||'';}
+          // Actualizar domicilio si el existente está vacío o parece un label incorrecto
+          const domExist=ex[0].domicilio||'';
+          const domNuevo=gr[0].domicilio||'';
+          const domMalo=domExist.length<5||/^(Cliente|Barrio|Nodo|Telef|Localid)/i.test(domExist);
+          if(domNuevo.length>5&&(domMalo||!ex[0].calle)){
+            upd.domicilio=domNuevo;
+            if(gr[0].calle)upd.calle=gr[0].calle;
+            if(gr[0].numero_domicilio)upd.numero_domicilio=gr[0].numero_domicilio;
+            if(gr[0].obs_domicilio)upd.obs_domicilio=gr[0].obs_domicilio;
+          }
           if(gr[0].barrio&&!ex[0].barrio)upd.barrio=gr[0].barrio;
           if(Object.keys(upd).length)await sbPatch('clientes',`?id=eq.${cliId}`,upd);
         }else{
