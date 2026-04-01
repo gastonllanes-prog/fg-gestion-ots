@@ -890,33 +890,37 @@ function parsearPag(txt){
     if(nmM){ot.codigo_cliente=num;ot.apellido=nmM[1].trim();ot.nombre=nmM[2].trim();break;}
   }
 
-  // DOMICILIO: estructura diferente en REPARAR vs INSTALAR
+  // DOMICILIO: en PDF.js el address viene SIEMPRE ANTES de "Domicilio:" (tanto INSTALAR como REPARAR)
+  // REPARAR:  "...376-XXXX(Princ.) / [ADDRESS] Domicilio:..."
+  // INSTALAR: "...376-XXXX [ADDRESS] Domicilio:..."
   let domTxt='';
   const domLabelIdx=txt.indexOf('Domicilio:');
 
-  if(ot.tipo_tarea==='REPARACION'&&domLabelIdx>10){
-    // REPARAR: "...telefono / [DOMICILIO] Domicilio: Telefono: Cliente: Barrio:..."
-    // El domicilio está ANTES del label, después del último "/"
-    const before=txt.slice(0,domLabelIdx);
+  if(domLabelIdx>10){
+    const before=txt.slice(Math.max(0,domLabelIdx-250),domLabelIdx);
+
+    // Intentar con "/ " primero (REPARAR tiene "376-xxx(Princ.) / DIRECCION")
     const slashIdx=before.lastIndexOf(' / ');
     if(slashIdx>-1){
       const afterSlash=before.slice(slashIdx+3).trim();
-      if(afterSlash.length>5&&/[A-ZÁÉÍÓÚÑ]/.test(afterSlash))domTxt=afterSlash;
+      if(afterSlash.length>5&&/[A-ZÁÉÍÓÚÑ0-9]/.test(afterSlash))domTxt=afterSlash;
     }
-    // Fallback para REPARAR sin "/ " (formato "376-XXXX(Cel.) /")
-    if(!domTxt){
-      const m2=before.match(/[\d\(\)\-]+\([^)]+\)\s*\/\s*(.+)$/i);
-      if(m2&&m2[1].trim().length>5)domTxt=m2[1].trim();
-    }
-  }
 
-  if(!domTxt&&domLabelIdx>-1){
-    // INSTALAR: "Domicilio: [DOMICILIO] Telef.1" → domicilio DESPUÉS del label
-    const after=txt.slice(domLabelIdx+10,domLabelIdx+200);
-    const nextLabel=after.search(/\b(?:Telef(?:\.|ono)?|Barrio:|Nodo:|Localidad:|Cantidad|Mano\s+de|MISIONES|Provincia)/i);
-    let raw=nextLabel>0?after.slice(0,nextLabel):(nextLabel===0?'':after.slice(0,100));
-    raw=raw.replace(/\s*(Telefono|Cliente|Activo|Inactivo|Conexi[oó]n)\s*[:\s]*/gi,' ').replace(/\s{2,}/g,' ').trim();
-    if(raw.length>5&&!/^(Telef|Barrio|Nodo|Localid|Cliente|Conexi)/i.test(raw))domTxt=raw;
+    // Sin slash: buscar después del último número de teléfono (INSTALAR: "376-5018449 GARDEL...")
+    if(!domTxt){
+      const telMatches=[...before.matchAll(/(?:376|3\d{2}|11|15)[-\s]?\d{7,8}/gi)];
+      if(telMatches.length>0){
+        const lastTel=telMatches[telMatches.length-1];
+        const afterTel=before.slice(lastTel.index+lastTel[0].length).trim();
+        if(afterTel.length>5&&/[A-ZÁÉÍÓÚÑ]/.test(afterTel))domTxt=afterTel;
+      }
+    }
+
+    // Fallback: tomar los últimos 100 chars antes del label, limpiar labels conocidos
+    if(!domTxt){
+      let raw=before.slice(-120).replace(/\s*(Telef[.\w]*|Cliente:|Activo|Inactivo|Conexi[oó]n[\s\w]*|\d{11})\s*/gi,' ').replace(/\s{2,}/g,' ').trim();
+      if(raw.length>8&&/\d{4,6}/.test(raw)&&/[A-ZÁÉÍÓÚÑ]/.test(raw))domTxt=raw;
+    }
   }
 
   if(domTxt){
