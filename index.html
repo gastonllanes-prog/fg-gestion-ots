@@ -606,7 +606,7 @@ async function renderOTs(){
       // Mostrar domicilio: si hay calle separada usarla, sino el campo domicilio
       const domDisplay=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||cl.localidad||'');
       if(!g.ordenes.length)return'';
-      return `<div class="ot-card${esRep?' rep-card':''}" onclick="verOT('${g.ordenes[0].numero_ot}')">`;
+      return `<div class="ot-card${esRep?' rep-card':''}" onclick="verOT('${g.ordenes[0].numero_ot}')">
         <div style="min-width:80px">
           <div style="font-size:13px;font-weight:800;color:#2563eb">${cl.codigo_gigared||'—'}</div>
           <div style="font-size:10px;color:#94a3b8;margin-top:2px">${cl.nodo||''}</div>
