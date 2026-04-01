@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v5</title>
+<title>FG Gestión OTs v6</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
@@ -139,7 +139,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V5</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V6</div>
   </div>
 </div>
 
@@ -149,7 +149,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver">v5</div>
+    <div class="sb-ver">v6</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -519,22 +519,45 @@ async function renderOTs(){
   el.innerHTML='<div class="loading"><span class="spinner"></span>Cargando...</div>';
   try{
     const tipo=document.getElementById('ot-fil-tipo').value;
-    let p=`?select=numero_ot,tipo_tarea,tipo_item,obs_gigared,fecha_trabajo,clientes(apellido,nombre,domicilio,telefono1),estados_ot(nombre),grupos_ot(cuadrillas(nombre))&order=created_at.desc&limit=${PAGE_SIZE}&offset=${OT_PAGE*PAGE_SIZE}`;
-    if(tipo)p+=`&tipo_tarea=eq.${tipo}`;
-    const data=await sbGet('ordenes_trabajo',p)||[];
-    if(!data.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No se encontraron OTs</div></div>';return;}
-    el.innerHTML=data.map(o=>`
-      <div class="ot-card" onclick="verOT('${o.numero_ot}')">
-        <div style="min-width:64px"><div class="ot-card-num">${numOT(o.numero_ot)}</div><div style="font-size:10px;color:#94a3b8;margin-top:2px">${o.tipo_item||o.tipo_tarea||''}</div></div>
-        <div class="ot-card-body">
-          <div class="ot-card-cliente">${o.clientes?o.clientes.apellido+', '+o.clientes.nombre:'—'}</div>
-          <div class="ot-card-dom">${o.clientes?.domicilio||''}</div>
-          ${o.grupos_ot?.cuadrillas?`<div style="font-size:11px;color:#64748b;margin-top:2px">🔧 ${o.grupos_ot.cuadrillas.nombre}</div>`:''}
+    const estFil=document.getElementById('ot-fil-estado').value;
+    // Cargar grupos con sus OTs y cliente
+    let p=`?select=id,estado_id,fecha_trabajo,fecha_asignacion,estados_ot(nombre),cuadrillas(nombre),clientes(codigo_gigared,apellido,nombre,domicilio,localidad,nodo,telefono1),lotes_importacion(fecha_importacion)&order=created_at.desc&limit=${PAGE_SIZE}&offset=${OT_PAGE*PAGE_SIZE}`;
+    const grupos=await sbGet('grupos_ot',p)||[];
+    if(!grupos.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No hay OTs cargadas. Importá un PDF para empezar.</div></div>';return;}
+    // Para cada grupo cargar sus OTs
+    const gruposConOTs=await Promise.all(grupos.map(async g=>{
+      let opOTs=`?grupo_id=eq.${g.id}&select=numero_ot,tipo_tarea,tipo_item,estados_ot(nombre)&order=orden_cierre`;
+      if(tipo)opOTs+=`&tipo_tarea=eq.${tipo}`;
+      g.ordenes=await sbGet('ordenes_trabajo',opOTs)||[];
+      return g;
+    }));
+    // Filtrar grupos que tengan al menos una OT con el estado seleccionado
+    const filtrados=estFil?gruposConOTs.filter(g=>g.ordenes.some(o=>o.estados_ot?.nombre===estFil)):gruposConOTs;
+    if(!filtrados.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No se encontraron OTs con ese filtro</div></div>';return;}
+    el.innerHTML=filtrados.map(g=>{
+      const cl=g.clientes||{};
+      const ests=g.ordenes.map(o=>o.estados_ot?.nombre||'PENDIENTE');
+      const estGrupo=ests.every(e=>e==='FINALIZADA')?'FINALIZADA':ests.some(e=>e==='PENDIENTE')?'PENDIENTE':ests.some(e=>e==='ASIGNADA'||e==='EN_PROCESO')?'ASIGNADA':'PENDIENTE';
+      return `<div class="ot-card" onclick="verOT('${g.ordenes[0]?.numero_ot||''}')">
+        <div style="min-width:80px">
+          <div style="font-size:13px;font-weight:800;color:#2563eb">${cl.codigo_gigared||'—'}</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px">${cl.nodo||''}</div>
         </div>
-        <div class="ot-card-right">${badgeE(o.estados_ot?.nombre||'PENDIENTE')}<div style="font-size:11px;color:#94a3b8;margin-top:4px">${o.fecha_trabajo?fmtF(o.fecha_trabajo):''}</div></div>
-      </div>
-    `).join('');
-    document.getElementById('ot-mas-btn').style.display=data.length===PAGE_SIZE?'block':'none';
+        <div class="ot-card-body">
+          <div class="ot-card-cliente">${cl.apellido||''}, ${cl.nombre||''}</div>
+          <div class="ot-card-dom">${cl.domicilio||cl.localidad||''}</div>
+          <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
+            ${g.ordenes.map(o=>`<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:rgba(37,99,235,.1);color:#2563eb">${numOT(o.numero_ot)} ${o.tipo_item||''}</span>`).join('')}
+          </div>
+        </div>
+        <div class="ot-card-right">
+          ${badgeE(estGrupo)}
+          ${g.cuadrillas?`<div style="font-size:11px;color:#64748b;margin-top:4px">🔧 ${g.cuadrillas.nombre}</div>`:''}
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px">${g.fecha_trabajo?fmtF(g.fecha_trabajo):''}</div>
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('ot-mas-btn').style.display=filtrados.length===PAGE_SIZE?'block':'none';
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
 
@@ -577,6 +600,7 @@ async function verOT(num){
         <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${cl.localidad||'—'}</div></div>
         ${ot.tag?`<div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val" style="color:#7c3aed;font-weight:700">${ot.tag}</div></div>`:'<div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val">—</div></div>'}
         <div class="ot-info-item"><div class="ot-info-label">Emisión Gigared</div><div class="ot-info-val">${ot.fecha_emision?fmtF(ot.fecha_emision):'—'}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Asignación Gigared</div><div class="ot-info-val">${ot.fecha_asignacion_giga?fmtF(ot.fecha_asignacion_giga):'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Cargado al sistema</div><div class="ot-info-val">${fmtF(ot.created_at?.slice(0,10))}</div></div>
         ${ot.grupos_ot?.cuadrillas?`
           <div class="ot-info-item"><div class="ot-info-label">Cuadrilla asignada</div><div class="ot-info-val">🔧 ${ot.grupos_ot.cuadrillas.nombre}</div></div>
@@ -682,9 +706,22 @@ function parsearPag(txt){
   else if(/\bDESCONECTAR\b/i.test(txt))ot.tipo_tarea='DESCONECTAR';
   else ot.tipo_tarea='SERVICE';
 
-  // Fecha emision
-  const mFe=txt.match(/[Ee]misi.n:\s*(\d{2})\/(\d{2})\/(\d{4})/);
+  // Fecha emision — buscar patron DD/MM/YYYY cerca de "Emisi" o "31/03" etc
+  // En PDF.js puede venir como "Emision: 31/03/2026" o "31/03/2026 ... Emision:"
+  const todFechas=[...txt.matchAll(/(\d{2})\/(\d{2})\/(20\d{2})/g)];
+  // La fecha de emision suele ser la que aparece cerca de "Emisi" o "Asignaci"
+  const mFe=txt.match(/[Ee]misi.n[:\s]+(\d{2})\/(\d{2})\/(20\d{2})/);
   if(mFe)ot.fecha_emision=`${mFe[3]}-${mFe[2]}-${mFe[1]}`;
+  else if(todFechas.length>0){
+    // Usar la primera fecha que encontremos
+    const f=todFechas[0];
+    ot.fecha_emision=`${f[3]}-${f[2]}-${f[1]}`;
+  }
+
+  // Fecha asignacion Gigared (cuando nos asignaron la OT)
+  const mAsig=txt.match(/[Aa]signaci.n[:\s]+(\d{2})\/(\d{2})\/(20\d{2})/);
+  if(mAsig)ot.fecha_asignacion_giga=`${mAsig[3]}-${mAsig[2]}-${mAsig[1]}`;
+  else if(ot.fecha_emision)ot.fecha_asignacion_giga=ot.fecha_emision;
 
   // Tag
   const mTag=txt.match(/Tag:\s*(\d{5,})/);
@@ -709,7 +746,14 @@ function parsearPag(txt){
   }
 
   // DOMICILIO - texto entre "Domicilio:" y el siguiente campo
-  const mDom=txt.match(/[Dd]omicilio:\s*([^\n\r]{5,60}?)(?=\s{2,}|\s+Telef|\s+Cliente:|\s+Barrio:|\s+Nodo:|\s+Localidad:)/);
+  const // DOMICILIO — estrategia multiple porque PDF.js puede dar distintos ordenes
+  // A: phone → address → labels (address tiene numeros de 4-5 digitos)
+  const mDomA=txt.match(/3\d{2}[\-]?\d{7}\s+([A-Z][A-Z0-9\s\.\(\)\/\-,]{5,80}?\d{3,5}[A-Z0-9\s\.\(\)\/\-,]{0,60}?)(?=\s+(?:Domicilio:|Telef\.|Cliente:|Barrio:|Cantidad|Mano|Localidad:))/i);
+  // B: "Domicilio:" seguido opcionalmente de "Telef.X" luego la direccion
+  const mDomB=txt.match(/[Dd]omicilio:\s*(?:Telef\.\d[\s]+)?([A-Z0-9][^\n\r]{4,80}?)(?=\s+(?:Telef\.|Cliente:|Barrio:|Nodo:|Localidad:|Cantidad|Mano))/i);
+  let mDom=null;
+  if(mDomA&&mDomA[1].length>5)mDom=mDomA;
+  else if(mDomB&&mDomB[1].length>5&&!/^Telef/i.test(mDomB[1]))mDom=mDomB;
   if(mDom)ot.domicilio=mDom[1].replace(/\s+/g,' ').trim();
 
   // NODO - patron especifico H1F144, H3F293, H1N202, etc.
@@ -871,7 +915,7 @@ async function confirmarImport(){
       for(let idx=0;idx<gr.length;idx++){
         const o=gr[idx];
         try{
-          const ot=await sbPost('ordenes_trabajo',{numero_ot:o.numero_ot,grupo_id:gId,cliente_id:cliId,tipo_tarea:o.tipo_tarea||'INSTALAR',tipo_item:o.tipo_item||'BASICA',orden_cierre:idx,estado_id:ePend?.id,fecha_emision:o.fecha_emision||null,obs_gigared:o.obs_gigared||null,tag:o.tag||null,es_cambio_domicilio:o.es_cambio_domicilio||false});
+          const ot=await sbPost('ordenes_trabajo',{numero_ot:o.numero_ot,grupo_id:gId,cliente_id:cliId,tipo_tarea:o.tipo_tarea||'INSTALAR',tipo_item:o.tipo_item||'BASICA',orden_cierre:idx,estado_id:ePend?.id,fecha_emision:o.fecha_emision||null,fecha_asignacion_giga:o.fecha_asignacion_giga||null,obs_gigared:o.obs_gigared||null,tag:o.tag||null,es_cambio_domicilio:o.es_cambio_domicilio||false});
           const otId=(Array.isArray(ot)?ot[0]:ot)?.id;
           if(otId&&o.items?.length){for(const it of o.items){try{await sbPost('ot_items_contratados',{ot_id:otId,descripcion:it.descripcion,cantidad:it.cantidad});}catch(e){}}}
           ok++;
