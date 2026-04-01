@@ -413,11 +413,18 @@ async function doLogin(){
   const spin=document.getElementById('l-spin');
   if(!email||!pass){err.textContent='Completá email y contraseña';return;}
   spin.style.display='inline-block';err.textContent='';
+  // Login local de emergencia
+  const USUARIOS_LOCAL=[
+    {id:1,nombre:'Gaston Llanes',email:'gastonllanes@gmail.com',password:'admin123',rol:'superadmin',activo:true}
+  ];
+  const local=USUARIOS_LOCAL.find(u=>u.email===email&&u.password===pass&&u.activo);
+  if(local){CU=local;sessionStorage.setItem('cu',JSON.stringify(CU));spin.style.display='none';iniciarApp();return;}
+  // Intentar login por base de datos
   try{
     const d=await sbGet('usuarios',`?email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(pass)}&activo=eq.true`);
     if(!d||!d.length){err.textContent='Email o contraseña incorrectos';spin.style.display='none';return;}
     CU=d[0];sessionStorage.setItem('cu',JSON.stringify(CU));iniciarApp();
-  }catch(e){err.textContent='Error: '+e.message;spin.style.display='none';}
+  }catch(e){err.textContent='Error de conexión: '+e.message;spin.style.display='none';}
 }
 document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 function logout(){sessionStorage.removeItem('cu');CU=null;document.body.classList.remove('app-ready');document.getElementById('s-login').style.display='flex';}
@@ -759,7 +766,7 @@ function parsearPag(txt){
   }
 
   // DOMICILIO - texto entre "Domicilio:" y el siguiente campo
-  const // DOMICILIO — estrategia multiple porque PDF.js puede dar distintos ordenes
+  // DOMICILIO — estrategia multiple porque PDF.js puede dar distintos ordenes
   // A: phone → address → labels (address tiene numeros de 4-5 digitos)
   const mDomA=txt.match(/3\d{2}[\-]?\d{7}\s+([A-Z][A-Z0-9\s\.\(\)\/\-,]{5,80}?\d{3,5}[A-Z0-9\s\.\(\)\/\-,]{0,60}?)(?=\s+(?:Domicilio:|Telef\.|Cliente:|Barrio:|Cantidad|Mano|Localidad:))/i);
   // B: "Domicilio:" seguido opcionalmente de "Telef.X" luego la direccion
