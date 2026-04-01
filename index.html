@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v8</title>
+<title>FG Gestión OTs v9</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -144,7 +144,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V8</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V9</div>
   </div>
 </div>
 
@@ -154,7 +154,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver">v8</div>
+    <div class="sb-ver">v9</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -423,7 +423,11 @@ const numOT=n=>n?n.replace('005-','').replace(/^0+/,''):n;
 function parseDomicilio(dom){
   if(!dom)return{calle:'',numero:'',obs:''};
   dom=dom.trim();
-  const m=dom.match(/^(.+?)\s+(\d{4,6})\s*(.*)$/);
+  // Buscar el ÚLTIMO número de 4-6 dígitos como número de casa
+  const m=dom.match(/^(.*?)\s+(\d{4,6})\s*(.*)$/);
+  // Intentar con el último número primero (ej: "B 110 VIVIENDAS MZ 147 00018" → calle="B 110 VIVIENDAS MZ 147", num="00018")
+  const mLast=dom.match(/^(.+)\s+(\d{4,6})\s*(.*)$/);
+  if(mLast)return{calle:mLast[1].trim(),numero:mLast[2].trim(),obs:mLast[3].replace(/^[-·\s]+/,'').trim()};
   if(m)return{calle:m[1].trim(),numero:m[2].trim(),obs:m[3].replace(/^[-·\s]+/,'').trim()};
   return{calle:dom,numero:'',obs:''};
 }
@@ -641,7 +645,7 @@ async function verOT(num){
           ${grupo.map(g=>`<span style="background:rgba(37,99,235,.1);color:#2563eb;font-weight:700;padding:2px 8px;border-radius:6px;margin-right:4px;font-size:12px">${numOT(g.numero_ot)}</span>`).join('')}
         </div>
         <div style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px">
-          ${badgeTipo(ot.tipo_tarea)} <span>${ot.tipo_item||''}</span>
+          ${badgeTipo(ot.tipo_tarea)} ${!esRep&&ot.tipo_item?`<span>${ot.tipo_item}</span>`:''}
         </div>
       </div>
       ${esRep&&(ot.sintoma_reportado||ot.obs_trabajo)?`
@@ -770,8 +774,10 @@ function parsearPag(txt){
   const mAsig=txt.match(/[Aa]signaci.n[:\s]+(\d{2})\/(\d{2})\/(20\d{2})/);
   if(mAsig)ot.fecha_asignacion_giga=`${mAsig[3]}-${mAsig[2]}-${mAsig[1]}`;
   else if(ot.fecha_emision)ot.fecha_asignacion_giga=ot.fecha_emision;
-  const mTag=txt.match(/Tag:\s*(\d{5,})/);
+  // TAG — buscar en todo el texto, flexible
+  const mTag=txt.match(/\bTag[:\s]+(\d{4,})/i);
   if(mTag)ot.tag=mTag[1];
+
   const todosNums=[...txt.matchAll(/\b(\d{11})\b/g)];
   for(const m of todosNums){
     const num=m[1];if(num===otBC)continue;
@@ -779,8 +785,10 @@ function parsearPag(txt){
     const nmM=despues.match(/^\s*([A-ZÁÉÍÓÚÜN][A-ZÁÉÍÓÚÜÑ\s]+?)\s*,\s*([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑa-záéíóúüñ\s]{1,40}?)(?=\s+(?:Domicilio|Conexi|Activo|Desconexi|\d{3}|$))/);
     if(nmM){ot.codigo_cliente=num;ot.apellido=nmM[1].trim();ot.nombre=nmM[2].trim();break;}
   }
-  const mDomA=txt.match(/3\d{2}[\-]?\d{7}\s+([A-Z][A-Z0-9\s\.\(\)\/\-,]{5,80}?\d{3,5}[A-Z0-9\s\.\(\)\/\-,]{0,60}?)(?=\s+(?:Domicilio:|Telef\.|Cliente:|Barrio:|Cantidad|Mano|Localidad:))/i);
-  const mDomB=txt.match(/[Dd]omicilio:\s*(?:Telef\.\d[\s]+)?([A-Z0-9][^\n\r]{4,80}?)(?=\s+(?:Telef\.|Cliente:|Barrio:|Nodo:|Localidad:|Cantidad|Mano))/i);
+
+  // DOMICILIO — lookahead ampliado para cubrir "Telefono:" además de "Telef."
+  const mDomA=txt.match(/3\d{2}[\-]?\d{7}\s+([A-Z][A-Z0-9\s\.\(\)\/\-,]{5,80}?\d{3,5}[A-Z0-9\s\.\(\)\/\-,]{0,60}?)(?=\s+(?:Domicilio:|Telef|Cliente:|Barrio:|Cantidad|Mano|Localidad:))/i);
+  const mDomB=txt.match(/[Dd]omicilio:\s*(?:Telef\.\d[\s]+)?([A-Z0-9][^\n\r]{4,80}?)(?=\s+(?:Telef(?:ono)?[\.:]|Cliente:|Barrio:|Nodo:|Localidad:|Cantidad|Mano))/i);
   let mDom=null;
   if(mDomA&&mDomA[1].length>5)mDom=mDomA;
   else if(mDomB&&mDomB[1].length>5&&!/^Telef/i.test(mDomB[1]))mDom=mDomB;
@@ -807,10 +815,19 @@ function parsearPag(txt){
   const mObs=txt.match(/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio)[^\n\r]{5,120}?)(?=\s+\d{11}|\s+Materiales|\s*$)/i);
   if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim();
   if(ot.tipo_tarea==='REPARACION'){
-    const mObsTrab=txt.match(/((?:cambiar|remplazar|reemplazar|reubicar|realizar\s+el\s+ingreso)[^\n\r]{5,150})/i);
-    if(mObsTrab)ot.obs_trabajo=mObsTrab[0].replace(/\s+/g,' ').trim();
-    const mSint=txt.match(/[Ss][íi]ntoma\s+reportado[:\s]+([^\n\r]{3,100})/);
+    // OBS TRABAJO: el texto del recuadro (cambiar acometida, remplazar...)
+    const mObsTrab=txt.match(/((?:cambiar|remplazar|reemplazar|reubicar|realizar\s+el\s+ingreso|deja\s+ganancia)[^\n\r]{3,200})/i);
+    if(mObsTrab){
+      let obs=mObsTrab[1].replace(/\s+/g,' ').trim();
+      obs=obs.replace(/\s+\d{11}[\s\S]*$/,'').trim();
+      obs=obs.replace(/\s+[A-Z]{3,}\s+[A-Z,\s]{5,}(Activo|Inactivo)[\s\S]*$/i,'').trim();
+      if(obs.length>150)obs=obs.substring(0,150).trim();
+      ot.obs_trabajo=obs;
+    }
+    // SINTOMA: primeras palabras después de "Síntoma reportado:"
+    const mSint=txt.match(/[Ss][íi]ntoma\s+reportado[:\s]+((?:\S+\s*){1,5})/);
     if(mSint)ot.sintoma_reportado=mSint[1].replace(/\s+/g,' ').trim();
+    // EQUIPO
     const mEq=txt.match(/\b([0-9A-Fa-f]{12})\s+(FIBERHOME|ARRIS\/MOTOROLA|ARRIS|MOTOROLA|CISCO|UBEE)/i);
     if(mEq)ot.equipo_instalado=mEq[1].toUpperCase()+' '+mEq[2].toUpperCase();
     if(!ot.obs_gigared&&ot.obs_trabajo)ot.obs_gigared=ot.obs_trabajo;
