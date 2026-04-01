@@ -291,7 +291,11 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div class="modal-footer">
         <button class="btn btn-primary" style="flex:2" onclick="confirmarImport()" id="import-ok-btn">✓ Importar</button>
         <button class="btn" onclick="resetImport()">← Volver</button>
+        <button class="btn btn-sm" onclick="verTextoCrudo()" style="font-size:11px">🔍 Debug</button>
         <button class="btn" onclick="cerrarModal('import-modal')">Cancelar</button>
+      </div>
+      <div id="debug-txt" style="display:none;margin-top:.5rem">
+        <textarea id="debug-area" style="width:100%;height:120px;font-size:10px;font-family:monospace;border:1px solid var(--border);border-radius:8px;padding:6px" readonly></textarea>
       </div>
     </div>
     <p class="err-msg" id="import-err"></p>
@@ -654,171 +658,138 @@ function parsearPag(txt){
   if(!txt)return null;
   const ot={};
 
-  // ── Número de OT ──────────────────────────────────────────────
+  // Número de OT
   const mN=txt.match(/ORDEN\s+DE\s+TRABAJO\s*:\s*(005-\d+)/i);
   if(!mN)return null;
   ot.numero_ot=mN[1];
+  // Barcode del numero de OT para excluirlo al buscar el cliente
+  const otBC=ot.numero_ot.replace('005-00','00500').replace('005-0','00500');
 
-  // ── Tipo de tarea ─────────────────────────────────────────────
+  // Tipo tarea
   ot.es_cambio_domicilio=/cambio\s+de\s+domicilio/i.test(txt)||/por\s+cambio\s+de\s+domicilio/i.test(txt);
-  if(/\bINSTALAR\b/i.test(txt)){ot.tipo_tarea=ot.es_cambio_domicilio?'CAMBIO_DOMICILIO':'INSTALAR';}
+  if(/\bINSTALAR\b/i.test(txt))ot.tipo_tarea=ot.es_cambio_domicilio?'CAMBIO_DOMICILIO':'INSTALAR';
   else if(/\bDESCONECTAR\b/i.test(txt))ot.tipo_tarea='DESCONECTAR';
   else ot.tipo_tarea='SERVICE';
 
-  // ── Fecha emisión ─────────────────────────────────────────────
-  const mFe=txt.match(/[Ee]misi[oó]n:\s*(\d{2})\/(\d{2})\/(\d{4})/);
+  // Fecha emision
+  const mFe=txt.match(/[Ee]misi.n:\s*(\d{2})\/(\d{2})\/(\d{4})/);
   if(mFe)ot.fecha_emision=`${mFe[3]}-${mFe[2]}-${mFe[1]}`;
 
-  // ── Tag/Precinto ─────────────────────────────────────────────
+  // Tag
   const mTag=txt.match(/Tag:\s*(\d{5,})/);
   if(mTag)ot.tag=mTag[1];
 
-  // ── CÓDIGO CLIENTE ────────────────────────────────────────────
-  // Los códigos de cliente tienen el patrón 005000XXXXX o 005001XXXXX
-  // Los códigos de OT tienen el patrón 005002XXXXX, 005003XXXXX, etc.
-  // Además el código de cliente SIEMPRE va seguido del nombre en MAYÚSCULAS
-  // y luego "Conexión Pendiente", "Activo" o "Desconexión Pendiente"
-  
-  // Primero buscar específicamente: número de 11 dígitos + APELLIDO , NOMBRE + estado
-  // Usamos una regex que NO confunda con el número de OT del código de barras
-  const rCli = /\b(0050[01]\d{6})\s+((?:[A-ZÁÉÍÓÚÜÑA-Z][A-ZÁÉÍÓÚÜÑA-Za-záéíóúüñ]*[\s,\.]*){1,8}?)\s+(?:Conexi.n Pendiente|Activo|Desconexi.n Pendiente)/;
-  const mCli = txt.match(rCli);
-  if(mCli){
-    ot.codigo_cliente = mCli[1].trim();
-    const nm = mCli[2].trim().replace(/\s+/g,' ');
-    const pts = nm.split(',');
-    ot.apellido = (pts[0]||'').trim();
-    ot.nombre   = (pts[1]||'').trim();
-  } else {
-    // Fallback: buscar cualquier número de 11 dígitos seguido de nombre y estado
-    // Excluimos explícitamente el número de OT del barcode
-    const otNum = ot.numero_ot.replace('005-','005').replace(/-/g,'');
-    const rCli2 = /\b(\d{11})\s+((?:[A-ZÁÉÍÓÚÜÑA-Z][^\d]{2,40}?))\s+(?:Conexi.n Pendiente|Activo|Desconexi.n Pendiente)/;
-    const m2 = txt.replace(otNum,'').match(rCli2);
-    if(m2&&m2[1]!==otNum){
-      ot.codigo_cliente = m2[1].trim();
-      const nm = m2[2].trim().replace(/\s+/g,' ');
-      const pts = nm.split(',');
-      ot.apellido = (pts[0]||'').trim();
-      ot.nombre   = (pts[1]||'').trim();
+  // CODIGO CLIENTE - buscar todos los numeros de 11 digitos excepto el barcode de la OT
+  // El nombre del cliente SIEMPRE tiene formato "APELLIDO , NOMBRE" con coma
+  const todosNums=[...txt.matchAll(/\b(\d{11})\b/g)];
+  for(const m of todosNums){
+    const num=m[1];
+    if(num===otBC)continue;
+    const pos=m.index+11;
+    const despues=txt.slice(pos,pos+100).replace(/\s+/g,' ').trim();
+    // El nombre del cliente siempre tiene coma: "APELLIDO , NOMBRE" o "APELLIDO, NOMBRE"
+    const nmM=despues.match(/^\s*([A-Z\xC1\xC9\xCD\xD3\xDA\xDC\xD1][A-Z\xC1\xC9\xCD\xD3\xDA\xDC\xD1a-z\xe1\xe9\xed\xf3\xfa\xfc\xf1\s]+?)\s*,\s*([A-Z\xC1\xC9\xCD\xD3\xDA\xDC\xD1][A-Z\xC1\xC9\xCD\xD3\xDA\xDC\xD1a-z\xe1\xe9\xed\xf3\xfa\xfc\xf1\s]{1,40}?)(?=\s+(?:Domicilio|Conexi|Activo|Desconexi|\d{3}|$))/);
+    if(nmM){
+      ot.codigo_cliente=num;
+      ot.apellido=nmM[1].trim();
+      ot.nombre=nmM[2].trim();
+      break;
     }
   }
 
-  // ── Domicilio ─────────────────────────────────────────────────
-  const mDom = txt.match(/[Dd]omicilio:\s*([\w\s\.\(\)\/]+?)(?=\s{2,}|\s+Telef|\s+Barrio|\s+Nodo|\s+Localidad)/);
-  if(mDom) ot.domicilio = mDom[1].replace(/\s+/g,' ').trim();
+  // DOMICILIO - texto entre "Domicilio:" y el siguiente campo
+  const mDom=txt.match(/[Dd]omicilio:\s*([^\n\r]{5,60}?)(?=\s{2,}|\s+Telef|\s+Cliente:|\s+Barrio:|\s+Nodo:|\s+Localidad:)/);
+  if(mDom)ot.domicilio=mDom[1].replace(/\s+/g,' ').trim();
 
-  // ── Barrio ────────────────────────────────────────────────────
-  const mBa = txt.match(/[Bb]arrio:\s*([A-ZÁÉÍÓÚÜÑ][^\n\r]{2,30}?)(?=\s{2,}|\s+Nodo|\s+Localidad)/);
-  if(mBa) ot.barrio = mBa[1].replace(/\s+/g,' ').trim();
-  // Detectar barrio del nodo si no se encontró
-  if(!ot.barrio){
-    if(/GARUPA CENTRO/i.test(txt)) ot.barrio='GARUPA CENTRO';
-    else if(/CENTRO\s*-/i.test(txt)) ot.barrio='CENTRO';
+  // NODO - patron especifico H1F144, H3F293, H1N202, etc.
+  const mNod=txt.match(/\b(H\d[A-Z]\d{3})\b/);
+  if(mNod)ot.nodo=mNod[1];
+  else{
+    const mNod2=txt.match(/[Nn]odo:\s*([A-Z0-9]+)/);
+    if(mNod2)ot.nodo=mNod2[1];
   }
 
-  // ── Nodo ──────────────────────────────────────────────────────
-  const mNod = txt.match(/[Nn]odo:\s*([A-Z0-9]+)/);
-  if(mNod) ot.nodo = mNod[1];
-
-  // ── Localidad ─────────────────────────────────────────────────
-  const mLoc = txt.match(/[Ll]ocalidad:\s*([A-ZÁÉÍÓÚÑ]+)/);
-  if(mLoc) ot.localidad = mLoc[1];
-
-  // ── Provincia ─────────────────────────────────────────────────
-  const mPr = txt.match(/[Pp]rovincia:\s*([A-ZÁÉÍÓÚÑ]+)/);
-  if(mPr) ot.provincia = mPr[1];
-  else ot.provincia = 'MISIONES';
-
-  // ── Teléfonos ─────────────────────────────────────────────────
-  const tels = new Set();
-  // Telef.1 y Telef.2 explícitos
-  const rTelf = /Telef\.?\s*[12]?\s*[\s:]+(3\d{2}[\-\d]{6,9})/g;
-  let mTf;
-  while((mTf=rTelf.exec(txt))!==null){
-    const n = mTf[1].replace(/[\s\-]/g,'');
-    if(n.length>=10) tels.add(n);
+  // LOCALIDAD - buscar POSADAS o GARUPA directamente (son las 2 ciudades)
+  if(/\bPOSADAS\b/i.test(txt))ot.localidad='POSADAS';
+  else if(/\bGARUPA\b/i.test(txt))ot.localidad='GARUPA';
+  else{
+    const mLoc=txt.match(/[Ll]ocalidad:\s*([A-Z]+)/);
+    if(mLoc&&mLoc[1]!=='MISIONES')ot.localidad=mLoc[1];
+    else ot.localidad='POSADAS';
   }
-  // Teléfonos en la línea de observaciones (Tel XXXXXXXXXX)
-  const rObsTel = /[Tt]el[\s\.\-]+(3\d{2}[\d\s\-]{6,12})/g;
-  let mOT;
-  while((mOT=rObsTel.exec(txt))!==null){
-    const nums = mOT[1].match(/3\d{9}/g)||[];
-    nums.forEach(n=>tels.add(n));
+
+  // BARRIO
+  if(/GARUPA\s+CENTRO/i.test(txt))ot.barrio='GARUPA CENTRO';
+  else if(/CENTRO\s*-/i.test(txt))ot.barrio='CENTRO';
+
+  // PROVINCIA
+  ot.provincia='MISIONES';
+
+  // TELEFONOS - buscar numeros de 10 digitos que empiezan con 3
+  const tels=new Set();
+  // Formato con guion: 376-4367791 o 376-XXXXXXX
+  const rTel=/3\d{2}[-\s]?\d{7}/g;
+  let mT;
+  while((mT=rTel.exec(txt))!==null){
+    const n=mT[0].replace(/[\s\-]/g,'');
+    if(n.length>=10&&n.length<=11)tels.add(n);
   }
-  const telArr = [...tels];
-  ot.telefono1 = telArr[0]||'';
-  ot.telefono2 = telArr[1]||'';
+  // Remover el numero de cliente si por casualidad matcheo
+  if(ot.codigo_cliente)tels.delete(ot.codigo_cliente);
+  // Remover años y numeros de OT
+  const telArr=[...tels].filter(t=>!t.startsWith('2026')&&!t.startsWith('2025')&&t.startsWith('3'));
+  ot.telefono1=telArr[0]||'';
+  ot.telefono2=telArr[1]||'';
 
-  // ── Observaciones Gigared ─────────────────────────────────────
-  // Es la línea que viene antes del bloque del cliente, entre "Materiales :" y el nombre
-  const rObs = /((?:Contrata|ALTAS\s*WEB|solicita[^\n]*|agrega[^\n]*|Por\s+cambio[^\n]*)[^\n\r]{5,180})/i;
-  const mObs = txt.match(rObs);
-  if(mObs) ot.obs_gigared = mObs[1].replace(/\s+/g,' ').trim().slice(0,200);
+  // OBS GIGARED
+  const rObs=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio)[^\n\r]{5,180})/i;
+  const mObs=txt.match(rObs);
+  if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim().slice(0,200);
 
-  // ── Items y tipo_item ─────────────────────────────────────────
-  const ri = detectarItems(txt);
-  ot.items     = ri.items;
-  ot.tipo_item = ri.tipo_item;
-
+  const ri=detectarItems(txt);
+  ot.items=ri.items;
+  ot.tipo_item=ri.tipo_item;
   return ot;
 }
 
 function detectarItems(txt){
-  const items = [];
-  let tipo_item = 'BASICA';
-
-  // Detección de tipo por contenido específico del equipo asignado
-  // Estos patrones son muy específicos y fiables
-  if(/\bONU\s+FO\s+\d+\/\d+\s+MB\b|\bFO\s+\d+\/\d+\s+MB\s+ONU\b|\bFO\s+\d+\/\d+\s+MB\b/i.test(txt)){
-    tipo_item = 'ONU';
-  } else if(/\bCM\s+\d+\/\d+\s+MB\b.*\(IP\s+Privada\)|\bCablemodem\s+CM\s+\d+/i.test(txt)){
-    tipo_item = 'CABLEMODEM';
-  } else if(/\bFO\s+500\/250\s+MB\b/i.test(txt)){
-    tipo_item = 'ONU';
-  } else if(/Pack\s+digital\s+Plus/i.test(txt) && /instalaci.n\s+b.sica/i.test(txt)){
-    tipo_item = 'BASICA'; // tiene básica + pack = instalación con deco
-  } else if(/instalaci.n\s+b.sica/i.test(txt)){
-    tipo_item = 'BASICA';
-  } else if(/boca\s+adicional/i.test(txt) && !/instalaci.n\s+b.sica/i.test(txt)){
-    tipo_item = 'BOCA_ADICIONAL';
-  } else if(/desconect/i.test(txt)){
-    tipo_item = 'DESCONEXION';
-  }
-
-  // Extraer items contratados — buscar en el bloque entre las dos columnas "Cantidad Descripción"
-  // En el PDF hay dos columnas, PDF.js los extrae linealmente
-  // Patrón: número chico (1-4) seguido de texto descriptivo
-  const bloqueItems = (() => {
-    // Buscar el área entre "Cantidad Descripción" (primera) y "Mano de obra"
-    const ini = txt.search(/[Cc]antidad\s+[Dd]escripci.n/);
-    const fin = txt.search(/[Mm]ano\s+de\s+obra/);
-    if(ini>-1 && fin>ini) return txt.slice(ini, fin);
-    if(ini>-1) return txt.slice(ini, ini+400);
-    return txt.slice(0, 600);
-  })();
-
-  // Extraer líneas tipo "1 Instalacion Basica" o "1 1 CM 100/20 MB..."
-  const lineas = bloqueItems.split(/\n|\r|(?<=\d)\s{3,}/);
-  const yaAgregados = new Set();
-  for(const lin of lineas){
-    const l = lin.trim();
-    // Patrón: opcionalmente "1 " al inicio, luego descripción
-    const m = l.match(/^(\d+)\s+(\d+\s+)?(.{4,80})$/);
-    if(m){
-      const cant = parseInt(m[1]);
-      const desc = (m[3]||'').trim().replace(/\s+/g,' ');
-      if(cant>0&&cant<20&&desc.length>3&&!yaAgregados.has(desc)){
-        // Filtrar las líneas que son solo números de cantidades sin descripción
-        if(!/^\d+$/.test(desc) && !/^[Cc]antidad/.test(desc)){
-          items.push({cantidad:cant, descripcion:desc});
-          yaAgregados.add(desc);
-        }
-      }
+  const items=[];
+  let tipo_item='BASICA';
+  // Deteccion por patrones especificos del equipo
+  if(/\bONU\s+FO\s+\d+\/\d+\s+MB\b|\bFO\s+\d+\/\d+\s+MB\s+ONU\b|\bFO\s+\d+\/\d+\s+MB\b|\bONU\s+FO\s+\d+/i.test(txt))tipo_item='ONU';
+  else if(/\bCM\s+\d+\/\d+\s+MB\b|\bCablemodem\s+CM/i.test(txt))tipo_item='CABLEMODEM';
+  else if(/\binstalaci.n\s+b.sica\b/i.test(txt))tipo_item='BASICA';
+  else if(/\bboca\s+adicional\b/i.test(txt)&&!/\binstalaci.n\s+b.sica\b/i.test(txt))tipo_item='BOCA_ADICIONAL';
+  else if(/\bdesconect/i.test(txt))tipo_item='DESCONEXION';
+  // Extraer items — buscar entre "Cantidad Descripcion" y "Mano de obra"
+  const ini=txt.search(/[Cc]antidad\s+[Dd]escripci.n/);
+  const fin=txt.search(/[Mm]ano\s+de\s+obra/);
+  const bloque=ini>-1&&fin>ini?txt.slice(ini,fin):txt.slice(0,600);
+  const vistos=new Set();
+  // Buscar patrones: 1 o 2 numeros seguidos de descripcion
+  const rItem=/(\b[1-9]\b)\s+(?:[1-9]\s+)?([A-Za-z][A-Za-z\s\/\.\(\)\-]{3,70}?)(?=\s{3,}|\s+\b[1-9]\b|$)/g;
+  let mI;
+  while((mI=rItem.exec(bloque))!==null){
+    const c=parseInt(mI[1]);
+    const d=mI[2].trim().replace(/\s+/g,' ');
+    if(c>0&&c<20&&d.length>3&&!vistos.has(d)&&!/^[Cc]antidad/.test(d)&&!/^[Dd]escripci/.test(d)){
+      items.push({cantidad:c,descripcion:d});
+      vistos.add(d);
     }
   }
+  return{items,tipo_item};
+}
 
-  return {items, tipo_item};
+
+function verTextoCrudo(){
+  const d=document.getElementById('debug-txt');
+  const a=document.getElementById('debug-area');
+  if(d.style.display==='none'){
+    // Mostrar primera pagina del texto crudo
+    const pags=DBG.split(/___PAG\d+___/);
+    a.value='=== PAGINA 1 ===\n'+(pags[1]||'(vacío)')+'\n\n=== PAGINA 2 ===\n'+(pags[2]||'(vacío)');
+    d.style.display='';
+  }else{d.style.display='none';}
 }
 
 function mostrarPreview(ots){
