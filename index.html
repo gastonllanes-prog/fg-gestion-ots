@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
 <title>FG Gestión OTs v6</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -385,7 +384,6 @@ tr:hover td{background:rgba(37,99,235,.02)}
 </div>
 
 <script>
-pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const SB_URL='https://hsoomkdhnanyunqwwxam.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhzb29ta2RobmFueXVucXd3eGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NjM4NTEsImV4cCI6MjA5MDUzOTg1MX0.T2aeJ0wEXT_QcS2GBPwQGxPrnLlMnRASn2RepylKwRc';
 
@@ -672,7 +670,22 @@ function setProg(txt,pct){
   document.getElementById('import-prog-bar').style.width=pct+'%';
 }
 
+async function cargarPDFjs(){
+  if(window.pdfjsLib)return;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload=()=>{
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      res();
+    };
+    s.onerror=rej;
+    document.head.appendChild(s);
+  });
+}
+
 async function extraerTxtPDF(file){
+  await cargarPDFjs();
   const buf=await file.arrayBuffer();
   const pdf=await pdfjsLib.getDocument({data:buf}).promise;
   let txt='';
