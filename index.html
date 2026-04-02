@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v12</title>
+<title>FG Gestión OTs v13</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V12</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V13</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver">v12</div>
+    <div class="sb-ver">v13</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -200,25 +200,53 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
   <div class="card-title" style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Pendientes por tipo — clic para ver</div>
   <div class="tipo-grid">
-    <div class="tipo-stat" onclick="irAConFiltro('INSTALAR')">
+    <div class="tipo-stat" onclick="irAConFiltro('BASICA',true)">
       <div class="ts-num blue" id="dash-t-inst">—</div>
       <div class="ts-lbl">📶 Instalaciones</div>
     </div>
-    <div class="tipo-stat" onclick="irAConFiltro('REPARACION')">
+    <div class="tipo-stat" onclick="irAConFiltro('REPARACION',true)">
       <div class="ts-num" style="color:#ea580c" id="dash-t-rep">—</div>
       <div class="ts-lbl">🔧 Reparaciones</div>
     </div>
-    <div class="tipo-stat" onclick="irAConFiltro('CAMBIO_DOMICILIO')">
-      <div class="ts-num" style="color:#7c3aed" id="dash-t-camdom">—</div>
-      <div class="ts-lbl">🏠 Cambios dom.</div>
+    <div class="tipo-stat" onclick="irAConFiltro('REUBICACION',true)">
+      <div class="ts-num" style="color:#ea580c" id="dash-t-reub">—</div>
+      <div class="ts-lbl">🔧 Reubicaciones</div>
     </div>
-    <div class="tipo-stat" onclick="irAConFiltro('DESCONECTAR')">
+    <div class="tipo-stat" onclick="irAConFiltro('CAMBIO_DOMICILIO',false)">
+      <div class="ts-num" style="color:#7c3aed" id="dash-t-camdom">—</div>
+      <div class="ts-lbl">🏠 Cambio dom.</div>
+    </div>
+    <div class="tipo-stat" onclick="irAConFiltro('CAMBIO_TECNOLOGIA',true)">
+      <div class="ts-num" style="color:#8b5cf6" id="dash-t-camtec">—</div>
+      <div class="ts-lbl">🔄 Cambio tecnol.</div>
+    </div>
+    <div class="tipo-stat" onclick="irAConFiltro('DECODIFICADOR',true)">
+      <div class="ts-num" style="color:#4f46e5" id="dash-t-hd">—</div>
+      <div class="ts-lbl">📺 HDs</div>
+    </div>
+    <div class="tipo-stat" onclick="irAConFiltro('TV_BOX',true)">
+      <div class="ts-num" style="color:#4f46e5" id="dash-t-tvbox">—</div>
+      <div class="ts-lbl">📺 TV Box</div>
+    </div>
+    <div class="tipo-stat" onclick="irAConFiltro('DESCONECTAR',false)">
       <div class="ts-num red" id="dash-t-desco">—</div>
       <div class="ts-lbl">❌ Desconexiones</div>
     </div>
-    <div class="tipo-stat" onclick="irAConFiltro('SERVICE')">
-      <div class="ts-num" style="color:#64748b" id="dash-t-serv">—</div>
-      <div class="ts-lbl">⚙️ Service</div>
+    <div class="tipo-stat" onclick="irAConFiltro('CM_EXISTENTE',true)">
+      <div class="ts-num" style="color:#0d9488" id="dash-t-cmex">—</div>
+      <div class="ts-lbl">📦 CM Existente</div>
+    </div>
+    <div class="tipo-stat" onclick="irAConFiltro('BOCA_ADICIONAL',true)">
+      <div class="ts-num" style="color:#0891b2" id="dash-t-boca">—</div>
+      <div class="ts-lbl">🔌 Bocas adic.</div>
+    </div>
+    <div class="tipo-stat" onclick="irAConFiltro('AGREGA_TV',true)">
+      <div class="ts-num" style="color:#0891b2" id="dash-t-agrtv">—</div>
+      <div class="ts-lbl">📺 Agrega TV</div>
+    </div>
+    <div class="tipo-stat" onclick="irAConFiltro('RECONEXION',true)">
+      <div class="ts-num" style="color:#16a34a" id="dash-t-recon">—</div>
+      <div class="ts-lbl">🔁 Reconexiones</div>
     </div>
   </div>
   <div class="form-2col">
@@ -237,13 +265,14 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="search-bar">
     <input class="search-input" id="ot-search" placeholder="Buscar número, cliente, nodo, teléfono..." oninput="buscarOTs()"/>
     <select class="filter-select" id="ot-fil-estado" onchange="buscarOTs()"><option value="">Todos los estados</option></select>
-    <select class="filter-select" id="ot-fil-tipo" onchange="buscarOTs()">
+    <input type="hidden" id="ot-fil-item" value="">
+    <select class="filter-select" id="ot-fil-tipo" onchange="document.getElementById('ot-fil-item').value='';buscarOTs()">
       <option value="">Todos los tipos</option>
       <option value="INSTALAR">Instalar</option>
       <option value="REPARACION">Reparación</option>
       <option value="DESCONECTAR">Desconectar</option>
-      <option value="SERVICE">Service</option>
       <option value="CAMBIO_DOMICILIO">Cambio domicilio</option>
+      <option value="SERVICE">Service</option>
     </select>
     <select class="filter-select" id="ot-fil-cuad" onchange="buscarOTs()"><option value="">Todas las cuadrillas</option></select>
   </div>
@@ -487,10 +516,26 @@ function badgeE(n){
   const m={PENDIENTE:'b-amber',ASIGNADA:'b-blue',EN_PROCESO:'b-blue',FINALIZADA:'b-green',A_REPROGRAMAR:'b-amber',DEVUELTA_GIGARED:'b-red',NO_REALIZADA:'b-gray',ELIMINADA_SISTEMA:'b-gray'};
   return`<span class="badge ${m[n]||'b-gray'}">${(n||'').replace(/_/g,' ')}</span>`;
 }
-function badgeTipo(t){
-  const m={INSTALAR:'b-blue',REPARACION:'b-orange',DESCONECTAR:'b-red',SERVICE:'b-purple',CAMBIO_DOMICILIO:'b-amber'};
-  const label={INSTALAR:'Instalar',REPARACION:'Reparación',DESCONECTAR:'Desconectar',SERVICE:'Service',CAMBIO_DOMICILIO:'Cambio dom.'};
-  return`<span class="badge ${m[t]||'b-gray'}" style="font-size:10px">${label[t]||t||'—'}</span>`;
+function badgeTipo(t,item){
+  const mc={INSTALAR:'b-blue',REPARACION:'b-orange',DESCONECTAR:'b-red',SERVICE:'b-purple',CAMBIO_DOMICILIO:'b-amber'};
+  const mi={BASICA:'b-blue',ONU:'b-blue',CABLEMODEM:'b-teal',CM_EXISTENTE:'b-teal',DECODIFICADOR:'b-indigo',SMART_CARD:'b-indigo',TV_BOX:'b-indigo',BOCA_ADICIONAL:'b-cyan',AGREGA_TV:'b-cyan',CAMBIO_TECNOLOGIA:'b-violet',REUBICACION:'b-orange',RECONEXION:'b-green',RECONEXION_EQUIPO:'b-green',DESCONEXION:'b-red',REPARACION:'b-orange'};
+  const li={BASICA:'Instalación',ONU:'ONU',CABLEMODEM:'CM Nuevo',CM_EXISTENTE:'CM Existente',DECODIFICADOR:'HD',SMART_CARD:'Smart Card',TV_BOX:'TV Box',BOCA_ADICIONAL:'Boca Adic.',AGREGA_TV:'Agrega TV',CAMBIO_TECNOLOGIA:'Cambio Tecnol.',REUBICACION:'Reubicación',RECONEXION:'Reconexion',RECONEXION_EQUIPO:'Reconex+Equipo',DESCONEXION:'Desconexión',REPARACION:'Reparación'};
+  const lt={INSTALAR:'Instalar',REPARACION:'Reparación',DESCONECTAR:'Desconectar',SERVICE:'Service',CAMBIO_DOMICILIO:'Cambio dom.'};
+  if(item&&li[item])return`<span class="badge ${mi[item]||'b-gray'}" style="font-size:10px">${li[item]}</span>`;
+  return`<span class="badge ${mc[t]||'b-gray'}" style="font-size:10px">${lt[t]||t||'—'}</span>`;
+}
+function badgeItem(ti,tt){
+  if(!ti)return badgeTipo(tt);
+  const cfg={
+    BASICA:['b-blue','📶 Básica'],ONU:['b-blue','📡 ONU'],CABLEMODEM:['b-blue','📡 CM'],CM_EXISTENTE:['b-blue','📡 CM'],
+    DECODIFICADOR:['b-purple','📺 HD'],SMART_CARD:['b-purple','🃏 SmartCard'],TV_BOX:['b-pink','📺 TV Box'],
+    BOCA_ADICIONAL:['b-green','➕ Boca'],AGREGA_TV:['b-amber','📺 Agrega TV'],
+    CAMBIO_TECNOLOGIA:['b-blue','🔄 Cambio tec.'],REUBICACION:['b-orange','🔧 Reubicación'],
+    REPARACION:['b-orange','🔧 Reparación'],DESCONEXION:['b-red','❌ Desconexión'],
+    RECONEXION:['b-purple','🔁 Reconexión'],RECONEXION_EQUIPO:['b-purple','🔁 Recon+Equipo'],
+  };
+  const c=cfg[ti]||['b-gray',ti];
+  return`<span class="badge ${c[0]}" style="font-size:10px">${c[1]}</span>`;
 }
 
 // AUTH
@@ -567,10 +612,23 @@ function cerrarModal(id){document.getElementById(id).classList.add('hidden');}
 function abrirModal(id){document.getElementById(id).classList.remove('hidden');}
 
 // Ir a OTs con filtro de tipo preseleccionado
-function irAConFiltro(tipo){
+function irAConFiltroItem(tipoItem){
+  // Navegar a OTs con filtro de tipo_item (se pasa como parámetro especial)
+  mostrarSeccion('s-ots');
+  document.getElementById('ot-fil-tipo').value='';
+  window._filtroItem=tipoItem;
+  buscarOTs();
+}
+function irAConFiltro(tipo,isItem=false){
   irA('ots');
   setTimeout(()=>{
-    document.getElementById('ot-fil-tipo').value=tipo;
+    if(isItem){
+      document.getElementById('ot-fil-tipo').value='';
+      document.getElementById('ot-fil-item').value=tipo;
+    }else{
+      document.getElementById('ot-fil-tipo').value=tipo;
+      document.getElementById('ot-fil-item').value='';
+    }
     document.getElementById('ot-fil-estado').value='PENDIENTE';
     buscarOTs();
   },100);
@@ -579,19 +637,16 @@ function irAConFiltro(tipo){
 // DASHBOARD
 async function renderDashboard(){
   try{
-    const all=await sbGet('ordenes_trabajo','?select=id,tipo_tarea,fecha_fin,estados_ot(nombre)&limit=5000')||[];
+    const all=await sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,estados_ot(nombre)&limit=5000')||[];
     const hoy=new Date().toISOString().slice(0,10);
     let p=0,a=0,f=0,r=0;
-    let tInst=0,tRep=0,tCamDom=0,tDesco=0,tServ=0;
+    const tc={};
     all.forEach(o=>{
       const n=o.estados_ot?.nombre||'';
       if(n==='PENDIENTE'){
         p++;
-        if(o.tipo_tarea==='INSTALAR')tInst++;
-        else if(o.tipo_tarea==='REPARACION')tRep++;
-        else if(o.tipo_tarea==='CAMBIO_DOMICILIO')tCamDom++;
-        else if(o.tipo_tarea==='DESCONECTAR')tDesco++;
-        else if(o.tipo_tarea==='SERVICE')tServ++;
+        const k=o.tipo_item||o.tipo_tarea||'';
+        tc[k]=(tc[k]||0)+1;
       }
       else if(n==='ASIGNADA'||n==='EN_PROCESO')a++;
       else if(n==='FINALIZADA'&&(o.fecha_fin||'').startsWith(hoy))f++;
@@ -601,11 +656,22 @@ async function renderDashboard(){
     document.getElementById('dash-asig').textContent=a;
     document.getElementById('dash-fin').textContent=f;
     document.getElementById('dash-repro').textContent=r;
-    document.getElementById('dash-t-inst').textContent=tInst;
-    document.getElementById('dash-t-rep').textContent=tRep;
-    document.getElementById('dash-t-camdom').textContent=tCamDom;
-    document.getElementById('dash-t-desco').textContent=tDesco;
-    document.getElementById('dash-t-serv').textContent=tServ;
+    // Conteo por tipo_item
+    const g=id=>document.getElementById(id);
+    const s=(id,k)=>{const el=g(id);if(el)el.textContent=tc[k]||0;};
+    s('dash-t-inst','BASICA');
+    s('dash-t-rep','REPARACION');
+    s('dash-t-reub','REUBICACION');
+    s('dash-t-camdom','CAMBIO_DOMICILIO');
+    s('dash-t-camtec','CAMBIO_TECNOLOGIA');
+    s('dash-t-hd','DECODIFICADOR');
+    s('dash-t-tvbox','TV_BOX');
+    s('dash-t-desco','DESCONEXION');
+    s('dash-t-cmex','CM_EXISTENTE');
+    s('dash-t-boca','BOCA_ADICIONAL');
+    s('dash-t-agrtv','AGREGA_TV');
+    // Reconexiones = RECONEXION + RECONEXION_EQUIPO
+    const elRec=g('dash-t-recon');if(elRec)elRec.textContent=(tc['RECONEXION']||0)+(tc['RECONEXION_EQUIPO']||0);
     const pend=await sbGet('ordenes_trabajo','?select=numero_ot,tipo_tarea,clientes(apellido,nombre),estados_ot(nombre)&estados_ot=eq.PENDIENTE&order=fecha_impresion.asc.nullslast&limit=8')||[];
     const hoyOTs=await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,clientes(apellido,nombre),estados_ot(nombre)&fecha_impresion=gte.${hoy}T00:00:00&order=fecha_impresion`)||[];
     renderMini('dash-lista-pend',pend.filter(o=>o.estados_ot?.nombre==='PENDIENTE'));
@@ -636,7 +702,9 @@ async function renderOTs(){
     const q=document.getElementById('ot-search').value.trim().toLowerCase();
     const orderCol=OT_SORT==='numero_ot'?'numero_ot':OT_SORT==='tipo_tarea'?'tipo_tarea':'fecha_impresion';
     let p=`?select=id,numero_ot,tipo_tarea,tipo_item,fecha_impresion,estado_id,estados_ot(nombre),grupos_ot(cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=${PAGE_SIZE}&offset=${OT_PAGE*PAGE_SIZE}`;
+    const tipoItem=document.getElementById('ot-fil-item')?.value||'';
     if(tipo)p+=`&tipo_tarea=eq.${tipo}`;
+    else if(tipoItem)p+=`&tipo_item=eq.${tipoItem}`;
     if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)p+=`&estado_id=eq.${eObj.id}`;}
     let ots=await sbGet('ordenes_trabajo',p)||[];
     if(q)ots=ots.filter(o=>(o.numero_ot||'').includes(q)||(o.clientes?.apellido||'').toLowerCase().includes(q)||(o.clientes?.nombre||'').toLowerCase().includes(q)||(o.clientes?.codigo_gigared||'').includes(q)||(o.clientes?.nodo||'').toLowerCase().includes(q)||(o.clientes?.telefono1||'').includes(q));
@@ -668,7 +736,7 @@ async function renderOTs(){
         const conteo={};cOts.forEach(o=>{const n=o.estados_ot?.nombre||'PENDIENTE';conteo[n]=(conteo[n]||0)+1;});
         const badges=Object.entries(conteo).map(([n,c])=>`<span class="badge ${{'PENDIENTE':'b-amber','ASIGNADA':'b-blue','EN_PROCESO':'b-blue','FINALIZADA':'b-green','A_REPROGRAMAR':'b-amber','DEVUELTA_GIGARED':'b-red'}[n]||'b-gray'}" style="font-size:10px">${c} ${n.replace(/_/g,' ')}</span>`).join(' ');
         // Pill de tipos de OT
-        const tipos=[...new Set(cOts.map(o=>o.tipo_tarea))].map(t=>badgeTipo(t)).join(' ');
+        const tipos=[...new Set(cOts.map(o=>o.tipo_item||o.tipo_tarea))].map(ti=>badgeItem(ti,cOts.find(o=>o.tipo_item===ti)?.tipo_tarea)).join(' ');
         return `<tr class="${tieneRep?'rep-row':''}" onclick="verOT('${cOts[0].numero_ot}')">
           <td style="font-size:12px;color:#2563eb;font-weight:700">${cl.codigo_gigared||'—'}</td>
           <td class="ot-cli-cell">${cl.apellido||''}, ${cl.nombre||''}</td>
@@ -732,7 +800,9 @@ async function verOT(num){
           ${grupo.map(g=>`<span style="background:rgba(37,99,235,.1);color:#2563eb;font-weight:700;padding:2px 8px;border-radius:6px;margin-right:4px;font-size:12px">${numOT(g.numero_ot)}</span>`).join('')}
         </div>
         <div style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px">
-          ${badgeTipo(ot.tipo_tarea)} ${!esRep&&ot.tipo_item?`<span>${ot.tipo_item}</span>`:''}
+          ${badgeItem(ot.tipo_item,ot.tipo_tarea)}
+          ${ot.tipo_tarea==='DESCONECTAR'&&ot.codigo_excliente?`<span style="font-size:11px;color:#dc2626;font-weight:700;background:rgba(220,38,38,.08);padding:2px 8px;border-radius:6px">Ex-cliente: ${ot.codigo_excliente}</span>`:''}
+          ${ot.codigo_cliente_real?`<span style="font-size:11px;color:#dc2626;font-weight:700;background:rgba(220,38,38,.08);padding:2px 8px;border-radius:6px">Ex-cliente: ${ot.codigo_cliente_real}</span>`:''}
         </div>
       </div>
       ${esRep&&(ot.sintoma_reportado||ot.obs_trabajo)?`
@@ -856,9 +926,17 @@ function parsearPag(txt){
   // TIPO DE TAREA
   ot.es_cambio_domicilio=/cambio\s+de\s+domicilio/i.test(txt)||/por\s+cambio\s+de\s+domicilio/i.test(txt);
   if(/\bREPARAR\b/i.test(txt))ot.tipo_tarea='REPARACION';
-  else if(/\bINSTALAR\b/i.test(txt))ot.tipo_tarea=ot.es_cambio_domicilio?'CAMBIO_DOMICILIO':'INSTALAR';
   else if(/\bDESCONECTAR\b/i.test(txt))ot.tipo_tarea='DESCONECTAR';
+  else if(/\bINSTALAR\b/i.test(txt)){
+    if(ot.es_cambio_domicilio)ot.tipo_tarea='CAMBIO_DOMICILIO';
+    else ot.tipo_tarea='INSTALAR';
+  }
   else ot.tipo_tarea='SERVICE';
+  // Cliente activo vs Conexión Pendiente
+  ot.es_activo=/\bActivo\b/i.test(txt)&&!/Conexi[oó]n\s+Pendiente/i.test(txt);
+  // EX-CLIENTE para desconexiones
+  const mExCli=txt.match(/EX[-\s]CLIENTE\s+(\d{11})/i);
+  if(mExCli)ot.codigo_cliente_real=mExCli[1];
 
   // FECHA IMPRESION: "005-00177173 31/03/2026 18:42 Página:"
   // PDF.js junta la fecha y hora de impresión con espacio (son items separados)
@@ -979,25 +1057,57 @@ function parsearPag(txt){
     if(!ot.obs_gigared&&ot.obs_trabajo)ot.obs_gigared=ot.obs_trabajo;
   }
 
-  const ri=detectarItems(txt,ot.tipo_tarea);
+  // EX-CLIENTE para desconexiones: "00500098525 EX-CLIENTE 00500093620 Desconexión Pendiente"
+  if(ot.tipo_tarea==='DESCONECTAR'){
+    const mExCli=txt.match(/\b(\d{11})\s+EX-CLIENTE\s+(\d{11})/i);
+    if(mExCli){
+      ot.codigo_cliente_ot_admin=mExCli[1]; // número admin de Gigared (no es cliente real)
+      ot.codigo_cliente=mExCli[2];          // código del ex-cliente real
+    }
+  }
+  // Estado del cliente (Activo vs Conexión Pendiente)
+  const esActivo=/\bActivo\b/i.test(txt)&&!/Conexi[oó]n\s+Pendiente/i.test(txt);
+  const ri=detectarItems(txt,ot.tipo_tarea,ot.es_activo);
   ot.items=ri.items;ot.tipo_item=ri.tipo_item;
+  // CAMBIO_TECNOLOGIA: forzar tipo_item correcto
+  if(ot.tipo_tarea==='CAMBIO_TECNOLOGIA')ot.tipo_item='CAMBIO_TECNOLOGIA';
   return ot;
 }
 
-function detectarItems(txt,tipoTarea){
+function detectarItems(txt,tipoTarea,esActivo){
   const items=[];
   let tipo_item='BASICA';
-  // Para reparaciones no parsear items (el parser agarra datos incorrectos de los materiales)
-  if(tipoTarea==='REPARACION'){return{items:[],tipo_item:'REPARACION'};}
-  else if(/\bONU\s+FO|\bFO\s+\d+\/\d+\s+MB\b/i.test(txt))tipo_item='ONU';
-  else if(/\bCM\s+\d+\/\d+\s+MB\b/i.test(txt))tipo_item='CABLEMODEM';
-  else if(/\binstalaci.n\s+b.sica\b/i.test(txt))tipo_item='BASICA';
-  else if(/\bboca\s+adicional\b/i.test(txt)&&!/\binstalaci.n\s+b.sica\b/i.test(txt))tipo_item='BOCA_ADICIONAL';
-  const ini=txt.search(/[Cc]antidad\s+[Dd]escripci.n/);
+
+  if(tipoTarea==='DESCONECTAR'){
+    return{items:[],tipo_item:'DESCONEXION'};
+  }
+  if(tipoTarea==='REPARACION'){
+    if(/REUBICACION\s+INTERNA|Reubic\.\s+(boca|instalac)\.|modif\.\s+instal/i.test(txt))tipo_item='REUBICACION';
+    else tipo_item='REPARACION';
+    return{items:[],tipo_item};
+  }
+
+  // Detección en orden de especificidad
+  if(/\bTV[-\s]?BOX\b/i.test(txt)||/SETOP[-\s]?BOX/i.test(txt))tipo_item='TV_BOX';
+  else if(/cambio\s+de\s+tecnologia/i.test(txt))tipo_item='CAMBIO_TECNOLOGIA';
+  else if(/Agrega\s+servicio\s+Tv/i.test(txt))tipo_item='AGREGA_TV';
+  else if(/Deco\s+Digital\s+HD/i.test(txt))tipo_item='DECODIFICADOR';
+  else if(/\bSMART\s+CARD\b/i.test(txt))tipo_item='SMART_CARD';
+  else if(/\bONU\b/i.test(txt)&&/\bFO\s+\d+\/\d+\s+MB\b/i.test(txt))tipo_item='ONU';
+  else if(/\bCablemodem\b|\bCM\s+\d+[\/\s]\d+\s+MB\b/i.test(txt)){
+    tipo_item=esActivo?'CM_EXISTENTE':'CABLEMODEM';
+  }
+  else if(/\bInstalaci[oó]n\s+[Bb][aá]sica\b|\bInstalacion\s+Basica\b/i.test(txt))tipo_item='BASICA';
+  else if(/\bBoca\s+Adicional\b/i.test(txt)&&!/\bInstalaci[oó]n\s+[Bb][aá]sica\b|\bInstalacion\s+Basica\b/i.test(txt))tipo_item='BOCA_ADICIONAL';
+  else if(/reconex[ií][oó]n\s+con\s+equipos/i.test(txt))tipo_item='RECONEXION_EQUIPO';
+  else if(/reconex[ií][oó]n/i.test(txt))tipo_item='RECONEXION';
+
+  // Parsear ítems del bloque Cantidad/Descripción
+  const ini=txt.search(/[Cc]antidad\s+[Dd]escripci[oó]n/);
   const fin=txt.search(/[Mm]ano\s+de\s+obra/);
   const bloque=ini>-1&&fin>ini?txt.slice(ini,fin):txt.slice(0,600);
   const vistos=new Set();
-  const rItem=/(\b[1-9]\b)\s+(?:[1-9]\s+)?([A-Za-z][A-Za-z\s\/\.\(\)\-]{3,70}?)(?=\s{3,}|\s+\b[1-9]\b|$)/g;
+  const rItem=/(\b[1-9]\b)\s+(?:[1-9]\s+)?([A-Za-z\u00C0-\u024F][A-Za-z\u00C0-\u024F\s\/\.\(\)\-]{3,70}?)(?=\s{3,}|\s+\b[1-9]\b|$)/g;
   let mI;
   while((mI=rItem.exec(bloque))!==null){
     const c=parseInt(mI[1]);const d=mI[2].trim().replace(/\s+/g,' ');
@@ -1023,7 +1133,7 @@ function mostrarPreview(ots){
       const esRep=o.tipo_tarea==='REPARACION';
       html+=`<tr class="${o.existe?'pexist':esRep?'pnew-rep':'pnew'}">
         <td style="font-weight:700;color:${o.existe?'#d97706':esRep?'#ea580c':'#2563eb'}">${numOT(o.numero_ot)}</td>
-        <td>${badgeTipo(o.tipo_tarea)}</td>
+        <td>${badgeItem(o.tipo_item,o.tipo_tarea)}</td>
         <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.apellido||''} ${o.nombre||''}</td>
         <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#64748b">${o.calle?o.calle+(o.numero_domicilio?' '+o.numero_domicilio:''):(o.domicilio||'—')}</td>
         <td style="font-size:11px">${o.localidad||'—'}</td>
@@ -1091,7 +1201,7 @@ async function confirmarImport(){
       for(let idx=0;idx<gr.length;idx++){
         const o=gr[idx];
         try{
-          const otData={numero_ot:o.numero_ot,grupo_id:gId,cliente_id:cliId,tipo_tarea:o.tipo_tarea||'INSTALAR',tipo_item:o.tipo_item||'BASICA',orden_cierre:idx,estado_id:ePend?.id,fecha_emision:o.fecha_emision||null,fecha_asignacion_giga:o.fecha_asignacion_giga||null,obs_gigared:o.obs_gigared||null,tag:o.tag||null,es_cambio_domicilio:o.es_cambio_domicilio||false,fecha_impresion:o.fecha_impresion||null};
+          const otData={numero_ot:o.numero_ot,grupo_id:gId,cliente_id:cliId,tipo_tarea:o.tipo_tarea||'INSTALAR',tipo_item:o.tipo_item||'BASICA',orden_cierre:idx,estado_id:ePend?.id,fecha_emision:o.fecha_emision||null,fecha_asignacion_giga:o.fecha_asignacion_giga||null,obs_gigared:o.obs_gigared||null,tag:o.tag||null,es_cambio_domicilio:o.es_cambio_domicilio||false,fecha_impresion:o.fecha_impresion||null,codigo_excliente:o.codigo_excliente||null,codigo_cliente_real:o.codigo_cliente_real||null};
           if(o.tipo_tarea==='REPARACION'){
             if(o.sintoma_reportado)otData.sintoma_reportado=o.sintoma_reportado;
             if(o.obs_trabajo)otData.obs_trabajo=o.obs_trabajo;
