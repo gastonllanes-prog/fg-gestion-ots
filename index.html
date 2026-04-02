@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v13</title>
+<title>FG Gestión OTs v14</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V13</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V14</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver">v13</div>
+    <div class="sb-ver">v14</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -672,11 +672,12 @@ async function renderDashboard(){
     s('dash-t-agrtv','AGREGA_TV');
     // Reconexiones = RECONEXION + RECONEXION_EQUIPO
     const elRec=g('dash-t-recon');if(elRec)elRec.textContent=(tc['RECONEXION']||0)+(tc['RECONEXION_EQUIPO']||0);
-    const pend=await sbGet('ordenes_trabajo','?select=numero_ot,tipo_tarea,clientes(apellido,nombre),estados_ot(nombre)&estados_ot=eq.PENDIENTE&order=fecha_impresion.asc.nullslast&limit=8')||[];
-    const hoyOTs=await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,clientes(apellido,nombre),estados_ot(nombre)&fecha_impresion=gte.${hoy}T00:00:00&order=fecha_impresion`)||[];
-    renderMini('dash-lista-pend',pend.filter(o=>o.estados_ot?.nombre==='PENDIENTE'));
+    const pEstado=ESTADOS.find(e=>e.nombre==='PENDIENTE');
+    const pend=pEstado?await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&estado_id=eq.${pEstado.id}&order=fecha_impresion.asc.nullslast&limit=8`)||[]:[];
+    const hoyOTs=await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&fecha_impresion=gte.${hoy}T00:00:00&order=fecha_impresion`)||[];
+    renderMini('dash-lista-pend',pend);
     renderMini('dash-lista-hoy',hoyOTs);
-  }catch(e){console.error(e);}
+  }catch(e){console.error(e);document.getElementById('dash-lista-pend').innerHTML='<div class="empty-state"><div style="color:#dc2626;font-size:12px">Error: '+e.message+'</div></div>';document.getElementById('dash-lista-hoy').innerHTML='<div class="empty-state"><div style="color:#dc2626;font-size:12px">Error: '+e.message+'</div></div>';}
 }
 
 function renderMini(id,ots){
