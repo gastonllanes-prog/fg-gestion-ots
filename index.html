@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v16</title>
+<title>FG Gestión OTs v17</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V16</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V17</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v16</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v17</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -962,6 +962,9 @@ function parsearPag(txt){
     const despues=txt.slice(m.index+11,m.index+120).replace(/\s+/g,' ').trim();
     const nmM=despues.match(/^\s*([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ\s]+?)\s*,\s*([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑa-záéíóúüñ\s]{1,40}?)(?=\s+(?:Activo|Inactivo|Conexi|\d{3}|$))/);
     if(nmM){ot.codigo_cliente=num;ot.apellido=nmM[1].trim();ot.nombre=nmM[2].trim();break;}
+    // Fallback: empresa o persona sin coma (ej: "GRUPO TMC SRL Activo")
+    const nmCo=despues.match(/^\s*([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ\s\.]{2,60}?)(?=\s+(?:Activo|Inactivo|Conexi[oó]n\s+Pendiente))/);
+    if(nmCo){ot.codigo_cliente=num;ot.apellido=nmCo[1].trim();ot.nombre='';break;}
   }
 
   // DOMICILIO: en PDF.js el address viene SIEMPRE ANTES de "Domicilio:" (tanto INSTALAR como REPARAR)
@@ -1039,11 +1042,12 @@ function parsearPag(txt){
   // CAMPOS ESPECÍFICOS DE REPARACIÓN
   if(ot.tipo_tarea==='REPARACION'){
     // OBS TRABAJO: texto antes de "Síntoma reportado:" que empieza con verbo de acción
-    const mObsTrab=txt.match(/((?:cambiar|remplazar|reemplazar|reubicar|realizar\s+el\s+ingreso|deja\s+ganancia)[^\n\r]{3,150}?)(?=\s+S[íi]ntoma\s+reportado)/i);
+    const mObsTrab=txt.match(/((?:cambiar|remplazar|reemplazar|reubic[ao]r?|realizar\s+el\s+ingreso|deja\s+ganancia|[Rr]eemplaz)[^\n\r]{3,150}?)(?=\s+S[íi]ntoma\s+reportado)/i);
     if(mObsTrab)ot.obs_trabajo=mObsTrab[1].replace(/\s+/g,' ').trim();
 
     // SINTOMA: texto entre "Síntoma reportado:" y "Materiales :"
-    const mSint=txt.match(/S[íi]ntoma\s+reportado[:\s]+(.+?)(?=\s+Materiales\s*:)/i);
+    // El síntoma termina antes de los ítems de la columna derecha del PDF que PDF.js concatena después
+    const mSint=txt.match(/S[íi]ntoma\s+reportado[:\s]+(.+?)(?=\s+(?:Reubic\.\s+boca|Retenci[oó]n\s+estic|Conector\s+RG59|CABLE\s+DROP|Router\s+WIFI|Filtros\s+pasa|Materiales\s*:|$))/i);
     if(mSint)ot.sintoma_reportado=mSint[1].replace(/\s+/g,' ').trim().substring(0,80);
 
     // EQUIPO: MAC address (12 hex) + Marca. Aparece al FINAL del texto en REPARAR.
