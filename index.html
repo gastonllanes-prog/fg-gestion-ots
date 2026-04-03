@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v23</title>
+<title>FG Gestión OTs v24</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V23</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V24</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v23</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v24</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1084,7 +1084,7 @@ function parsearPag(txt){
 
   // OBS GIGARED: solo para instalaciones (REPARAR lo setea desde obs_trabajo al final)
   if(ot.tipo_tarea!=='REPARACION'){
-    const rObsPat=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio|\d+\s+bocas?|Alta\s+web|cliente\s+solicita)[^\n\r]{3,100}?)(?=\s+(?:Asignaci[oó]n:|\d{11}|Materiales|Nombre\s+del)|\s*$)/i;
+    const rObsPat=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio|cambio\s+(?:de\s+)?tec?nolog|CAMBIO\s+TECNOLOG|\d+\s+bocas?|Alta\s+web|cliente\s+solicita)[^\n\r]{3,100}?)(?=\s+(?:Asignaci[oó]n:|\d{11}|Materiales|Nombre\s+del)|\s*$)/i;
     const mObs=txt.match(rObsPat);
     if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim();
   }
@@ -1140,7 +1140,7 @@ function detectarItems(txt,tipoTarea,esActivo){
   // BASICA primero: si el servicio es "Instalación Básica" tiene prioridad sobre CM/ONU que aparezcan en materiales
   if(/\bInstalaci[oó]n\s+[Bb][aá]sica\b|\bInstalacion\s+Basica\b/i.test(txt))tipo_item='BASICA';
   else if(/\bTV[-\s]?BOX\b/i.test(txt)||/SETOP[-\s]?BOX/i.test(txt))tipo_item='TV_BOX';
-  else if(/cambio\s+de\s+tecnologia/i.test(txt))tipo_item='CAMBIO_TECNOLOGIA';
+  else if(/cambio\s+(?:de\s+)?tec?nolog[ií]a/i.test(txt)||/CAMBIO\s+TECNOLOG/i.test(txt))tipo_item='CAMBIO_TECNOLOGIA';
   else if(/Agrega\s+servicio\s+Tv/i.test(txt))tipo_item='AGREGA_TV';
   else if(/Deco\s+Digital\s+HD/i.test(txt))tipo_item='DECODIFICADOR';
   else if(/\bSMART\s+CARD\b/i.test(txt))tipo_item='SMART_CARD';
