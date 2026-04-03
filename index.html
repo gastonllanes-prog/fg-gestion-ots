@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v22</title>
+<title>FG Gestión OTs v23</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V22</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V23</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v22</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v23</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1443,12 +1443,12 @@ async function renderClientes(){
         p+=`&nodo=ilike.*${qe}*`;
         clientes=await sbGet('clientes',p)||[];
       }else if(campo==='precinto'){
-        const ots=await sbGet('ordenes_trabajo',`?tag=eq.${qe}&select=cliente_id`)||[];
+        const ots=await sbGet('ordenes_trabajo',`?select=cliente_id&tag=eq.${qe}`)||[];
         const ids=[...new Set(ots.map(o=>o.cliente_id).filter(Boolean))];
         if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(',')})&order=apellido`)||[];
       }else if(campo==='ot'){
         const num=q.replace(/^005-0*/,'');
-        const ots=await sbGet('ordenes_trabajo',`?numero_ot=ilike.*${encodeURIComponent(num)}*&select=cliente_id`)||[];
+        const ots=await sbGet('ordenes_trabajo',`?select=cliente_id&numero_ot=ilike.*${encodeURIComponent(num)}*`)||[];
         const ids=[...new Set(ots.map(o=>o.cliente_id).filter(Boolean))];
         if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(',')})&order=apellido`)||[];
       }
@@ -1479,7 +1479,7 @@ async function renderClientes(){
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
 const CLI_PLACEHOLDERS={codigo:'Ingresar N° cliente (ej: 98478)...',cliente:'Buscar por nombre o apellido...',precinto:'Ingresar número de precinto...',direccion:'Buscar por calle o dirección...',telefono:'Ingresar número de teléfono...',ot:'Ingresar número de OT (ej: 177138)...',nodo:'Ingresar nodo (ej: H1F207)...'};
-function cliCampoChange(){const c=document.getElementById('cli-fil-campo').value;const inp=document.getElementById('cli-search');inp.placeholder=CLI_PLACEHOLDERS[c]||'Buscar...';inp.value='';renderClientes();}
+function cliCampoChange(){const c=document.getElementById('cli-fil-campo').value;const inp=document.getElementById('cli-search');inp.placeholder=CLI_PLACEHOLDERS[c]||'Buscar...';renderClientes();}
 let cT=null;function buscarClientes(){clearTimeout(cT);cT=setTimeout(renderClientes,300);}
 
 let CLI_DET_OTS=[],CLI_DET_ID=null;
