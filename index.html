@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v17</title>
+<title>FG Gestión OTs v18</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V17</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V18</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v17</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v18</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -535,6 +535,17 @@ function badgeItem(ti,tt){
   return`<span class="badge ${c[0]}" style="font-size:10px">${c[1]}</span>`;
 }
 
+// Helper: formato nombre cliente
+function fmtCli(c){
+  if(!c)return'—';
+  const ap=(c.apellido||'').trim();
+  const nm=(c.nombre||'').trim();
+  if(ap&&nm)return ap+', '+nm;
+  if(ap)return ap;
+  if(nm)return nm;
+  return c.codigo_gigared||'—';
+}
+
 // AUTH
 async function doLogin(){
   const email=document.getElementById('l-email').value.trim();
@@ -681,7 +692,7 @@ function renderMini(id,ots){
   if(!ots.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div>Sin OTs</div></div>';return;}
   el.innerHTML=ots.map(o=>`<div class="ot-grupo-item" style="cursor:pointer" onclick="verOT('${o.numero_ot}')">
     <div class="ot-grupo-num">${numOT(o.numero_ot)}</div>
-    <div class="ot-grupo-tipo" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.clientes?o.clientes.apellido+', '+o.clientes.nombre:'—'}</div>
+    <div class="ot-grupo-tipo" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.clientes?fmtCli(o.clientes):'—'}</div>
     ${o.tipo_tarea==='REPARACION'?'<span style="font-size:10px;color:#ea580c;font-weight:700;margin-right:4px">🔧</span>':''}
     ${badgeE(o.estados_ot?.nombre||'')}
   </div>`).join('');
@@ -736,7 +747,7 @@ async function renderOTs(){
         const tipos=[...new Set(cOts.map(o=>o.tipo_item||o.tipo_tarea))].map(ti=>badgeItem(ti,cOts.find(o=>o.tipo_item===ti)?.tipo_tarea)).join(' ');
         return `<tr class="${tieneRep?'rep-row':''}" onclick="verOT('${cOts[0].numero_ot}')">
           <td style="font-size:12px;color:#2563eb;font-weight:700">${cl.codigo_gigared||'—'}</td>
-          <td class="ot-cli-cell">${cl.apellido||''}, ${cl.nombre||''}</td>
+          <td class="ot-cli-cell">${fmtCli(cl)}</td>
           <td class="ot-dom-cell" title="${dom}">${dom}</td>
           <td style="font-size:12px">${cl.localidad||'—'}</td>
           <td style="font-size:12px;font-weight:600">${cl.nodo||'—'}</td>
@@ -792,7 +803,7 @@ async function verOT(num){
           <div style="font-size:24px;font-weight:900;color:${esRep?'#ea580c':'#2563eb'}">${cl.codigo_gigared||'—'}</div>
           ${badgeE(ot.estados_ot?.nombre||'')}
         </div>
-        <div style="font-size:15px;font-weight:700;margin-bottom:.25rem">${cl.apellido||''}, ${cl.nombre||''}</div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:.25rem">${fmtCli(cl)}</div>
         <div style="font-size:13px;color:#64748b;margin-bottom:.35rem">
           ${grupo.map(g=>`<span style="background:rgba(37,99,235,.1);color:#2563eb;font-weight:700;padding:2px 8px;border-radius:6px;margin-right:4px;font-size:12px">${numOT(g.numero_ot)}</span>`).join('')}
         </div>
@@ -973,7 +984,13 @@ function parsearPag(txt){
   let domTxt='';
   const domLabelIdx=txt.indexOf('Domicilio:');
 
-  if(domLabelIdx>10){
+  // DESCONECTAR: el domicilio viene entre "Desconexión Pendiente" y "Domicilio:"
+  if(ot.tipo_tarea==='DESCONECTAR'&&domLabelIdx>10){
+    const mDescPend=txt.match(/Desconexi[oó]n\s+Pendiente\s+(.+?)\s+Domicilio:/i);
+    if(mDescPend)domTxt=mDescPend[1].replace(/\s+/g,' ').trim();
+  }
+
+  if(!domTxt&&domLabelIdx>10){
     const before=txt.slice(Math.max(0,domLabelIdx-250),domLabelIdx);
 
     // Intentar con "/ " primero (REPARAR tiene "376-xxx(Princ.) / DIRECCION")
@@ -1034,7 +1051,7 @@ function parsearPag(txt){
 
   // OBS GIGARED: solo para instalaciones (REPARAR lo setea desde obs_trabajo al final)
   if(ot.tipo_tarea!=='REPARACION'){
-    const rObsPat=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio|\d+\s+bocas?|Alta\s+web|cliente\s+solicita)[^\n\r]{3,150}?)(?=\s+\d{11}|\s+Materiales|\s+Nombre\s+del|\s*$)/i;
+    const rObsPat=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio|\d+\s+bocas?|Alta\s+web|cliente\s+solicita)[^\n\r]{3,100}?)(?=\s+(?:Asignaci[oó]n:|\d{11}|Materiales|Nombre\s+del)|\s*$)/i;
     const mObs=txt.match(rObsPat);
     if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim();
   }
@@ -1333,7 +1350,7 @@ async function abrirCierre(otId,numot,tipoTarea){
     (servs||[]).forEach(s=>{if(!cats[s.categoria])cats[s.categoria]=[];cats[s.categoria].push(s);});
     body.innerHTML=`
       <div style="background:${esRep?'#fff7ed':'#f0fdf4'};border:1px solid ${esRep?'#fed7aa':'#bbf7d0'};border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px">
-        <strong>${ot.numero_ot}</strong> — ${ot.clientes?.apellido}, ${ot.clientes?.nombre}
+        <strong>${ot.numero_ot}</strong> — ${fmtCli(ot.clientes)}
         ${esRep?'<span style="color:#ea580c;font-weight:700;margin-left:8px">🔧 REPARACIÓN</span>':''}
         ${ot.sintoma_reportado?`<div style="font-size:12px;color:#64748b;margin-top:3px">${ot.sintoma_reportado}</div>`:''}
       </div>
@@ -1372,7 +1389,7 @@ async function renderClientes(){
     let p='?order=apellido&limit=100';if(loc)p+=`&localidad=eq.${loc}`;
     const d=await sbGet('clientes',p)||[];
     if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">👥</div><div>Sin clientes</div></div>';return;}
-    el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Código</th><th>Cliente</th><th>Calle</th><th>N°</th><th>Barrio</th><th>Localidad</th><th>Nodo</th><th>Tel</th></tr></thead><tbody>${d.map(c=>`<tr><td style="font-weight:700;color:#2563eb">${c.codigo_gigared}</td><td style="font-weight:600">${c.apellido||''}, ${c.nombre||''}</td><td style="font-size:12px;color:#64748b">${c.calle||c.domicilio||'—'}</td><td style="font-size:12px">${c.numero_domicilio||'—'}</td><td style="font-size:11px;color:#94a3b8">${c.barrio||'—'}</td><td>${c.localidad||'—'}</td><td style="font-size:12px">${c.nodo||'—'}</td><td style="font-size:12px">${c.telefono1||'—'}</td></tr>`).join('')}</tbody></table></div>`;
+    el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Código</th><th>Cliente</th><th>Calle</th><th>N°</th><th>Barrio</th><th>Localidad</th><th>Nodo</th><th>Tel</th></tr></thead><tbody>${d.map(c=>`<tr><td style="font-weight:700;color:#2563eb">${c.codigo_gigared}</td><td style="font-weight:600">${fmtCli(c)}</td><td style="font-size:12px;color:#64748b">${c.calle||c.domicilio||'—'}</td><td style="font-size:12px">${c.numero_domicilio||'—'}</td><td style="font-size:11px;color:#94a3b8">${c.barrio||'—'}</td><td>${c.localidad||'—'}</td><td style="font-size:12px">${c.nodo||'—'}</td><td style="font-size:12px">${c.telefono1||'—'}</td></tr>`).join('')}</tbody></table></div>`;
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
 let cT=null;function buscarClientes(){clearTimeout(cT);cT=setTimeout(renderClientes,300);}
