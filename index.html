@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v15</title>
+<title>FG Gestión OTs v16</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V15</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V16</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v15</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v16</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -208,10 +208,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div class="ts-num" style="color:#ea580c" id="dash-t-rep">—</div>
       <div class="ts-lbl">🔧 Reparaciones</div>
     </div>
-    <div class="tipo-stat" onclick="irAConFiltro('REUBICACION',true)">
-      <div class="ts-num" style="color:#ea580c" id="dash-t-reub">—</div>
-      <div class="ts-lbl">🔧 Reubicaciones</div>
-    </div>
+
     <div class="tipo-stat" onclick="irAConFiltro('CAMBIO_DOMICILIO',false)">
       <div class="ts-num" style="color:#7c3aed" id="dash-t-camdom">—</div>
       <div class="ts-lbl">🏠 Cambio dom.</div>
@@ -661,7 +658,6 @@ async function renderDashboard(){
     const s=(id,k)=>{const el=g(id);if(el)el.textContent=tc[k]||0;};
     s('dash-t-inst','BASICA');
     s('dash-t-rep','REPARACION');
-    s('dash-t-reub','REUBICACION');
     s('dash-t-camdom','CAMBIO_DOMICILIO');
     s('dash-t-camtec','CAMBIO_TECNOLOGIA');
     s('dash-t-hd','DECODIFICADOR');
@@ -1082,8 +1078,7 @@ function detectarItems(txt,tipoTarea,esActivo){
     return{items:[],tipo_item:'DESCONEXION'};
   }
   if(tipoTarea==='REPARACION'){
-    if(/REUBICACION\s+INTERNA|Reubic\.\s+(boca|instalac)\.|modif\.\s+instal/i.test(txt))tipo_item='REUBICACION';
-    else tipo_item='REPARACION';
+    tipo_item='REPARACION';
     return{items:[],tipo_item};
   }
 
