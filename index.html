@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v18</title>
+<title>FG Gestión OTs v19</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V18</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V19</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v18</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v19</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -278,12 +278,36 @@ tr:hover td{background:rgba(37,99,235,.02)}
 </div>
 
 <div id="s-clientes" style="display:none">
-  <div class="ph"><div class="ph-icon blue">👥</div><div><div class="ph-title">Clientes</div><div class="ph-sub">Base de datos</div></div></div>
-  <div class="search-bar">
-    <input class="search-input" id="cli-search" placeholder="Buscar..." oninput="buscarClientes()"/>
-    <select class="filter-select" id="cli-fil-loc" onchange="buscarClientes()"><option value="">Todas las localidades</option><option value="POSADAS">Posadas</option><option value="GARUPA">Garupa</option></select>
+  <!-- LISTA -->
+  <div id="cli-list-view">
+    <div class="ph"><div class="ph-icon blue">👥</div><div><div class="ph-title">Clientes</div><div class="ph-sub">Base de datos</div></div></div>
+    <div class="search-bar">
+      <input class="search-input" id="cli-search" placeholder="Buscar por nombre, código, calle, nodo, tel, N° OT, precinto..." oninput="buscarClientes()"/>
+      <select class="filter-select" id="cli-fil-loc" onchange="buscarClientes()"><option value="">Todas las localidades</option><option value="POSADAS">Posadas</option><option value="GARUPA">Garupa</option></select>
+    </div>
+    <div id="cli-lista"><div class="loading"><span class="spinner"></span></div></div>
   </div>
-  <div id="cli-lista"><div class="loading"><span class="spinner"></span></div></div>
+  <!-- DETALLE -->
+  <div id="cli-det-view" style="display:none">
+    <div class="ph" style="margin-bottom:1rem">
+      <button class="btn btn-sm" onclick="cerrarDetalleCli()" style="margin-right:8px">← Volver</button>
+      <div class="ph-icon blue">👤</div>
+      <div><div class="ph-title" id="cli-det-nombre">—</div><div class="ph-sub" id="cli-det-codigo">—</div></div>
+    </div>
+    <div class="form-2col" style="margin-bottom:1rem">
+      <div class="card" id="cli-det-info"></div>
+      <div class="card" id="cli-det-stats"></div>
+    </div>
+    <div class="card-title" style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Órdenes de trabajo</div>
+    <div class="nav" id="cli-det-tabs" style="margin-bottom:1rem">
+      <div class="ntab active" onclick="cliDetTab('todas',this)">Todas</div>
+      <div class="ntab" onclick="cliDetTab('pendiente',this)">Pendientes</div>
+      <div class="ntab" onclick="cliDetTab('asignada',this)">Asignadas</div>
+      <div class="ntab" onclick="cliDetTab('finalizada',this)">Finalizadas</div>
+      <div class="ntab" onclick="cliDetTab('otras',this)">Devueltas/No real.</div>
+    </div>
+    <div id="cli-det-ots"></div>
+  </div>
 </div>
 
 <div id="s-cuadrillas" style="display:none">
@@ -1385,14 +1409,154 @@ async function renderClientes(){
   const el=document.getElementById('cli-lista');
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
+    const q=(document.getElementById('cli-search').value||'').trim();
     const loc=document.getElementById('cli-fil-loc').value;
-    let p='?order=apellido&limit=100';if(loc)p+=`&localidad=eq.${loc}`;
-    const d=await sbGet('clientes',p)||[];
-    if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">👥</div><div>Sin clientes</div></div>';return;}
-    el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Código</th><th>Cliente</th><th>Calle</th><th>N°</th><th>Barrio</th><th>Localidad</th><th>Nodo</th><th>Tel</th></tr></thead><tbody>${d.map(c=>`<tr><td style="font-weight:700;color:#2563eb">${c.codigo_gigared}</td><td style="font-weight:600">${fmtCli(c)}</td><td style="font-size:12px;color:#64748b">${c.calle||c.domicilio||'—'}</td><td style="font-size:12px">${c.numero_domicilio||'—'}</td><td style="font-size:11px;color:#94a3b8">${c.barrio||'—'}</td><td>${c.localidad||'—'}</td><td style="font-size:12px">${c.nodo||'—'}</td><td style="font-size:12px">${c.telefono1||'—'}</td></tr>`).join('')}</tbody></table></div>`;
+    let clientes=[];
+
+    if(q){
+      // Buscar por campos del cliente
+      let p=`?order=apellido&limit=80`;
+      if(loc)p+=`&localidad=eq.${loc}`;
+      p+=`&or=(apellido.ilike.*${encodeURIComponent(q)}*,nombre.ilike.*${encodeURIComponent(q)}*,codigo_gigared.ilike.*${encodeURIComponent(q)}*,calle.ilike.*${encodeURIComponent(q)}*,domicilio.ilike.*${encodeURIComponent(q)}*,nodo.ilike.*${encodeURIComponent(q)}*,telefono1.ilike.*${encodeURIComponent(q)}*,telefono2.ilike.*${encodeURIComponent(q)}*)`;
+      clientes=await sbGet('clientes',p)||[];
+
+      // También buscar por N° OT o precinto/tag
+      if(!clientes.length||(q.length>=4&&/^\d/.test(q))){
+        const esOT=/^\d{5,}$/.test(q)||/^005-/.test(q);
+        const otParam=esOT
+          ?`?numero_ot=ilike.*${encodeURIComponent(q)}*&select=cliente_id`
+          :`?tag=eq.${encodeURIComponent(q)}&select=cliente_id`;
+        const ots=await sbGet('ordenes_trabajo',otParam)||[];
+        const ids=[...new Set(ots.map(o=>o.cliente_id).filter(Boolean))];
+        if(ids.length){
+          const extra=await sbGet('clientes',`?id=in.(${ids.join(',')})&order=apellido`)||[];
+          const existCodes=new Set(clientes.map(c=>c.id));
+          extra.forEach(c=>{if(!existCodes.has(c.id))clientes.push(c);});
+        }
+      }
+    }else{
+      let p='?order=apellido&limit=100';
+      if(loc)p+=`&localidad=eq.${loc}`;
+      clientes=await sbGet('clientes',p)||[];
+    }
+
+    if(!clientes.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">👥</div><div>Sin resultados</div></div>';return;}
+    el.innerHTML=`<div class="ot-table-wrap"><table class="ot-table"><thead><tr>
+      <th>N° Cliente</th><th>Nombre</th><th>Calle</th><th>N°</th><th>Barrio</th><th>Localidad</th><th>Nodo</th><th>Teléfono</th></tr></thead>
+      <tbody>${clientes.map(c=>{
+        const nombre=fmtCli(c);
+        const sinNombre=!c.apellido&&!c.nombre;
+        return `<tr style="cursor:pointer" onclick="abrirDetalleCli(${c.id})">
+          <td style="font-weight:700;color:#2563eb">${c.codigo_gigared||'—'}</td>
+          <td style="font-weight:600${sinNombre?';color:#94a3b8;font-style:italic':''}">${sinNombre?'(Sin nombre)':nombre}</td>
+          <td style="font-size:12px;color:#64748b">${c.calle||c.domicilio||'—'}</td>
+          <td style="font-size:12px">${c.numero_domicilio||'—'}</td>
+          <td style="font-size:11px;color:#94a3b8">${c.barrio||'—'}</td>
+          <td>${c.localidad||'—'}</td>
+          <td style="font-size:12px;font-weight:600">${c.nodo||'—'}</td>
+          <td style="font-size:12px;color:${c.telefono1?'#1e293b':'#cbd5e1'}">${c.telefono1||'—'}</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:.5rem;text-align:right">${clientes.length} cliente${clientes.length!==1?'s':''}</div>`;
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
 let cT=null;function buscarClientes(){clearTimeout(cT);cT=setTimeout(renderClientes,300);}
+
+let CLI_DET_OTS=[],CLI_DET_ID=null;
+
+async function abrirDetalleCli(cliId){
+  document.getElementById('cli-list-view').style.display='none';
+  document.getElementById('cli-det-view').style.display='';
+  document.getElementById('cli-det-nombre').textContent='Cargando...';
+  document.getElementById('cli-det-codigo').textContent='';
+  document.getElementById('cli-det-info').innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  document.getElementById('cli-det-stats').innerHTML='';
+  document.getElementById('cli-det-ots').innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  CLI_DET_ID=cliId;
+  try{
+    const [cArr,ots]=await Promise.all([
+      sbGet('clientes',`?id=eq.${cliId}`),
+      sbGet('ordenes_trabajo',`?cliente_id=eq.${cliId}&select=id,numero_ot,tipo_tarea,tipo_item,tag,fecha_emision,fecha_impresion,estados_ot(nombre),grupos_ot(cuadrillas(nombre))&order=fecha_impresion.desc.nullslast&limit=200`)
+    ]);
+    const c=(cArr||[])[0];if(!c)return;
+    const otsArr=ots||[];
+    CLI_DET_OTS=otsArr;
+
+    const nombre=fmtCli(c);
+    document.getElementById('cli-det-nombre').textContent=(!c.apellido&&!c.nombre)?'(Sin nombre)':nombre;
+    document.getElementById('cli-det-codigo').textContent=c.codigo_gigared||'';
+
+    // Info card
+    document.getElementById('cli-det-info').innerHTML=`
+      <div class="card-title">Datos del cliente</div>
+      <div class="ot-info-grid">
+        <div class="ot-info-item"><div class="ot-info-label">Dirección</div><div class="ot-info-val" style="font-size:12px">${c.calle||c.domicilio||'—'}${c.numero_domicilio?' '+c.numero_domicilio:''}${c.obs_domicilio?' '+c.obs_domicilio:''}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Barrio</div><div class="ot-info-val">${c.barrio||'—'}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${c.localidad||'—'}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Nodo</div><div class="ot-info-val" style="font-weight:700;color:#2563eb">${c.nodo||'—'}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Tel 1</div><div class="ot-info-val">${c.telefono1||'—'}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Tel 2</div><div class="ot-info-val">${c.telefono2||'—'}</div></div>
+      </div>`;
+
+    // Stats card
+    const pend=otsArr.filter(o=>o.estados_ot?.nombre==='PENDIENTE').length;
+    const asig=otsArr.filter(o=>['ASIGNADA','EN_PROCESO'].includes(o.estados_ot?.nombre)).length;
+    const fin=otsArr.filter(o=>o.estados_ot?.nombre==='FINALIZADA').length;
+    const dev=otsArr.filter(o=>['A_REPROGRAMAR','DEVUELTA_GIGARED','NO_REALIZADA'].includes(o.estados_ot?.nombre)).length;
+    document.getElementById('cli-det-stats').innerHTML=`
+      <div class="card-title">Resumen OTs</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div style="text-align:center;padding:.75rem;background:#fffbeb;border-radius:10px;cursor:pointer" onclick="cliDetTab('pendiente',null)">
+          <div style="font-size:28px;font-weight:900;color:#d97706">${pend}</div>
+          <div style="font-size:11px;color:#92400e;font-weight:600">PENDIENTES</div>
+        </div>
+        <div style="text-align:center;padding:.75rem;background:#eff6ff;border-radius:10px;cursor:pointer" onclick="cliDetTab('asignada',null)">
+          <div style="font-size:28px;font-weight:900;color:#2563eb">${asig}</div>
+          <div style="font-size:11px;color:#1e40af;font-weight:600">ASIGNADAS</div>
+        </div>
+        <div style="text-align:center;padding:.75rem;background:#f0fdf4;border-radius:10px;cursor:pointer" onclick="cliDetTab('finalizada',null)">
+          <div style="font-size:28px;font-weight:900;color:#16a34a">${fin}</div>
+          <div style="font-size:11px;color:#166534;font-weight:600">FINALIZADAS</div>
+        </div>
+        <div style="text-align:center;padding:.75rem;background:#fef2f2;border-radius:10px;cursor:pointer" onclick="cliDetTab('otras',null)">
+          <div style="font-size:28px;font-weight:900;color:#dc2626">${dev}</div>
+          <div style="font-size:11px;color:#991b1b;font-weight:600">DEVUELTAS/NO REAL.</div>
+        </div>
+      </div>
+      <div style="margin-top:.75rem;text-align:center;font-size:13px;color:#64748b">${otsArr.length} OT${otsArr.length!==1?'s':''} en total</div>`;
+
+    cliDetTab('todas',document.querySelector('#cli-det-tabs .ntab'));
+  }catch(e){document.getElementById('cli-det-info').innerHTML=`<p style="color:#dc2626">${e.message}</p>`;}
+}
+
+function cliDetTab(filtro,el){
+  if(el){document.querySelectorAll('#cli-det-tabs .ntab').forEach(t=>t.classList.remove('active'));el.classList.add('active');}
+  else{document.querySelectorAll('#cli-det-tabs .ntab').forEach((t,i)=>{const tabs=['todas','pendiente','asignada','finalizada','otras'];t.classList.toggle('active',tabs[i]===filtro);});}
+  const estadoMap={pendiente:['PENDIENTE'],asignada:['ASIGNADA','EN_PROCESO'],finalizada:['FINALIZADA'],otras:['A_REPROGRAMAR','DEVUELTA_GIGARED','NO_REALIZADA','ELIMINADA_SISTEMA']};
+  const lista=filtro==='todas'?CLI_DET_OTS:CLI_DET_OTS.filter(o=>estadoMap[filtro]?.includes(o.estados_ot?.nombre));
+  const cont=document.getElementById('cli-det-ots');
+  if(!lista.length){cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div>Sin OTs en esta categoría</div></div>';return;}
+  cont.innerHTML=lista.map(o=>{
+    const est=o.estados_ot?.nombre||'';
+    const cuad=o.grupos_ot?.cuadrillas?.nombre;
+    return `<div class="ot-card" onclick="verOT('${o.numero_ot}')">
+      <div class="ot-card-num" style="color:${o.tipo_tarea==='REPARACION'?'#ea580c':'#2563eb'}">${numOT(o.numero_ot)}</div>
+      <div class="ot-card-body">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${badgeItem(o.tipo_item,o.tipo_tarea)}
+          ${badgeE(est)}
+          ${cuad?`<span style="font-size:11px;color:#64748b">🔧 ${cuad}</span>`:''}
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:3px">${o.tag?'Precinto: '+o.tag+' · ':''}${fmtF(o.fecha_emision)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cerrarDetalleCli(){
+  document.getElementById('cli-det-view').style.display='none';
+  document.getElementById('cli-list-view').style.display='';
+}
 
 // CUADRILLAS
 async function renderCuadrillas(){
