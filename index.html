@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v19</title>
+<title>FG Gestión OTs v22</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V19</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V22</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v19</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v22</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -282,7 +282,16 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div id="cli-list-view">
     <div class="ph"><div class="ph-icon blue">👥</div><div><div class="ph-title">Clientes</div><div class="ph-sub">Base de datos</div></div></div>
     <div class="search-bar">
-      <input class="search-input" id="cli-search" placeholder="Buscar por nombre, código, calle, nodo, tel, N° OT, precinto..." oninput="buscarClientes()"/>
+      <select class="filter-select" id="cli-fil-campo" onchange="cliCampoChange()" style="min-width:140px;font-weight:600">
+        <option value="codigo">🔢 N° cliente</option>
+        <option value="cliente">👤 Nombre</option>
+        <option value="precinto">📌 Precinto</option>
+        <option value="direccion">🏠 Dirección</option>
+        <option value="telefono">📞 Teléfono</option>
+        <option value="ot">📋 N° OT</option>
+        <option value="nodo">📡 Nodo</option>
+      </select>
+      <input class="search-input" id="cli-search" placeholder="Ingresar N° cliente (ej: 98478)..." oninput="buscarClientes()"/>
       <select class="filter-select" id="cli-fil-loc" onchange="buscarClientes()"><option value="">Todas las localidades</option><option value="POSADAS">Posadas</option><option value="GARUPA">Garupa</option></select>
     </div>
     <div id="cli-lista"><div class="loading"><span class="spinner"></span></div></div>
@@ -1413,26 +1422,35 @@ async function renderClientes(){
     const loc=document.getElementById('cli-fil-loc').value;
     let clientes=[];
 
+    const campo=document.getElementById('cli-fil-campo').value;
     if(q){
-      // Buscar por campos del cliente
-      let p=`?order=apellido&limit=80`;
+      let p='?order=apellido&limit=100';
       if(loc)p+=`&localidad=eq.${loc}`;
-      p+=`&or=(apellido.ilike.*${encodeURIComponent(q)}*,nombre.ilike.*${encodeURIComponent(q)}*,codigo_gigared.ilike.*${encodeURIComponent(q)}*,calle.ilike.*${encodeURIComponent(q)}*,domicilio.ilike.*${encodeURIComponent(q)}*,nodo.ilike.*${encodeURIComponent(q)}*,telefono1.ilike.*${encodeURIComponent(q)}*,telefono2.ilike.*${encodeURIComponent(q)}*)`;
-      clientes=await sbGet('clientes',p)||[];
-
-      // También buscar por N° OT o precinto/tag
-      if(!clientes.length||(q.length>=4&&/^\d/.test(q))){
-        const esOT=/^\d{5,}$/.test(q)||/^005-/.test(q);
-        const otParam=esOT
-          ?`?numero_ot=ilike.*${encodeURIComponent(q)}*&select=cliente_id`
-          :`?tag=eq.${encodeURIComponent(q)}&select=cliente_id`;
-        const ots=await sbGet('ordenes_trabajo',otParam)||[];
+      const qe=encodeURIComponent(q);
+      if(campo==='cliente'){
+        p+=`&or=(apellido.ilike.*${qe}*,nombre.ilike.*${qe}*)`;
+        clientes=await sbGet('clientes',p)||[];
+      }else if(campo==='codigo'){
+        p+=`&codigo_gigared=ilike.*${qe}*`;
+        clientes=await sbGet('clientes',p)||[];
+      }else if(campo==='direccion'){
+        p+=`&or=(calle.ilike.*${qe}*,domicilio.ilike.*${qe}*)`;
+        clientes=await sbGet('clientes',p)||[];
+      }else if(campo==='telefono'){
+        p+=`&or=(telefono1.ilike.*${qe}*,telefono2.ilike.*${qe}*)`;
+        clientes=await sbGet('clientes',p)||[];
+      }else if(campo==='nodo'){
+        p+=`&nodo=ilike.*${qe}*`;
+        clientes=await sbGet('clientes',p)||[];
+      }else if(campo==='precinto'){
+        const ots=await sbGet('ordenes_trabajo',`?tag=eq.${qe}&select=cliente_id`)||[];
         const ids=[...new Set(ots.map(o=>o.cliente_id).filter(Boolean))];
-        if(ids.length){
-          const extra=await sbGet('clientes',`?id=in.(${ids.join(',')})&order=apellido`)||[];
-          const existCodes=new Set(clientes.map(c=>c.id));
-          extra.forEach(c=>{if(!existCodes.has(c.id))clientes.push(c);});
-        }
+        if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(',')})&order=apellido`)||[];
+      }else if(campo==='ot'){
+        const num=q.replace(/^005-0*/,'');
+        const ots=await sbGet('ordenes_trabajo',`?numero_ot=ilike.*${encodeURIComponent(num)}*&select=cliente_id`)||[];
+        const ids=[...new Set(ots.map(o=>o.cliente_id).filter(Boolean))];
+        if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(',')})&order=apellido`)||[];
       }
     }else{
       let p='?order=apellido&limit=100';
@@ -1460,6 +1478,8 @@ async function renderClientes(){
       <div style="font-size:12px;color:#94a3b8;margin-top:.5rem;text-align:right">${clientes.length} cliente${clientes.length!==1?'s':''}</div>`;
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
+const CLI_PLACEHOLDERS={codigo:'Ingresar N° cliente (ej: 98478)...',cliente:'Buscar por nombre o apellido...',precinto:'Ingresar número de precinto...',direccion:'Buscar por calle o dirección...',telefono:'Ingresar número de teléfono...',ot:'Ingresar número de OT (ej: 177138)...',nodo:'Ingresar nodo (ej: H1F207)...'};
+function cliCampoChange(){const c=document.getElementById('cli-fil-campo').value;const inp=document.getElementById('cli-search');inp.placeholder=CLI_PLACEHOLDERS[c]||'Buscar...';inp.value='';renderClientes();}
 let cT=null;function buscarClientes(){clearTimeout(cT);cT=setTimeout(renderClientes,300);}
 
 let CLI_DET_OTS=[],CLI_DET_ID=null;
