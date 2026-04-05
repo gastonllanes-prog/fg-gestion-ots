@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v24</title>
+<title>FG Gestión OTs v29</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V24</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V29</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v24</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v29</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -508,6 +508,27 @@ tr:hover td{background:rgba(37,99,235,.02)}
 const SB_URL='https://hsoomkdhnanyunqwwxam.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhzb29ta2RobmFueXVucXd3eGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NjM4NTEsImV4cCI6MjA5MDUzOTg1MX0.T2aeJ0wEXT_QcS2GBPwQGxPrnLlMnRASn2RepylKwRc';
 
+// PRESARIO vigente desde 01/04/2026
+const PRESARIO={
+  BASICA:23646,          // 100 - Inst. domiciliaria principal
+  ONU:9179,              // 126 - Colocación ONU
+  CABLEMODEM:6420,       // 108 - Inst. domiciliaria Cablemodem
+  CM_EXISTENTE:6420,     // 108 - Inst. domiciliaria Cablemodem
+  DECODIFICADOR:7340,    // 104 - Inst. domiciliaria decodificador
+  DECODIFICADOR_ADJ:6774,// 103 - Inst. domiciliaria decodificador adjunta
+  BOCA_ADICIONAL:12475,  // 102 - Inst. domiciliaria adicional
+  BOCA_ADICIONAL_ADJ:11001,// 101 - Inst. domiciliaria adicional adjunta
+  SMART_CARD:4321,       // 123 - Colocación Smart Card
+  TV_BOX:6420,           // 108 - mismo que CM (confirmar con Gigared)
+  GIGACAM:18895,         // 133 - Instalación Gigacam
+  CAMBIO_TECNOLOGIA:9179,// 126 - ONU (+ 136 Traspaso HFC→FTTH si aplica)
+  AGREGA_TV:7340,        // 104 aprox (confirmar)
+  RECONEXION:4516,       // DI-019 - Reconexión básica
+  RECONEXION_EQUIPO:8633,// DI-023 - Reconexión con equipos
+  DESCONEXION:4516,      // DI-015 - Desconexión CATV
+  REPARACION:9595,       // 120 - Service reubicación/modif interna
+};
+
 async function sbFetch(table,method,body,params=''){
   const r=await fetch(`${SB_URL}/rest/v1/${table}${params}`,{
     method,headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':method==='POST'?'return=representation':'return=minimal'},
@@ -548,8 +569,8 @@ function badgeE(n){
 }
 function badgeTipo(t,item){
   const mc={INSTALAR:'b-blue',REPARACION:'b-orange',DESCONECTAR:'b-red',SERVICE:'b-purple',CAMBIO_DOMICILIO:'b-amber'};
-  const mi={BASICA:'b-blue',ONU:'b-blue',CABLEMODEM:'b-teal',CM_EXISTENTE:'b-teal',DECODIFICADOR:'b-indigo',SMART_CARD:'b-indigo',TV_BOX:'b-indigo',BOCA_ADICIONAL:'b-cyan',AGREGA_TV:'b-cyan',CAMBIO_TECNOLOGIA:'b-violet',REUBICACION:'b-orange',RECONEXION:'b-green',RECONEXION_EQUIPO:'b-green',DESCONEXION:'b-red',REPARACION:'b-orange'};
-  const li={BASICA:'Instalación',ONU:'ONU',CABLEMODEM:'CM Nuevo',CM_EXISTENTE:'CM Existente',DECODIFICADOR:'HD',SMART_CARD:'Smart Card',TV_BOX:'TV Box',BOCA_ADICIONAL:'Boca Adic.',AGREGA_TV:'Agrega TV',CAMBIO_TECNOLOGIA:'Cambio Tecnol.',REUBICACION:'Reubicación',RECONEXION:'Reconexion',RECONEXION_EQUIPO:'Reconex+Equipo',DESCONEXION:'Desconexión',REPARACION:'Reparación'};
+  const mi={BASICA:'b-blue',ONU:'b-blue',CABLEMODEM:'b-teal',CM_EXISTENTE:'b-teal',DECODIFICADOR:'b-indigo',DECODIFICADOR_ADJ:'b-indigo',SMART_CARD:'b-indigo',TV_BOX:'b-indigo',BOCA_ADICIONAL:'b-cyan',AGREGA_TV:'b-cyan',CAMBIO_TECNOLOGIA:'b-violet',REUBICACION:'b-orange',RECONEXION:'b-green',RECONEXION_EQUIPO:'b-green',DESCONEXION:'b-red',REPARACION:'b-orange',GIGACAM:'b-pink'};
+  const li={BASICA:'Instalación',ONU:'ONU',CABLEMODEM:'CM Nuevo',CM_EXISTENTE:'CM Existente',DECODIFICADOR:'HD',DECODIFICADOR_ADJ:'HD Adjunto',SMART_CARD:'Smart Card',TV_BOX:'TV Box',BOCA_ADICIONAL:'Boca Adic.',AGREGA_TV:'Agrega TV',CAMBIO_TECNOLOGIA:'Cambio Tecnol.',REUBICACION:'Reubicación',RECONEXION:'Reconexion',RECONEXION_EQUIPO:'Reconex+Equipo',DESCONEXION:'Desconexión',REPARACION:'Reparación',GIGACAM:'Gigacam'};
   const lt={INSTALAR:'Instalar',REPARACION:'Reparación',DESCONECTAR:'Desconectar',SERVICE:'Service',CAMBIO_DOMICILIO:'Cambio dom.'};
   if(item&&li[item])return`<span class="badge ${mi[item]||'b-gray'}" style="font-size:10px">${li[item]}</span>`;
   return`<span class="badge ${mc[t]||'b-gray'}" style="font-size:10px">${lt[t]||t||'—'}</span>`;
@@ -558,8 +579,8 @@ function badgeItem(ti,tt){
   if(!ti)return badgeTipo(tt);
   const cfg={
     BASICA:['b-blue','📶 Básica'],ONU:['b-blue','📡 ONU'],CABLEMODEM:['b-blue','📡 CM'],CM_EXISTENTE:['b-blue','📡 CM'],
-    DECODIFICADOR:['b-purple','📺 HD'],SMART_CARD:['b-purple','🃏 SmartCard'],TV_BOX:['b-pink','📺 TV Box'],
-    BOCA_ADICIONAL:['b-green','➕ Boca'],AGREGA_TV:['b-amber','📺 Agrega TV'],
+    DECODIFICADOR:['b-purple','📺 HD'],DECODIFICADOR_ADJ:['b-indigo','📺 HD Adj.'],SMART_CARD:['b-purple','🃏 SmartCard'],TV_BOX:['b-pink','📺 TV Box'],
+    BOCA_ADICIONAL:['b-green','➕ Boca'],AGREGA_TV:['b-amber','📺 Agrega TV'],GIGACAM:['b-pink','📷 Gigacam'],
     CAMBIO_TECNOLOGIA:['b-blue','🔄 Cambio tec.'],REUBICACION:['b-orange','🔧 Reubicación'],
     REPARACION:['b-orange','🔧 Reparación'],DESCONEXION:['b-red','❌ Desconexión'],
     RECONEXION:['b-purple','🔁 Reconexión'],RECONEXION_EQUIPO:['b-purple','🔁 Recon+Equipo'],
@@ -879,8 +900,67 @@ async function verOT(num){
       btns+=`<button class="btn" onclick="abrirCambiarEstado(${ot.id},'${est}')">↕ Estado</button>`;
       if(est==='ASIGNADA'||est==='EN_PROCESO')btns+=`<button class="btn btn-green" onclick="abrirCierre(${ot.id},'${ot.numero_ot}','${ot.tipo_tarea||''}')">✓ Cerrar</button>`;
     }
+    btns+=`<button class="btn btn-sm" style="margin-left:auto;font-size:11px;color:#64748b" onclick="editarTipoOT(${ot.id},'${ot.tipo_item||''}','${ot.tipo_tarea||''}')">✏️ Tipo</button>`;
     footer.innerHTML=btns;
   }catch(e){body.innerHTML=`<p style="color:#dc2626">${e.message}</p>`;}
+}
+
+// EDITAR TIPO OT
+async function editarTipoOT(otId, tipoItemActual, tipoTareaActual){
+  const TIPOS=[
+    {v:'BASICA',l:'📶 Básica'},
+    {v:'ONU',l:'📡 ONU'},
+    {v:'CABLEMODEM',l:'📡 CM Nuevo'},
+    {v:'CM_EXISTENTE',l:'📡 CM Existente'},
+    {v:'CAMBIO_TECNOLOGIA',l:'🔄 Cambio tecnol.'},
+    {v:'DECODIFICADOR',l:'📺 HD (cliente existente)'},
+    {v:'DECODIFICADOR_ADJ',l:'📺 HD Adjunto (inst. nueva)'},
+    {v:'TV_BOX',l:'📺 TV Box'},
+    {v:'SMART_CARD',l:'🃏 Smart Card'},
+    {v:'GIGACAM',l:'📷 Gigacam'},
+    {v:'BOCA_ADICIONAL',l:'🔌 Boca adic.'},
+    {v:'AGREGA_TV',l:'📺 Agrega TV'},
+    {v:'RECONEXION',l:'🔁 Reconexión'},
+    {v:'RECONEXION_EQUIPO',l:'🔁 Reconex+Equipo'},
+    {v:'REPARACION',l:'🔧 Reparación'},
+    {v:'DESCONEXION',l:'❌ Desconexión'},
+  ];
+  const opts=TIPOS.map(t=>`<option value="${t.v}"${t.v===tipoItemActual?' selected':''}>${t.l}</option>`).join('');
+  const TAREAS=[
+    {v:'INSTALAR',l:'Instalar'},
+    {v:'REPARACION',l:'Reparación'},
+    {v:'DESCONECTAR',l:'Desconectar'},
+    {v:'CAMBIO_DOMICILIO',l:'Cambio domicilio'},
+    {v:'SERVICE',l:'Service'},
+  ];
+  const optsT=TAREAS.map(t=>`<option value="${t.v}"${t.v===tipoTareaActual?' selected':''}>${t.l}</option>`).join('');
+  const html=`
+    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem">
+      <div style="font-size:12px;color:#64748b;margin-bottom:.4rem;font-weight:600">TIPO DE TAREA</div>
+      <select id="edit-tipo-tarea" class="fg" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit">${optsT}</select>
+      <div style="font-size:12px;color:#64748b;margin-bottom:.4rem;margin-top:.75rem;font-weight:600">TIPO DE ÍTEM</div>
+      <select id="edit-tipo-item" class="fg" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit">${opts}</select>
+    </div>
+    <p class="err-msg" id="edit-tipo-err"></p>`;
+  // Show in a simple confirm dialog reusing ot-modal-body
+  const body=document.getElementById('ot-modal-body');
+  const footer=document.getElementById('ot-modal-footer');
+  body.innerHTML=`<div style="font-size:15px;font-weight:700;margin-bottom:1rem">✏️ Editar tipo de OT</div>${html}`;
+  footer.innerHTML=`
+    <button class="btn btn-primary" style="flex:2" onclick="guardarTipoOT(${otId})">Guardar</button>
+    <button class="btn" onclick="cerrarModal('ot-modal')">Cancelar</button>`;
+}
+
+async function guardarTipoOT(otId){
+  const err=document.getElementById('edit-tipo-err');
+  const item=document.getElementById('edit-tipo-item').value;
+  const tarea=document.getElementById('edit-tipo-tarea').value;
+  err.textContent='';
+  try{
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{tipo_item:item,tipo_tarea:tarea});
+    cerrarModal('ot-modal');
+    renderOTs();
+  }catch(e){err.textContent='Error: '+e.message;}
 }
 
 // IMPORTAR PDF
@@ -1137,20 +1217,33 @@ function detectarItems(txt,tipoTarea,esActivo){
   }
 
   // Detección en orden de especificidad
-  // BASICA primero: si el servicio es "Instalación Básica" tiene prioridad sobre CM/ONU que aparezcan en materiales
-  if(/\bInstalaci[oó]n\s+[Bb][aá]sica\b|\bInstalacion\s+Basica\b/i.test(txt))tipo_item='BASICA';
+
+  // RECONEXION: marker estructural "(RECONEXION)" puesto por Gigared en el campo Usuario
+  // Es el más confiable — no depende del operador
+  const esReconexion=/\(RECONEXION\)/i.test(txt);
+  const tieneCMoONU=/\bCablemodem\b|\bCM\s+[\d]+|\bONU\b/i.test(txt);
+  if(esReconexion){
+    tipo_item=tieneCMoONU?'RECONEXION_EQUIPO':'RECONEXION';
+  }
+  // BASICA: "Instalacion Basica" en ítems, tiene prioridad sobre CM/ONU en materiales
+  else if(/\bInstalaci[oó]n\s+[Bb][aá]sica\b|\bInstalacion\s+Basica\b/i.test(txt))tipo_item='BASICA';
   else if(/\bTV[-\s]?BOX\b/i.test(txt)||/SETOP[-\s]?BOX/i.test(txt))tipo_item='TV_BOX';
-  else if(/cambio\s+(?:de\s+)?tec?nolog[ií]a/i.test(txt)||/CAMBIO\s+TECNOLOG/i.test(txt))tipo_item='CAMBIO_TECNOLOGIA';
-  else if(/Agrega\s+servicio\s+Tv/i.test(txt))tipo_item='AGREGA_TV';
-  else if(/Deco\s+Digital\s+HD/i.test(txt))tipo_item='DECODIFICADOR';
+  // CAMBIO_TECNOLOGIA: regla estructural — Activo + ONU + FO + SIN Instalacion Basica
+  else if(esActivo&&/\bONU\b/i.test(txt)&&/\bFO\s+[\d]+[\/\s][\d]+\s*MB\b/i.test(txt)&&!/\bInstalaci[oó]n\s+[Bb][aá]sica\b/i.test(txt))tipo_item='CAMBIO_TECNOLOGIA';
+  // AGREGA_TV: cliente Activo agrega TV sin instalación nueva
+  else if(/agrega\s+servicio\s+(?:de\s+)?tv|cl\s+agrega|agrega\s+tv/i.test(txt))tipo_item='AGREGA_TV';
+  // DECODIFICADOR_ADJ: cliente nuevo (Conexión Pendiente) — precio más bajo
+  // DECODIFICADOR: cliente existente (Activo) — precio normal
+  else if(/Deco\s+Digital\s+HD/i.test(txt)){tipo_item=esActivo?'DECODIFICADOR':'DECODIFICADOR_ADJ';}
+  // GIGACAM
+  else if(/\bGigacam\b/i.test(txt))tipo_item='GIGACAM';
   else if(/\bSMART\s+CARD\b/i.test(txt))tipo_item='SMART_CARD';
   else if(/\bONU\b/i.test(txt)&&/\bFO\s+\d+\/\d+\s+MB\b/i.test(txt))tipo_item='ONU';
   else if(/\bCablemodem\b|\bCM\s+\d+[\/\s]\d+\s+MB\b/i.test(txt)){
     tipo_item=esActivo?'CM_EXISTENTE':'CABLEMODEM';
   }
+  // BOCA_ADICIONAL: Activo + "Boca Adicional" + SIN Instalacion Basica (ya cubierta arriba)
   else if(/\bBoca\s+Adicional\b/i.test(txt))tipo_item='BOCA_ADICIONAL';
-  else if(/reconex[ií][oó]n\s+con\s+equipos/i.test(txt))tipo_item='RECONEXION_EQUIPO';
-  else if(/reconex[ií][oó]n/i.test(txt))tipo_item='RECONEXION';
 
   // Parsear ítems del bloque Cantidad/Descripción
   const ini=txt.search(/[Cc]antidad\s+[Dd]escripci[oó]n/);
