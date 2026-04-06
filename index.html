@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v50</title>
+<title>FG Gestión OTs v51</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V50</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V51</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v50</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v51</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -794,6 +794,16 @@ async function sbFetch(table,method,body,params=''){
 const sbGet=(t,p='')=>sbFetch(t,'GET',null,p);
 const sbPost=(t,b)=>sbFetch(t,'POST',b);
 const sbPatch=(t,p,b)=>sbFetch(t,'PATCH',b,p);
+async function sbUpsert(table,body,onConflict){
+  const r=await fetch(`${SB_URL}/rest/v1/${table}`,{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json',
+      'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify(body)
+  });
+  const t=await r.text();if(!r.ok)throw new Error(t);
+  return t?JSON.parse(t):null;
+}
 
 let CU=null,ESTADOS=[],CUADRILLAS=[],OT_PAGE=0,IMPORT_PREVIEW=[];
 const PAGE_SIZE=30;
@@ -2176,10 +2186,12 @@ async function autocompletarCuadrilla(){
   const aAsignar=[];
   for(const m of mats){
     const cfg=cfgMap[m.id];
-    if(!cfg)continue;
+    if(!cfg||!cfg.activo)continue;
     const actual=scMap[m.id]||0;
-    if(actual<cfg.minimo_trigger){
-      aAsignar.push({mat:m,cant:cfg.cantidad_reponer,cfg});
+    const minimo=cfg.minimo_trigger||0;
+    if(actual<minimo){
+      const falta=minimo-actual; // cuánto falta para llegar al mínimo
+      aAsignar.push({mat:m, cant:falta});
     }
   }
   if(!aAsignar.length){alert('El stock de la cuadrilla está completo, no necesita reposición.');return;}
@@ -2692,23 +2704,22 @@ async function renderConfig(tab){
       const mats=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
       const cfgs=await sbGet('autocomplete_config','?select=*')||[];
       const cfgMap={};cfgs.forEach(c=>{cfgMap[c.material_id]=c;});
-      el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.75rem">Configurá cuándo reponer material a cada cuadrilla. Si el stock baja del mínimo, el autocompletado agrega la cantidad de reposición.</div>'
+      el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.75rem">Si el stock de la cuadrilla baja de este número, el autocompletado lo repone hasta ese mínimo.</div>'
         +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
-        +'<th>Material</th><th>Unidad</th><th>Mínimo para reponer</th><th>Cantidad a reponer</th><th>Activo</th><th></th>'
+        +'<th>Material</th><th>Unidad/Paquete</th><th>Mínimo a mantener</th><th>Activo</th><th></th>'
         +'</tr></thead><tbody>'
         +mats.map(m=>{
           const cfg=cfgMap[m.id]||{};
-          const paqLabel=(m.cant_por_paquete||1)>1?' ('+m.cant_por_paquete+' '+m.unidad+'/'+m.nombre_paquete+')':'';
+          const paqLabel=(m.cant_por_paquete||1)>1?' ('+m.nombre_paquete+'s de '+m.cant_por_paquete+')':'';
           return '<tr id="acfg-'+m.id+'">'
             +'<td style="font-weight:600;font-size:12px">'+m.nombre+'</td>'
             +'<td style="font-size:11px;color:#64748b">'+m.unidad+paqLabel+'</td>'
-            +'<td><input type="number" id="acfg-min-'+m.id+'" value="'+(cfg.minimo_trigger||'')+'" min="0" placeholder="Ej: 180" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px"/></td>'
-            +'<td><input type="number" id="acfg-rep-'+m.id+'" value="'+(cfg.cantidad_reponer||'')+'" min="1" placeholder="Ej: 305" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px"/></td>'
+            +'<td><input type="number" id="acfg-min-'+m.id+'" value="'+(cfg.minimo_trigger||'')+'" min="0" placeholder="Ej: 6" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px"/></td>'
             +'<td><select id="acfg-act-'+m.id+'" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px">'
-            +'<option value="true"'+(cfg.activo?' selected':''+(!cfg.id?' selected':''))+'>Sí</option>'
+            +'<option value="true"'+(cfg.activo!==false?' selected':'')+'>Sí</option>'
             +'<option value="false"'+(cfg.activo===false?' selected':'')+'>No</option>'
             +'</select></td>'
-            +'<td><button class="btn btn-sm btn-primary" style="font-size:11px" onclick="guardarAutocomplete('+m.id+',\''+( cfg.id||'')+'\')" >Guardar</button></td>'
+            +'<td><button class="btn btn-sm btn-primary" style="font-size:11px" onclick="guardarAutocomplete('+m.id+')">Guardar</button></td>'
             +'</tr>';
         }).join('')
         +'</tbody></table></div>';
@@ -2837,17 +2848,14 @@ async function imprimirEntregaSeriales(matId){
 }
 
 // ─── AUTOCOMPLETE CONFIG ───
-async function guardarAutocomplete(matId, cfgId){
+async function guardarAutocomplete(matId){
   const minimo=parseFloat(document.getElementById('acfg-min-'+matId).value)||0;
-  const reponer=parseFloat(document.getElementById('acfg-rep-'+matId).value)||0;
   const activo=document.getElementById('acfg-act-'+matId).value==='true';
-  if(!minimo&&!reponer){return;}
   try{
-    if(cfgId){
-      await sbPatch('autocomplete_config','?id=eq.'+cfgId,{minimo_trigger:minimo,cantidad_reponer:reponer,activo});
-    }else{
-      await sbPost('autocomplete_config',{material_id:matId,minimo_trigger:minimo,cantidad_reponer:reponer,activo});
-    }
+    // Upsert — si existe actualiza, si no crea
+    await sbUpsert('autocomplete_config',
+      {material_id:matId, minimo_trigger:minimo, cantidad_reponer:minimo, activo}
+    );
     const row=document.getElementById('acfg-'+matId);
     if(row){row.style.background='#f0fdf4';setTimeout(()=>{row.style.background='';},1200);}
   }catch(e){alert('Error: '+e.message);}
