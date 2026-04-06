@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v47</title>
+<title>FG Gestión OTs v48</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V47</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V48</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v47</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v48</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -378,8 +378,24 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
 </div>
 
+<div id="s-stock-cuad" style="display:none">
+  <div class="ph"><div class="ph-icon blue">🔧</div><div><div class="ph-title">Stock Cuadrillas</div><div class="ph-sub">Materiales por cuadrilla</div></div>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="btn btn-sm btn-primary" id="stock-cuad-print-btn" onclick="imprimirEntregaCuadrilla()">🖨️ Imprimir entrega</button>
+    </div>
+  </div>
+  <div style="margin-bottom:1rem;display:flex;gap:8px;align-items:center">
+    <select class="filter-select" id="cuad-selector" onchange="renderStockCuadrillaSeleccionada()" style="font-size:14px;font-weight:600;min-width:220px">
+      <option value="">Seleccioná una cuadrilla...</option>
+    </select>
+    <button class="btn btn-sm btn-primary" id="cuad-asignar-btn" style="display:none" onclick="repartirACuadrillaActual()">+ Asignar material</button>
+    <button class="btn btn-sm" id="cuad-autocomplete-btn" style="display:none" onclick="autocompletarCuadrilla()">⚡ Autocompletar</button>
+  </div>
+  <div id="stock-cuad-tabla"></div>
+</div>
+
 <div id="s-stock" style="display:none">
-  <div class="ph"><div class="ph-icon amber">📦</div><div><div class="ph-title">Stock</div><div class="ph-sub">Materiales y equipos</div></div>
+  <div class="ph"><div class="ph-icon amber">📦</div><div><div class="ph-title">Stock Depósito</div><div class="ph-sub">Materiales en depósito</div></div>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="btn btn-sm" id="stock-print-btn" onclick="abrirModalFechaEntrega()">🖨️ Imprimir entrega</button>
       <button class="btn btn-sm btn-primary" id="stock-entrada-btn" onclick="abrirEntradaStock()">+ Entrada Gigared</button>
@@ -387,11 +403,9 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
   <div class="nav" id="stock-nav">
     <div class="ntab active" onclick="stockTab('deposito',this)">Depósito</div>
-    <div class="ntab" onclick="stockTab('cuadrillas',this)">Por cuadrilla</div>
     <div class="ntab" onclick="stockTab('movimientos',this)">Movimientos</div>
   </div>
   <div id="stock-deposito"><div class="loading"><span class="spinner"></span></div></div>
-  <div id="stock-cuadrillas" style="display:none"></div>
   <div id="stock-movimientos" style="display:none"></div>
 </div>
 
@@ -408,12 +422,14 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="ntab active" onclick="cfgTab('estados',this)">Estados</div>
     <div class="ntab" onclick="cfgTab('motivos',this)">Motivos</div>
     <div class="ntab" onclick="cfgTab('materiales',this)">Materiales</div>
+    <div class="ntab" onclick="cfgTab('autocomplete',this)">Autocompletado</div>
     <div class="ntab" onclick="cfgTab('servicios',this)">Servicios</div>
     <div class="ntab" id="cfg-tab-usuarios" style="display:none" onclick="cfgTab('usuarios',this)">Usuarios</div>
   </div>
   <div id="cfg-estados"><div class="loading"><span class="spinner"></span></div></div>
   <div id="cfg-motivos" style="display:none"></div>
   <div id="cfg-materiales" style="display:none"></div>
+  <div id="cfg-autocomplete" style="display:none"></div>
   <div id="cfg-mat-config" style="display:none"></div>
   <div id="cfg-servicios" style="display:none"></div>
   <div id="cfg-usuarios" style="display:none"></div>
@@ -884,7 +900,8 @@ function construirMenu(){
   const items=[
     {sec:'Principal'},{id:'dashboard',icon:'📊',label:'Dashboard'},{id:'ots',icon:'📋',label:'Órdenes de trabajo'},
     {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},
-    {id:'tecnicos',icon:'👷',label:'Técnicos'},{id:'stock',icon:'📦',label:'Stock'},
+    {id:'tecnicos',icon:'👷',label:'Técnicos'},
+    {sec:'Stock'},{id:'stock-cuad',icon:'🔧',label:'Stock Cuadrillas'},{id:'stock',icon:'📦',label:'Stock Depósito'},
   ];
   if(CU.rol==='superadmin'||CU.rol==='admin')items.push({sec:'Sistema'},{id:'config',icon:'⚙️',label:'Configuración'});
   nav.innerHTML='';
@@ -900,9 +917,9 @@ function irA(sec){
   const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
   document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
-  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos',stock:'Stock',config:'Config'}[sec]||'FG';
+  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
   closeSidebar();
-  const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
+  const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
 }
 
@@ -2088,7 +2105,101 @@ async function guardarTecnico(){
   }catch(e){err.textContent='Error: '+e.message;}
 }
 
-// STOCK
+// ─── STOCK CUADRILLAS (sección separada) ───
+async function iniciarStockCuadrillas(){
+  const sel=document.getElementById('cuad-selector');
+  // Poblar selector si está vacío
+  if(sel.options.length<=1){
+    const cuads=await sbGet('cuadrillas','?activo=eq.true&order=nombre')||[];
+    cuads.forEach(c=>{
+      const o=document.createElement('option');
+      o.value=c.id; o.textContent=c.nombre;
+      sel.appendChild(o);
+    });
+  }
+  document.getElementById('stock-cuad-tabla').innerHTML='<div class="empty-state"><div class="empty-state-icon">🔧</div><div style="color:#94a3b8">Seleccioná una cuadrilla para ver su stock</div></div>';
+  document.getElementById('cuad-asignar-btn').style.display='none';
+  document.getElementById('cuad-autocomplete-btn').style.display='none';
+}
+
+async function renderStockCuadrillaSeleccionada(){
+  const cuadId=document.getElementById('cuad-selector').value;
+  const el=document.getElementById('stock-cuad-tabla');
+  if(!cuadId){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🔧</div><div style="color:#94a3b8">Seleccioná una cuadrilla</div></div>';
+    document.getElementById('cuad-asignar-btn').style.display='none';
+    document.getElementById('cuad-autocomplete-btn').style.display='none';
+    return;
+  }
+  document.getElementById('cuad-asignar-btn').style.display='';
+  document.getElementById('cuad-autocomplete-btn').style.display='';
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    const mats=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
+    const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[];
+    const scMap={};
+    sc.forEach(s=>{scMap[s.material_id]=s.cantidad||0;});
+
+    el.innerHTML='<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+      +'<th>Material</th><th>Unidad</th><th>Stock</th><th>Paquete</th><th></th></tr></thead><tbody>'
+      +mats.map(m=>{
+        const cant=scMap[m.id]||0;
+        const paqInfo=(m.cant_por_paquete||1)>1?m.cant_por_paquete+' '+m.unidad+'/'+m.nombre_paquete:'—';
+        const serialTag=m.serial_tipo!=='NINGUNO'?'<span class="badge b-blue" style="font-size:9px;margin-left:4px">'+m.serial_tipo+'</span>':'';
+        return '<tr>'
+          +'<td style="font-weight:600;font-size:12px">'+m.nombre+serialTag+'</td>'
+          +'<td style="font-size:12px;color:#64748b">'+m.unidad+'</td>'
+          +'<td style="font-weight:700;color:'+(cant>0?'#16a34a':'#94a3b8')+'">'+cant+'</td>'
+          +'<td style="font-size:11px;color:#64748b">'+paqInfo+'</td>'
+          +'<td><button class="btn btn-sm" style="font-size:11px" onclick="asignarACuadrilla('+cuadId+','+m.id+',\''+m.nombre.replace(/'/g,'')+'\','+cant+','+( m.cant_por_paquete||1)+',\''+( m.nombre_paquete||'unidad')+'\',\''+m.unidad+'\')">✏️</button></td>'
+          +'</tr>';
+      }).join('')+'</tbody></table></div>';
+  }catch(e){el.innerHTML='<div class="card"><p style="color:#dc2626">'+e.message+'</p></div>';}
+}
+
+function repartirACuadrillaActual(){
+  const cuadId=document.getElementById('cuad-selector').value;
+  const nombre=document.getElementById('cuad-selector').selectedOptions[0]?.text||'';
+  if(!cuadId)return;
+  repartirACuadrilla(cuadId,nombre);
+}
+
+async function autocompletarCuadrilla(){
+  const cuadId=document.getElementById('cuad-selector').value;
+  if(!cuadId){alert('Seleccioná una cuadrilla primero');return;}
+  // Traer config de autocompletado y stock actual
+  const mats=await sbGet('catalogo_materiales','?activo=eq.true')||[];
+  const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[];
+  const autocfg=await sbGet('autocomplete_config','?activo=eq.true')||[];
+  const scMap={};sc.forEach(s=>{scMap[s.material_id]=s.cantidad||0;});
+  const cfgMap={};autocfg.forEach(c=>{cfgMap[c.material_id]=c;});
+  const aAsignar=[];
+  for(const m of mats){
+    const cfg=cfgMap[m.id];
+    if(!cfg)continue;
+    const actual=scMap[m.id]||0;
+    if(actual<cfg.minimo_trigger){
+      aAsignar.push({mat:m,cant:cfg.cantidad_reponer,cfg});
+    }
+  }
+  if(!aAsignar.length){alert('El stock de la cuadrilla está completo, no necesita reposición.');return;}
+  const lista=aAsignar.map(x=>x.mat.nombre+': +'+x.cant+' '+x.mat.unidad).join('\n');
+  if(!confirm('Se va a asignar:\n\n'+lista+'\n\n¿Confirmás?'))return;
+  for(const item of aAsignar){
+    const sd=await sbGet('stock_deposito','?material_id=eq.'+item.mat.id)||[];
+    const dep=sd[0]?.cantidad||0;
+    const cant=Math.min(item.cant,dep);
+    if(!cant)continue;
+    await sbPatch('stock_deposito','?material_id=eq.'+item.mat.id,{cantidad:dep-cant,updated_at:new Date().toISOString()});
+    const scr=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id)||[];
+    if(scr.length)await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id,{cantidad:(scr[0].cantidad||0)+cant});
+    else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:item.mat.id,cantidad:cant});
+    await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:item.mat.id,cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs:'Autocompletado'});
+  }
+  renderStockCuadrillaSeleccionada();
+}
+
+// ─── STOCK DEPOSITO ───
 async function renderStock(tab){
   document.querySelectorAll('#stock-deposito,#stock-cuadrillas,#stock-movimientos').forEach(d=>d.style.display='none');
   const btnE=document.getElementById('stock-entrada-btn');
@@ -2186,14 +2297,23 @@ async function renderStock(tab){
 function stockTab(tab,el){document.querySelectorAll('#stock-nav .ntab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderStock(tab);}
 
 // ─── STOCK CUADRILLAS ───
-function asignarACuadrilla(cuadId, matId, nombre, cantActual){
+function asignarACuadrilla(cuadId, matId, nombre, cantActual, cantPaq, nomPaq, unidad){
   document.getElementById('asig-stock-cuad-id').value=cuadId;
   document.getElementById('asig-stock-mat-id').value=matId;
   document.getElementById('asig-stock-mat-nombre').textContent=nombre;
   document.getElementById('asig-stock-cant').value='';
   document.getElementById('asig-stock-obs').value='';
   document.getElementById('asig-stock-err').textContent='';
-  document.getElementById('asig-stock-titulo').textContent='Stock actual: '+cantActual+' unidades';
+  const esPaq=(cantPaq||1)>1;
+  const titulo='Stock actual: '+cantActual+' '+unidad+(esPaq?' — se ingresa por '+nomPaq+'s ('+cantPaq+' '+unidad+' c/u)':'');
+  document.getElementById('asig-stock-titulo').textContent=titulo;
+  // Guardar datos de paquete en el modal para calcular al confirmar
+  document.getElementById('asig-stock-cant').dataset.cantPaq=cantPaq||1;
+  document.getElementById('asig-stock-cant').dataset.nomPaq=nomPaq||'unidad';
+  document.getElementById('asig-stock-cant').dataset.unidad=unidad||'unidad';
+  document.getElementById('asig-stock-cant').dataset.esPaq=esPaq?'1':'0';
+  const lbl=document.getElementById('asig-stock-mat-lbl');
+  lbl.textContent=esPaq?'Cantidad de '+nomPaq+'s':'Cantidad de '+unidad+'s';
   abrirModal('asig-stock-modal');
   setTimeout(()=>document.getElementById('asig-stock-cant').focus(),100);
 }
@@ -2201,25 +2321,25 @@ function asignarACuadrilla(cuadId, matId, nombre, cantActual){
 async function confirmarAsignarCuadrilla(){
   const cuadId=document.getElementById('asig-stock-cuad-id').value;
   const matId=document.getElementById('asig-stock-mat-id').value;
-  const cant=parseInt(document.getElementById('asig-stock-cant').value)||0;
+  const inputCant=document.getElementById('asig-stock-cant');
+  const cantInput=parseFloat(inputCant.value)||0;
+  const cantPaq=parseFloat(inputCant.dataset.cantPaq)||1;
+  const esPaq=inputCant.dataset.esPaq==='1';
+  const cant=esPaq?Math.round(cantInput*cantPaq):cantInput;
   const obs=document.getElementById('asig-stock-obs').value.trim();
   const err=document.getElementById('asig-stock-err');
-  if(!cant||cant<1){err.textContent='Ingresá una cantidad válida';return;}
+  if(!cantInput||cantInput<1){err.textContent='Ingresá una cantidad válida';return;}
   try{
-    // Verificar stock depósito
     const sd=await sbGet('stock_deposito','?material_id=eq.'+matId)||[];
     const stockDep=(sd[0]?.cantidad||0);
     if(cant>stockDep){err.textContent='Stock insuficiente en depósito ('+stockDep+' disponibles)';return;}
-    // Descontar del depósito
     await sbPatch('stock_deposito','?material_id=eq.'+matId,{cantidad:stockDep-cant,updated_at:new Date().toISOString()});
-    // Agregar a cuadrilla
     const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+matId)||[];
     if(sc.length){await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+matId,{cantidad:(sc[0].cantidad||0)+cant});}
-    else{await sbPost('stock_cuadrillas',{cuadrilla_id:cuadId,material_id:matId,cantidad:cant});}
-    // Movimiento
-    await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:matId,cuadrilla_id:cuadId,cantidad:-cant,obs:obs||'Asignación a cuadrilla'});
+    else{await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:parseInt(matId),cantidad:cant});}
+    await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs:obs||(esPaq?cantInput+' '+inputCant.dataset.nomPaq+'s = '+cant+' '+inputCant.dataset.unidad:'Asignación a cuadrilla')});
     cerrarModal('asig-stock-modal');
-    renderStock('cuadrillas');
+    renderStockCuadrillaSeleccionada();
   }catch(e){err.textContent='Error: '+e.message;}
 }
 
@@ -2542,7 +2662,7 @@ async function renderEquipos(){
 
 // CONFIG
 async function renderConfig(tab){
-  document.querySelectorAll('#cfg-estados,#cfg-motivos,#cfg-materiales,#cfg-servicios,#cfg-usuarios').forEach(d=>d.style.display='none');
+  document.querySelectorAll('#cfg-estados,#cfg-motivos,#cfg-materiales,#cfg-autocomplete,#cfg-servicios,#cfg-usuarios').forEach(d=>d.style.display='none');
   const el=document.getElementById('cfg-'+tab);el.style.display='';
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
@@ -2568,7 +2688,31 @@ async function renderConfig(tab){
           +'</td></tr>').join('')
         +'</tbody></table></div>';
     }
-    else if(tab==='servicios'){const d=await sbGet('catalogo_servicios','?order=categoria,orden_display')||[];el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Servicio</th><th>Categoría</th></tr></thead><tbody>${d.map(s=>`<tr><td>${s.nombre}</td><td><span class="badge b-gray">${s.categoria||''}</span></td></tr>`).join('')}</tbody></table></div>`;}
+    else if(tab==='autocomplete'){
+      const mats=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
+      const cfgs=await sbGet('autocomplete_config','?select=*')||[];
+      const cfgMap={};cfgs.forEach(c=>{cfgMap[c.material_id]=c;});
+      el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.75rem">Configurá cuándo reponer material a cada cuadrilla. Si el stock baja del mínimo, el autocompletado agrega la cantidad de reposición.</div>'
+        +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+        +'<th>Material</th><th>Unidad</th><th>Mínimo para reponer</th><th>Cantidad a reponer</th><th>Activo</th><th></th>'
+        +'</tr></thead><tbody>'
+        +mats.map(m=>{
+          const cfg=cfgMap[m.id]||{};
+          const paqLabel=(m.cant_por_paquete||1)>1?' ('+m.cant_por_paquete+' '+m.unidad+'/'+m.nombre_paquete+')':'';
+          return '<tr id="acfg-'+m.id+'">'
+            +'<td style="font-weight:600;font-size:12px">'+m.nombre+'</td>'
+            +'<td style="font-size:11px;color:#64748b">'+m.unidad+paqLabel+'</td>'
+            +'<td><input type="number" id="acfg-min-'+m.id+'" value="'+(cfg.minimo_trigger||'')+'" min="0" placeholder="Ej: 180" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px"/></td>'
+            +'<td><input type="number" id="acfg-rep-'+m.id+'" value="'+(cfg.cantidad_reponer||'')+'" min="1" placeholder="Ej: 305" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px"/></td>'
+            +'<td><select id="acfg-act-'+m.id+'" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px">'
+            +'<option value="true"'+(cfg.activo?' selected':''+(!cfg.id?' selected':''))+'>Sí</option>'
+            +'<option value="false"'+(cfg.activo===false?' selected':'')+'>No</option>'
+            +'</select></td>'
+            +'<td><button class="btn btn-sm btn-primary" style="font-size:11px" onclick="guardarAutocomplete('+m.id+',\''+( cfg.id||'')+'\')" >Guardar</button></td>'
+            +'</tr>';
+        }).join('')
+        +'</tbody></table></div>';
+    }const d=await sbGet('catalogo_servicios','?order=categoria,orden_display')||[];el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Servicio</th><th>Categoría</th></tr></thead><tbody>${d.map(s=>`<tr><td>${s.nombre}</td><td><span class="badge b-gray">${s.categoria||''}</span></td></tr>`).join('')}</tbody></table></div>`;}
     else if(tab==='motivos'){const d=await sbGet('motivos_estado','?select=*,estados_ot(nombre)&order=estado_ot_id')||[];el.innerHTML=`<div class="card">${d.map(m=>`<div class="row"><div><div style="font-weight:600">${m.descripcion}</div><div style="font-size:12px;color:#64748b">${m.estados_ot?.nombre||''}</div></div><span class="badge ${m.activo?'b-green':'b-gray'}">${m.activo?'Activo':'Inactivo'}</span></div>`).join('')}</div>`;}
     else if(tab==='usuarios'&&CU.rol==='superadmin'){
       const d=await sbGet('usuarios','?order=nombre')||[];
@@ -2690,6 +2834,23 @@ async function imprimirEntregaSeriales(matId){
   win.document.write(html);
   win.document.close();
   setTimeout(()=>win.print(),500);
+}
+
+// ─── AUTOCOMPLETE CONFIG ───
+async function guardarAutocomplete(matId, cfgId){
+  const minimo=parseFloat(document.getElementById('acfg-min-'+matId).value)||0;
+  const reponer=parseFloat(document.getElementById('acfg-rep-'+matId).value)||0;
+  const activo=document.getElementById('acfg-act-'+matId).value==='true';
+  if(!minimo&&!reponer){return;}
+  try{
+    if(cfgId){
+      await sbPatch('autocomplete_config','?id=eq.'+cfgId,{minimo_trigger:minimo,cantidad_reponer:reponer,activo});
+    }else{
+      await sbPost('autocomplete_config',{material_id:matId,minimo_trigger:minimo,cantidad_reponer:reponer,activo});
+    }
+    const row=document.getElementById('acfg-'+matId);
+    if(row){row.style.background='#f0fdf4';setTimeout(()=>{row.style.background='';},1200);}
+  }catch(e){alert('Error: '+e.message);}
 }
 
 // ─── ABM MATERIALES ───
