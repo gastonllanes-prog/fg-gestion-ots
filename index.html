@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v35</title>
+<title>FG Gestión OTs v37</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V35</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V37</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v35</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v37</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -379,7 +379,10 @@ tr:hover td{background:rgba(37,99,235,.02)}
 
 <div id="s-stock" style="display:none">
   <div class="ph"><div class="ph-icon amber">📦</div><div><div class="ph-title">Stock</div><div class="ph-sub">Materiales y equipos</div></div>
-    <div style="margin-left:auto"><button class="btn btn-sm btn-primary" id="stock-entrada-btn" onclick="abrirEntradaStock()">+ Entrada Gigared</button></div>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="btn btn-sm" id="stock-print-btn" onclick="imprimirEntregaGigared()">🖨️ Imprimir entrega</button>
+      <button class="btn btn-sm btn-primary" id="stock-entrada-btn" onclick="abrirEntradaStock()">+ Entrada Gigared</button>
+    </div>
   </div>
   <div class="nav" id="stock-nav">
     <div class="ntab active" onclick="stockTab('deposito',this)">Depósito</div>
@@ -2009,7 +2012,10 @@ async function renderStock(tab){
           const bajo=s.cantidad<=(s.cantidad_minima||0);
           const critico=s.catalogo_materiales?.es_critico;
           const tipo=s.catalogo_materiales?.serial_tipo||'NINGUNO';
-          const verSeriales=tipo!=='NINGUNO'?'<button class="btn btn-sm" style="font-size:10px" onclick="verSeriales('+s.catalogo_materiales?.id+')">Ver</button>':'—';
+          const matId2=s.catalogo_materiales?.id;
+          const tipo2=s.catalogo_materiales?.serial_tipo||'NINGUNO';
+          const btnSerial=tipo2!=='NINGUNO'?'<button class="btn btn-sm" style="font-size:10px;margin-right:3px" onclick="verSeriales('+matId2+')">📋 Seriales</button>':'';
+          const verSeriales=btnSerial+'<button class="btn btn-sm" style="font-size:10px" onclick="verHistorialMaterial('+matId2+')">📊 Historial</button>';
           return '<tr>'
             +'<td style="font-weight:600">'+( s.catalogo_materiales?.nombre||'—')+'</td>'
             +'<td style="font-size:12px;color:#64748b">'+( s.catalogo_materiales?.unidad||'')+'</td>'
@@ -2241,11 +2247,33 @@ async function verSeriales(matId){
       +d.map(s=>'<tr><td style="font-family:monospace;font-weight:600">'+s.serial+'</td><td style="color:#64748b">'+fmtF(s.fecha_ingreso?.slice(0,10))+'</td></tr>').join('')
       +'</tbody></table></div>'
     :'<div class="empty-state"><div class="empty-state-icon">📭</div><div>Sin seriales registrados</div></div>');
-  // Reusar ot-modal para mostrar
   document.getElementById('ot-modal-body').innerHTML=html;
-  document.getElementById('ot-modal-footer').innerHTML='<button class="btn" onclick="cerrarModal(\'ot-modal\')">Cerrar</button>';
+  document.getElementById('ot-modal-footer').innerHTML='<button class="btn btn-sm" style="margin-right:6px" onclick="imprimirEntregaSeriales('+matId+')">🖨️ Imprimir</button>'+'<button class="btn" onclick="cerrarModal(&apos;ot-modal&apos;)">Cerrar</button>';
+  document.querySelector('#ot-modal .modal-title').childNodes[0].textContent='Seriales en depósito ';
   abrirModal('ot-modal');
 }
+
+async function verHistorialMaterial(matId){
+  const mat=ES_MATERIALES.find(m=>m.id===matId)||(await sbGet('catalogo_materiales','?id=eq.'+matId)||[])[0];
+  const d=await sbGet('movimientos_stock','?material_id=eq.'+matId+'&order=fecha.desc&limit=50')||[];
+  const tc={ENTRADA_DEPOSITO:'b-green',REPARTO_CUADRILLA:'b-blue',CONSUMO_OT:'b-amber',AJUSTE_VALIDACION:'b-orange',DEVOLUCION:'b-gray'};
+  const html='<div style="font-size:13px;font-weight:700;margin-bottom:.75rem">Historial — '+(mat?.nombre||'Material')+'</div>'
+    +(d.length?'<div style="max-height:350px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr style="background:#f8fafc">'
+      +'<th style="padding:6px 8px;text-align:left">Fecha</th><th style="padding:6px 8px">Tipo</th><th style="padding:6px 8px;text-align:right">Cantidad</th><th style="padding:6px 8px">Obs</th></tr></thead><tbody>'
+      +d.map(m=>'<tr style="border-bottom:1px solid #f1f5f9">'
+        +'<td style="padding:6px 8px;color:#64748b">'+fmtF(m.fecha?.slice(0,10))+'</td>'
+        +'<td style="padding:6px 8px"><span class="badge '+(tc[m.tipo_movimiento]||'b-gray')+'" style="font-size:10px">'+(m.tipo_movimiento||'').replace(/_/g,' ')+'</span></td>'
+        +'<td style="padding:6px 8px;text-align:right;font-weight:700;color:'+(m.cantidad>0?'#16a34a':'#dc2626')+'">'+(m.cantidad>0?'+':'')+m.cantidad+'</td>'
+        +'<td style="padding:6px 8px;color:#94a3b8;font-size:11px">'+(m.obs||'—')+'</td>'
+        +'</tr>').join('')
+      +'</tbody></table></div>'
+    :'<div class="empty-state"><div class="empty-state-icon">📭</div><div>Sin movimientos registrados</div></div>');
+  document.getElementById('ot-modal-body').innerHTML=html;
+  document.getElementById('ot-modal-footer').innerHTML='<button class="btn" onclick="cerrarModal(&apos;ot-modal&apos;)">Cerrar</button>';
+  document.querySelector('#ot-modal .modal-title').childNodes[0].textContent='Historial de material ';
+  abrirModal('ot-modal');
+}
+
 
 // EQUIPOS
 async function renderEquipos(){
@@ -2260,20 +2288,20 @@ async function renderEquipos(){
 
 // CONFIG
 async function renderConfig(tab){
-  document.querySelectorAll('#cfg-estados,#cfg-motivos,#cfg-materiales,#cfg-servicios,#cfg-usuarios').forEach(d=>d.style.display='none');
+  document.querySelectorAll('#cfg-estados,#cfg-motivos,#cfg-materiales,#cfg-mat-config,#cfg-servicios,#cfg-usuarios').forEach(d=>d.style.display='none');
   const el=document.getElementById('cfg-'+tab);el.style.display='';
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
     if(tab==='estados'){const d=await sbGet('estados_ot','?order=orden_display')||[];el.innerHTML=`<div class="card">${d.map(e=>`<div class="row"><div><div style="font-weight:600">${e.nombre.replace(/_/g,' ')}</div><div style="font-size:12px;color:#64748b">${e.descripcion||''}</div></div><span class="badge ${e.activo?'b-green':'b-gray'}">${e.activo?'Activo':'Inactivo'}</span></div>`).join('')}</div>`;}
     else if(tab==='materiales'){const d=await sbGet('catalogo_materiales','?order=orden_display')||[];el.innerHTML='<div class="ot-table-wrap"><table class="ot-table"><thead><tr><th>Material</th><th>Unidad</th><th>Crítico</th><th>Serial</th></tr></thead><tbody>'+d.map(m=>'<tr><td>'+m.nombre+'</td><td>'+(m.unidad||'')+'</td><td>'+(m.es_critico?'✓':'—')+'</td><td>'+(m.requiere_serial?'✓':'—')+'</td></tr>').join('')+'</tbody></table></div>';}
     else if(tab==='mat-config'){
-      const d=await sbGet('catalogo_materiales','?order=orden_display&activo=eq.true')||[];
+      const d=await sbGet('catalogo_materiales','?order=activo.desc,orden_display')||[];
       const tipoOpts='<option value="NINGUNO">Sin serial</option><option value="CORRELATIVO">Correlativo (precintos)</option><option value="INDIVIDUAL">Individual (equipos)</option>';
-      el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.75rem">Configurá cómo se recibe y entrega cada material. Los cambios aplican inmediatamente.</div>'
+      el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.75rem">Configurá cada material. Desactivá los que no usás para que no aparezcan en los listados.</div>'
         +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
-        +'<th>Material</th><th>Unidad</th><th>Cant/paquete</th><th>Nombre paquete</th><th>Tipo serial</th><th></th>'
+        +'<th>Material</th><th>Unidad</th><th>Cant/paquete</th><th>Nombre paquete</th><th>Tipo serial</th><th>Estado</th><th></th>'
         +'</tr></thead><tbody>'
-        +d.map(m=>'<tr id="mcfg-'+m.id+'">'
+        +d.map(m=>'<tr id="mcfg-'+m.id+'" style="'+(m.activo?'':'opacity:.5;background:#fafafa')+'">'
           +'<td style="font-weight:600;font-size:12px">'+m.nombre+'</td>'
           +'<td style="font-size:12px;color:#64748b">'+m.unidad+'</td>'
           +'<td><input type="number" value="'+(m.cant_por_paquete||1)+'" min="1" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px" id="mcfg-paq-'+m.id+'"/></td>'
@@ -2281,6 +2309,7 @@ async function renderConfig(tab){
           +'<td><select style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px" id="mcfg-tipo-'+m.id+'">'
           +tipoOpts.replace('value="'+(m.serial_tipo||'NINGUNO')+'"','value="'+(m.serial_tipo||'NINGUNO')+'" selected')
           +'</select></td>'
+          +'<td><button class="btn btn-sm" style="font-size:11px;'+(m.activo?'color:#dc2626':'color:#16a34a')+'" onclick="toggleActivoMat('+m.id+','+m.activo+')">'+(m.activo?'🔴 Desactivar':'🟢 Activar')+'</button></td>'
           +'<td><button class="btn btn-sm btn-primary" style="font-size:11px" onclick="guardarConfigMat('+m.id+')">Guardar</button></td>'
           +'</tr>').join('')
         +'</tbody></table></div>';
@@ -2298,7 +2327,122 @@ async function renderConfig(tab){
 }
 function cfgTab(tab,el){document.querySelectorAll('#cfg-nav .ntab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderConfig(tab);}
 
+// ─── IMPRESIÓN ENTREGA MATERIALES ───
+async function imprimirEntregaGigared(){
+  // Get all stock with current quantities
+  const stocks=await sbGet('stock_deposito','?select=cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo,cant_por_paquete)')||[];
+  const hoy=new Date().toLocaleDateString('es-AR');
+  
+  // Split: with serials and without
+  const sinSerial=stocks.filter(s=>(s.catalogo_materiales?.serial_tipo||'NINGUNO')==='NINGUNO'&&s.cantidad>0);
+  const conSerial=stocks.filter(s=>(s.catalogo_materiales?.serial_tipo||'NINGUNO')!=='NINGUNO'&&s.cantidad>0);
+  
+  // Get serials for each material with serials
+  const serialData={};
+  for(const s of conSerial){
+    const id=s.catalogo_materiales?.id;
+    if(id){
+      const d=await sbGet('stock_seriales','?material_id=eq.'+id+'&ubicacion=eq.DEPOSITO&order=serial')||[];
+      serialData[id]=d.map(x=>x.serial);
+    }
+  }
+  
+  let html='<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<title>Entrega de Materiales — FG Contratista</title>'
+    +'<style>'
+    +'body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:0}'
+    +'.page{page-break-after:always;padding:20px;max-width:100%}'
+    +'.page:last-child{page-break-after:avoid}'
+    +'.header{border-bottom:2px solid #000;margin-bottom:12px;padding-bottom:8px}'
+    +'h2{margin:0;font-size:14px}h3{margin:4px 0;font-size:12px}'
+    +'.firma{display:flex;justify-content:space-between;margin-top:30px;padding-top:20px}'
+    +'.firma-box{text-align:center;width:200px}'
+    +'.firma-line{border-top:1px solid #000;margin-bottom:4px}'
+    +'table{width:100%;border-collapse:collapse;margin-top:8px}'
+    +'th{background:#f0f0f0;border:1px solid #ccc;padding:5px 8px;text-align:left;font-size:10px}'
+    +'td{border:1px solid #ccc;padding:4px 8px;font-size:10px}'
+    +'.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;margin-top:6px}'
+    +'.cell{border:1px solid #ccc;padding:4px;font-family:monospace;font-size:9px;text-align:center}'
+    +'@media print{body{-webkit-print-color-adjust:exact}}'
+    +'</style></head><body>';
+  
+  // PAGE 1: Materials without serials
+  html+='<div class="page">'
+    +'<div class="header">'
+    +'<h2>FG Contratista — Entrega de Materiales a Gigared</h2>'
+    +'<h3>Fecha: '+hoy+' &nbsp;&nbsp; Materiales sin numeración individual</h3>'
+    +'</div>'
+    +'<table><thead><tr><th>Material</th><th>Unidad</th><th>Cantidad en Depósito</th><th>Cantidad Entregada</th></tr></thead><tbody>'
+    +sinSerial.map(s=>'<tr><td>'+s.catalogo_materiales?.nombre+'</td><td>'+s.catalogo_materiales?.unidad+'</td><td style="text-align:center;font-weight:bold">'+s.cantidad+'</td><td></td></tr>').join('')
+    +'</tbody></table>'
+    +'<div class="firma">'
+    +'<div class="firma-box"><div class="firma-line"></div><div>Entregado por: FG Contratista</div></div>'
+    +'<div class="firma-box"><div class="firma-line"></div><div>Recibido por: Jefe Depósito Gigared</div></div>'
+    +'</div></div>';
+  
+  // PAGES: one per material with serials
+  for(const s of conSerial){
+    const id=s.catalogo_materiales?.id;
+    const serials=serialData[id]||[];
+    if(!serials.length)continue;
+    html+='<div class="page">'
+      +'<div class="header">'
+      +'<h2>FG Contratista — '+s.catalogo_materiales?.nombre+'</h2>'
+      +'<h3>Fecha: '+hoy+' &nbsp;&nbsp; Total en depósito: '+serials.length+' unidades</h3>'
+      +'</div>'
+      +'<div class="grid">'
+      +serials.map((ser,i)=>'<div class="cell">'+(i+1)+'. '+ser+'</div>').join('')
+      +'</div>'
+      +'<div class="firma">'
+      +'<div class="firma-box"><div class="firma-line"></div><div>Entregado por: FG Contratista</div></div>'
+      +'<div class="firma-box"><div class="firma-line"></div><div>Recibido por: Jefe Depósito Gigared</div></div>'
+      +'</div></div>';
+  }
+  
+  html+='</body></html>';
+  
+  const win=window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>win.print(),500);
+}
+
+async function imprimirEntregaSeriales(matId){
+  const mat=ES_MATERIALES.find(m=>m.id===matId)||(await sbGet('catalogo_materiales','?id=eq.'+matId)||[])[0];
+  const d=await sbGet('stock_seriales','?material_id=eq.'+matId+'&ubicacion=eq.DEPOSITO&order=serial')||[];
+  const hoy=new Date().toLocaleDateString('es-AR');
+  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+mat?.nombre+'</title>'
+    +'<style>body{font-family:Arial,sans-serif;font-size:11px;padding:20px}'
+    +'.header{border-bottom:2px solid #000;margin-bottom:12px;padding-bottom:8px}'
+    +'h2{margin:0;font-size:14px}h3{margin:4px 0;font-size:12px}'
+    +'.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;margin-top:10px}'
+    +'.cell{border:1px solid #ccc;padding:5px;font-family:monospace;font-size:9px;text-align:center}'
+    +'.firma{display:flex;justify-content:space-between;margin-top:40px}'
+    +'.firma-box{text-align:center;width:200px}'
+    +'.firma-line{border-top:1px solid #000;margin-bottom:4px}'
+    +'</style></head><body>'
+    +'<div class="header"><h2>FG Contratista — '+(mat?.nombre||'Material')+'</h2>'
+    +'<h3>Fecha: '+hoy+' &nbsp;&nbsp; Total: '+d.length+' unidades</h3></div>'
+    +'<div class="grid">'+d.map((s,i)=>'<div class="cell">'+(i+1)+'. '+s.serial+'</div>').join('')+'</div>'
+    +'<div class="firma">'
+    +'<div class="firma-box"><div class="firma-line"></div><div>Entregado por: FG Contratista</div></div>'
+    +'<div class="firma-box"><div class="firma-line"></div><div>Recibido por: Jefe Depósito Gigared</div></div>'
+    +'</div></body></html>';
+  const win=window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>win.print(),500);
+}
+
 // ─── CONFIG MATERIALES ───
+async function toggleActivoMat(matId, activo){
+  try{
+    await sbPatch('catalogo_materiales','?id=eq.'+matId,{activo:!activo});
+    ES_MATERIALES=[];
+    renderConfig('mat-config');
+  }catch(e){alert('Error: '+e.message);}
+}
+
 async function guardarConfigMat(matId){
   const cantPaq=parseFloat(document.getElementById('mcfg-paq-'+matId).value)||1;
   const nomPaq=document.getElementById('mcfg-nom-'+matId).value.trim()||'unidad';
