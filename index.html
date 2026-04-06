@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v38</title>
+<title>FG Gestión OTs v39</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V38</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V39</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v38</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v39</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -380,7 +380,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
 <div id="s-stock" style="display:none">
   <div class="ph"><div class="ph-icon amber">📦</div><div><div class="ph-title">Stock</div><div class="ph-sub">Materiales y equipos</div></div>
     <div style="margin-left:auto;display:flex;gap:6px">
-      <button class="btn btn-sm" id="stock-print-btn" onclick="imprimirEntregaGigared()">🖨️ Imprimir entrega</button>
+      <button class="btn btn-sm" id="stock-print-btn" onclick="abrirModalFechaEntrega()">🖨️ Imprimir entrega</button>
       <button class="btn btn-sm btn-primary" id="stock-entrada-btn" onclick="abrirEntradaStock()">+ Entrada Gigared</button>
     </div>
   </div>
@@ -614,10 +614,25 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div id="es-serial-count" style="font-size:12px;color:#64748b;margin-top:.4rem"></div>
     </div>
 
+    <div class="fg"><label>Fecha de entrada</label><input type="date" id="es-fecha"/></div>
     <p class="err-msg" id="es-err"></p>
     <div class="modal-footer">
       <button class="btn btn-primary" style="flex:2" onclick="confirmarEntradaStock()">✓ Registrar entrada</button>
       <button class="btn" onclick="cerrarModal('entrada-stock-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SELECCIONAR FECHA ENTREGA -->
+<div class="modal-overlay hidden" id="fecha-entrega-modal">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-title">🖨️ Imprimir entrega <button class="modal-close" onclick="cerrarModal('fecha-entrega-modal')">✕</button></div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:1rem">Seleccioná la fecha para ver qué material se registró ese día.</p>
+    <div class="fg"><label>Fecha</label><input type="date" id="fe-fecha"/></div>
+    <p class="err-msg" id="fe-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="confirmarImprimirEntrega()">📄 Generar reporte</button>
+      <button class="btn" onclick="cerrarModal('fecha-entrega-modal')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -2015,7 +2030,8 @@ async function renderStock(tab){
           const matId2=s.catalogo_materiales?.id;
           const tipo2=s.catalogo_materiales?.serial_tipo||'NINGUNO';
           const btnSerial=tipo2!=='NINGUNO'?'<button class="btn btn-sm" style="font-size:10px;margin-right:3px" onclick="verSeriales('+matId2+')">📋 Seriales</button>':'';
-          const verSeriales=btnSerial+'<button class="btn btn-sm" style="font-size:10px" onclick="verHistorialMaterial('+matId2+')">📊 Historial</button>';
+          const verSeriales=btnSerial+'<button class="btn btn-sm" style="font-size:10px;margin-right:3px" onclick="verHistorialMaterial('+matId2+')">📊 Historial</button>'
+            +'<button class="btn btn-sm btn-green" style="font-size:10px" onclick="abrirEntradaStockMaterial('+matId2+')">📥 Cargar</button>';
           return '<tr>'
             +'<td style="font-weight:600">'+( s.catalogo_materiales?.nombre||'—')+'</td>'
             +'<td style="font-size:12px;color:#64748b">'+( s.catalogo_materiales?.unidad||'')+'</td>'
@@ -2071,8 +2087,14 @@ async function abrirEntradaStock(){
   document.getElementById('es-material').value='';
   document.getElementById('es-material-search').value='';
   document.getElementById('es-material-lista').style.display='none';
+  document.getElementById('es-fecha').value=new Date().toISOString().slice(0,10);
   ES_MATERIALES=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
   abrirModal('entrada-stock-modal');
+}
+
+async function abrirEntradaStockMaterial(matId){
+  await abrirEntradaStock();
+  seleccionarMaterial(matId);
 }
 
 function filtrarMaterialesEntrada(){
@@ -2207,10 +2229,12 @@ async function confirmarEntradaStock(){
     const obsStr='Entrada Gigared'+(numPaq?' — '+numPaq+' '+nomPaq+(parseFloat(numPaq)!==1?'s':''):'')
       +(tipo==='CORRELATIVO'?' — Precintos correlativos':tipo==='INDIVIDUAL'?' — Seriales individuales':'');
 
+    const fechaEntrada=document.getElementById('es-fecha').value||new Date().toISOString().slice(0,10);
     const mov=await sbPost('movimientos_stock',{
       tipo_movimiento:'ENTRADA_DEPOSITO',
       material_id:matId,
       cantidad:cant,
+      fecha:fechaEntrada+'T12:00:00',
       obs:obsStr
     });
     const movId=(Array.isArray(mov)?mov[0]:mov)?.id;
@@ -2328,25 +2352,55 @@ async function renderConfig(tab){
 function cfgTab(tab,el){document.querySelectorAll('#cfg-nav .ntab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderConfig(tab);}
 
 // ─── IMPRESIÓN ENTREGA MATERIALES ───
-async function imprimirEntregaGigared(){
-  // Get all stock with current quantities
-  const stocks=await sbGet('stock_deposito','?select=cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo,cant_por_paquete)')||[];
-  const hoy=new Date().toLocaleDateString('es-AR');
+function abrirModalFechaEntrega(){
+  document.getElementById('fe-fecha').value=new Date().toISOString().slice(0,10);
+  document.getElementById('fe-err').textContent='';
+  abrirModal('fecha-entrega-modal');
+}
+
+async function confirmarImprimirEntrega(){
+  const fecha=document.getElementById('fe-fecha').value;
+  const err=document.getElementById('fe-err');
+  if(!fecha){err.textContent='Seleccioná una fecha';return;}
+  cerrarModal('fecha-entrega-modal');
+  await imprimirEntregaGigared(fecha);
+}
+
+async function imprimirEntregaGigared(fechaFiltro){
+  // Traer movimientos ENTRADA_DEPOSITO del día seleccionado
+  const desde=fechaFiltro+'T00:00:00';
+  const hasta=fechaFiltro+'T23:59:59';
+  const movs=await sbGet('movimientos_stock',`?tipo_movimiento=eq.ENTRADA_DEPOSITO&fecha=gte.${desde}&fecha=lte.${hasta}&select=cantidad,material_id,catalogo_materiales(id,nombre,unidad,serial_tipo,cant_por_paquete)&order=material_id`)||[];
   
-  // Split: with serials and without
-  const sinSerial=stocks.filter(s=>(s.catalogo_materiales?.serial_tipo||'NINGUNO')==='NINGUNO'&&s.cantidad>0);
-  const conSerial=stocks.filter(s=>(s.catalogo_materiales?.serial_tipo||'NINGUNO')!=='NINGUNO'&&s.cantidad>0);
-  
-  // Get serials for each material with serials
+  const fechaDisplay=new Date(fechaFiltro+'T12:00:00').toLocaleDateString('es-AR');
+
+  if(!movs.length){
+    alert('No hay entradas registradas para el '+fechaDisplay);
+    return;
+  }
+
+  // Consolidar por material (puede haber múltiples entradas del mismo día)
+  const byMat={};
+  for(const m of movs){
+    const id=m.catalogo_materiales?.id;
+    if(!id)continue;
+    if(!byMat[id]){byMat[id]={mat:m.catalogo_materiales,cant:0};}
+    byMat[id].cant+=m.cantidad;
+  }
+  const todos=Object.values(byMat);
+  const sinSerial=todos.filter(x=>(x.mat?.serial_tipo||'NINGUNO')==='NINGUNO');
+  const conSerial=todos.filter(x=>(x.mat?.serial_tipo||'NINGUNO')!=='NINGUNO');
+
+  // Traer seriales ingresados ese día para los materiales con serial
   const serialData={};
-  for(const s of conSerial){
-    const id=s.catalogo_materiales?.id;
+  for(const x of conSerial){
+    const id=x.mat?.id;
     if(id){
-      const d=await sbGet('stock_seriales','?material_id=eq.'+id+'&ubicacion=eq.DEPOSITO&order=serial')||[];
-      serialData[id]=d.map(x=>x.serial);
+      const d=await sbGet('stock_seriales',`?material_id=eq.${id}&fecha_ingreso=gte.${desde}&fecha_ingreso=lte.${hasta}&order=serial`)||[];
+      serialData[id]=d.map(s=>s.serial);
     }
   }
-  
+
   let html='<!DOCTYPE html><html><head><meta charset="UTF-8">'
     +'<title>Entrega de Materiales — FG Contratista</title>'
     +'<style>'
@@ -2365,30 +2419,30 @@ async function imprimirEntregaGigared(){
     +'.cell{border:1px solid #ccc;padding:4px;font-family:monospace;font-size:9px;text-align:center}'
     +'@media print{body{-webkit-print-color-adjust:exact}}'
     +'</style></head><body>';
-  
-  // PAGE 1: Materials without serials
-  html+='<div class="page">'
-    +'<div class="header">'
-    +'<h2>FG Contratista — Entrega de Materiales a Gigared</h2>'
-    +'<h3>Fecha: '+hoy+' &nbsp;&nbsp; Materiales sin numeración individual</h3>'
-    +'</div>'
-    +'<table><thead><tr><th>Material</th><th>Unidad</th><th>Cantidad en Depósito</th><th>Cantidad Entregada</th></tr></thead><tbody>'
-    +sinSerial.map(s=>'<tr><td>'+s.catalogo_materiales?.nombre+'</td><td>'+s.catalogo_materiales?.unidad+'</td><td style="text-align:center;font-weight:bold">'+s.cantidad+'</td><td></td></tr>').join('')
-    +'</tbody></table>'
-    +'<div class="firma">'
-    +'<div class="firma-box"><div class="firma-line"></div><div>Entregado por: FG Contratista</div></div>'
-    +'<div class="firma-box"><div class="firma-line"></div><div>Recibido por: Jefe Depósito Gigared</div></div>'
-    +'</div></div>';
-  
-  // PAGES: one per material with serials
-  for(const s of conSerial){
-    const id=s.catalogo_materiales?.id;
+
+  if(sinSerial.length){
+    html+='<div class="page">'
+      +'<div class="header">'
+      +'<h2>FG Contratista — Entrega de Materiales a Gigared</h2>'
+      +'<h3>Fecha: '+fechaDisplay+'</h3>'
+      +'</div>'
+      +'<table><thead><tr><th>Material</th><th>Unidad</th><th>Stock previo</th><th>Cantidad entregada</th><th>Total</th></tr></thead><tbody>'
+      +sinSerial.map(x=>'<tr><td>'+x.mat?.nombre+'</td><td>'+x.mat?.unidad+'</td><td></td><td style="text-align:center;font-weight:bold">'+x.cant+'</td><td></td></tr>').join('')
+      +'</tbody></table>'
+      +'<div class="firma">'
+      +'<div class="firma-box"><div class="firma-line"></div><div>Entregado por: FG Contratista</div></div>'
+      +'<div class="firma-box"><div class="firma-line"></div><div>Recibido por: Jefe Depósito Gigared</div></div>'
+      +'</div></div>';
+  }
+
+  for(const x of conSerial){
+    const id=x.mat?.id;
     const serials=serialData[id]||[];
     if(!serials.length)continue;
     html+='<div class="page">'
       +'<div class="header">'
-      +'<h2>FG Contratista — '+s.catalogo_materiales?.nombre+'</h2>'
-      +'<h3>Fecha: '+hoy+' &nbsp;&nbsp; Total en depósito: '+serials.length+' unidades</h3>'
+      +'<h2>FG Contratista — '+x.mat?.nombre+'</h2>'
+      +'<h3>Fecha: '+fechaDisplay+' &nbsp;&nbsp; Total entregado: '+serials.length+' unidades</h3>'
       +'</div>'
       +'<div class="grid">'
       +serials.map((ser,i)=>'<div class="cell">'+(i+1)+'. '+ser+'</div>').join('')
@@ -2398,14 +2452,14 @@ async function imprimirEntregaGigared(){
       +'<div class="firma-box"><div class="firma-line"></div><div>Recibido por: Jefe Depósito Gigared</div></div>'
       +'</div></div>';
   }
-  
+
   html+='</body></html>';
-  
   const win=window.open('','_blank');
   win.document.write(html);
   win.document.close();
   setTimeout(()=>win.print(),500);
 }
+  
 
 async function imprimirEntregaSeriales(matId){
   const mat=ES_MATERIALES.find(m=>m.id===matId)||(await sbGet('catalogo_materiales','?id=eq.'+matId)||[])[0];
