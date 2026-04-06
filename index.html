@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v49</title>
+<title>FG Gestión OTs v50</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V49</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V50</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v49</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v50</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2712,8 +2712,8 @@ async function renderConfig(tab){
             +'</tr>';
         }).join('')
         +'</tbody></table></div>';
-    }const d=await sbGet('catalogo_servicios','?order=categoria,orden_display')||[];el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Servicio</th><th>Categoría</th></tr></thead><tbody>${d.map(s=>`<tr><td>${s.nombre}</td><td><span class="badge b-gray">${s.categoria||''}</span></td></tr>`).join('')}</tbody></table></div>`;}
-    else if(tab==='motivos'){const d=await sbGet('motivos_estado','?select=*,estados_ot(nombre)&order=estado_ot_id')||[];el.innerHTML=`<div class="card">${d.map(m=>`<div class="row"><div><div style="font-weight:600">${m.descripcion}</div><div style="font-size:12px;color:#64748b">${m.estados_ot?.nombre||''}</div></div><span class="badge ${m.activo?'b-green':'b-gray'}">${m.activo?'Activo':'Inactivo'}</span></div>`).join('')}</div>`;}
+    }
+    else if(tab==='servicios'){const d=await sbGet('catalogo_servicios','?order=categoria,orden_display')||[];el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Servicio</th><th>Categoría</th></tr></thead><tbody>${d.map(s=>`<tr><td>${s.nombre}</td><td><span class="badge b-gray">${s.categoria||''}</span></td></tr>`).join('')}</tbody></table></div>`;}    else if(tab==='motivos'){const d=await sbGet('motivos_estado','?select=*,estados_ot(nombre)&order=estado_ot_id')||[];el.innerHTML=`<div class="card">${d.map(m=>`<div class="row"><div><div style="font-weight:600">${m.descripcion}</div><div style="font-size:12px;color:#64748b">${m.estados_ot?.nombre||''}</div></div><span class="badge ${m.activo?'b-green':'b-gray'}">${m.activo?'Activo':'Inactivo'}</span></div>`).join('')}</div>`;}
     else if(tab==='usuarios'&&CU.rol==='superadmin'){
       const d=await sbGet('usuarios','?order=nombre')||[];
       el.innerHTML='<div style="margin-bottom:.75rem;text-align:right"><button class="btn btn-sm btn-primary" onclick="abrirModalUsuario()">+ Nuevo usuario</button></div>'
