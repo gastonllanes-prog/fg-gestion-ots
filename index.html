@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v31</title>
+<title>FG Gestión OTs v32</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V31</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V32</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v31</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v32</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -770,7 +770,7 @@ function construirMenu(){
   const items=[
     {sec:'Principal'},{id:'dashboard',icon:'📊',label:'Dashboard'},{id:'ots',icon:'📋',label:'Órdenes de trabajo'},
     {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},
-    {id:'tecnicos',icon:'👷',label:'Técnicos'},{id:'stock',icon:'📦',label:'Stock'},{id:'equipos',icon:'📡',label:'Equipos'},
+    {id:'tecnicos',icon:'👷',label:'Técnicos'},{id:'stock',icon:'📦',label:'Stock'},
   ];
   if(CU.rol==='superadmin'||CU.rol==='admin')items.push({sec:'Sistema'},{id:'config',icon:'⚙️',label:'Configuración'});
   nav.innerHTML='';
@@ -786,7 +786,7 @@ function irA(sec){
   const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
   document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
-  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos',stock:'Stock',equipos:'Equipos',config:'Config'}[sec]||'FG';
+  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos',stock:'Stock',config:'Config'}[sec]||'FG';
   closeSidebar();
   const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
@@ -1981,7 +1981,7 @@ async function renderStock(tab){
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   if(tab==='deposito'){
     try{
-      const d=await sbGet('stock_deposito','?select=cantidad,cantidad_minima,catalogo_materiales(id,nombre,unidad,es_critico,serial_tipo)&order=catalogo_materiales(orden_display)')||[];
+      const d=await sbGet('stock_deposito','?select=cantidad,cantidad_minima,catalogo_materiales(id,nombre,unidad,es_critico,serial_tipo,orden_display)&order=material_id')||[];
       if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📦</div><div>Stock vacío</div></div>';return;}
       el.innerHTML='<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
         +'<th>Material</th><th>Unidad</th><th>Stock</th><th>Mínimo</th><th>Crítico</th><th>Seriales</th></tr></thead><tbody>'
