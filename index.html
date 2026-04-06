@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v33</title>
+<title>FG Gestión OTs v34</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -142,6 +142,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
 @media(max-width:768px){.form-2col{grid-template-columns:1fr}}
 .drop-zone{border:2px dashed rgba(37,99,235,.3);border-radius:16px;padding:2.5rem;text-align:center;cursor:pointer;transition:all .2s;background:rgba(37,99,235,.02)}
 .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(37,99,235,.05)}
+.mat-lista-item:hover{background:#f0f9ff}
 .import-prog-wrap{background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:1rem 1.25rem;margin:1rem 0}
 .import-prog-bar-bg{background:#e0f2fe;border-radius:99px;height:8px;overflow:hidden;margin:.5rem 0}
 .import-prog-bar{height:100%;border-radius:99px;background:var(--accent);transition:width .3s}
@@ -167,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V33</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V34</div>
   </div>
 </div>
 
@@ -177,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v33</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v34</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -403,12 +404,14 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="ntab active" onclick="cfgTab('estados',this)">Estados</div>
     <div class="ntab" onclick="cfgTab('motivos',this)">Motivos</div>
     <div class="ntab" onclick="cfgTab('materiales',this)">Materiales</div>
+    <div class="ntab" onclick="cfgTab('mat-config',this)">Config materiales</div>
     <div class="ntab" onclick="cfgTab('servicios',this)">Servicios</div>
     <div class="ntab" id="cfg-tab-usuarios" style="display:none" onclick="cfgTab('usuarios',this)">Usuarios</div>
   </div>
   <div id="cfg-estados"><div class="loading"><span class="spinner"></span></div></div>
   <div id="cfg-motivos" style="display:none"></div>
   <div id="cfg-materiales" style="display:none"></div>
+  <div id="cfg-mat-config" style="display:none"></div>
   <div id="cfg-servicios" style="display:none"></div>
   <div id="cfg-usuarios" style="display:none"></div>
 </div>
@@ -561,10 +564,12 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="modal" style="max-width:560px">
     <div class="modal-title">📦 Entrada de material — Gigared <button class="modal-close" onclick="cerrarModal('entrada-stock-modal')">✕</button></div>
 
-    <div class="fg"><label>Material</label>
-      <select id="es-material" onchange="onCambioMaterialEntrada()">
-        <option value="">Seleccionar material...</option>
-      </select>
+    <div class="fg" style="position:relative"><label>Material</label>
+      <input id="es-material-search" placeholder="Escribí para buscar material..." 
+        autocomplete="off" oninput="filtrarMaterialesEntrada()" onfocus="mostrarListaMateriales()"
+        style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"/>
+      <input type="hidden" id="es-material"/>
+      <div id="es-material-lista" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:100;max-height:220px;overflow-y:auto"></div>
     </div>
 
     <!-- PAQUETES/BOBINAS -->
@@ -2039,69 +2044,97 @@ function stockTab(tab,el){document.querySelectorAll('#stock-nav .ntab').forEach(
 
 // ─── ENTRADA STOCK ───
 let ES_MATERIALES=[];
-async function abrirEntradaStock(){
+
+function resetEntradaModal(){
   document.getElementById('es-err').textContent='';
   document.getElementById('es-cantidad').value='';
   document.getElementById('es-num-paquetes').value='';
   document.getElementById('es-total-calculado').value='';
+  document.getElementById('es-preview-paq').textContent='';
   document.getElementById('es-correlativo-wrap').style.display='none';
   document.getElementById('es-individual-wrap').style.display='none';
   document.getElementById('es-paquete-wrap').style.display='none';
   document.getElementById('es-cantidad-wrap').style.display='';
-  if(!ES_MATERIALES.length){
-    ES_MATERIALES=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
-  }
-  const sel=document.getElementById('es-material');
-  sel.innerHTML='<option value="">Seleccionar material...</option>';
-  ES_MATERIALES.forEach(m=>{
-    const o=document.createElement('option');
-    o.value=m.id;
-    o.dataset.tipo=m.serial_tipo||'NINGUNO';
-    o.dataset.cantpaq=m.cant_por_paquete||1;
-    o.dataset.nompaq=m.nombre_paquete||'unidad';
-    o.dataset.unidad=m.unidad||'UNIDAD';
-    const icon=m.serial_tipo==='CORRELATIVO'?' 📌':m.serial_tipo==='INDIVIDUAL'?' 🔢':m.cant_por_paquete>1?' 📦':'';
-    o.textContent=m.nombre+icon;
-    sel.appendChild(o);
-  });
+  document.getElementById('es-primer-num').value='';
+  document.getElementById('es-ultimo-num').value='';
+  if(document.getElementById('es-seriales-txt'))document.getElementById('es-seriales-txt').value='';
+}
+
+async function abrirEntradaStock(){
+  resetEntradaModal();
+  document.getElementById('es-material').value='';
+  document.getElementById('es-material-search').value='';
+  document.getElementById('es-material-lista').style.display='none';
+  ES_MATERIALES=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
   abrirModal('entrada-stock-modal');
 }
 
-function onCambioMaterialEntrada(){
-  const sel=document.getElementById('es-material');
-  const opt=sel.options[sel.selectedIndex];
-  if(!opt||!opt.value){return;}
-  const tipo=opt.dataset.tipo||'NINGUNO';
-  const cantPaq=parseFloat(opt.dataset.cantpaq)||1;
-  const nomPaq=opt.dataset.nompaq||'unidad';
-  const unidad=(opt.dataset.unidad||'UNIDAD').toLowerCase();
+function filtrarMaterialesEntrada(){
+  const q=document.getElementById('es-material-search').value.toLowerCase();
+  mostrarListaMateriales(q);
+}
 
-  // Mostrar/ocultar sección de paquetes
+function mostrarListaMateriales(q=''){
+  const lista=document.getElementById('es-material-lista');
+  const filtrados=q?ES_MATERIALES.filter(m=>m.nombre.toLowerCase().includes(q)):ES_MATERIALES;
+  if(!filtrados.length){lista.style.display='none';return;}
+  lista.innerHTML=filtrados.slice(0,15).map(m=>{
+    const icon=m.serial_tipo==='CORRELATIVO'?' 📌':m.serial_tipo==='INDIVIDUAL'?' 🔢':(m.cant_por_paquete||1)>1?' 📦':'';
+    const sub=m.cant_por_paquete>1?'<span style="font-size:10px;color:#64748b;margin-left:4px">'+m.cant_por_paquete+' '+m.unidad+'/'+m.nombre_paquete+'</span>':'';
+    return '<div onclick="seleccionarMaterial('+m.id+')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border2);font-size:13px" class="mat-lista-item">'
+      +'<span style="font-weight:600">'+m.nombre+'</span>'+icon+sub+'</div>';
+  }).join('');
+  lista.style.display='';
+}
+
+function seleccionarMaterial(matId){
+  const m=ES_MATERIALES.find(x=>x.id===matId);
+  if(!m)return;
+  document.getElementById('es-material').value=matId;
+  document.getElementById('es-material-search').value=m.nombre;
+  document.getElementById('es-material-lista').style.display='none';
+  resetEntradaModal();
+  document.getElementById('es-material').value=matId;
+  // Apply the material data
+  const cantPaq=parseFloat(m.cant_por_paquete)||1;
+  const nomPaq=m.nombre_paquete||'unidad';
+  const unidad=(m.unidad||'UNIDAD').toLowerCase();
+  const tipo=m.serial_tipo||'NINGUNO';
   const tienePaquete=cantPaq>1&&tipo!=='CORRELATIVO'&&tipo!=='INDIVIDUAL';
   document.getElementById('es-paquete-wrap').style.display=tienePaquete?'':'none';
   document.getElementById('es-cantidad-wrap').style.display=tienePaquete?'none':'';
-
   if(tienePaquete){
     document.getElementById('es-paquete-titulo').textContent='Entrada por '+nomPaq+'s ('+cantPaq+' '+unidad+'/'+nomPaq+')';
     document.getElementById('es-paquete-lbl').textContent='Cantidad de '+nomPaq+'s';
     document.getElementById('es-unidad-lbl').textContent=unidad+'s';
   }
-
   document.getElementById('es-correlativo-wrap').style.display=tipo==='CORRELATIVO'?'':'none';
   document.getElementById('es-individual-wrap').style.display=tipo==='INDIVIDUAL'?'':'none';
+}
+
+// Cerrar lista al click fuera
+document.addEventListener('click',function(e){
+  const lista=document.getElementById('es-material-lista');
+  if(lista&&!lista.contains(e.target)&&e.target.id!=='es-material-search'){
+    lista.style.display='none';
+  }
+});
+
+function onCambioMaterialEntrada(){
+  // Now handled by seleccionarMaterial(), this is kept for compatibility
   calcularTotalPaquetes();
   previewCorrelativo();
 }
 
 function calcularTotalPaquetes(){
-  const sel=document.getElementById('es-material');
-  const opt=sel.options[sel.selectedIndex];
-  const cantPaq=parseFloat(opt?.dataset?.cantpaq)||1;
+  const matId=parseInt(document.getElementById('es-material').value)||0;
+  const mat=ES_MATERIALES.find(m=>m.id===matId)||{};
+  const cantPaq=parseFloat(mat.cant_por_paquete)||1;
   const numPaq=parseFloat(document.getElementById('es-num-paquetes').value)||0;
   const total=numPaq*cantPaq;
   document.getElementById('es-total-calculado').value=total||'';
-  const nomPaq=opt?.dataset?.nompaq||'paquete';
-  const unidad=(opt?.dataset?.unidad||'UNIDAD').toLowerCase();
+  const nomPaq=mat.nombre_paquete||'paquete';
+  const unidad=(mat.unidad||'UNIDAD').toLowerCase();
   if(numPaq&&total){
     document.getElementById('es-preview-paq').textContent=
       numPaq+' '+nomPaq+(numPaq!==1?'s':'')+' × '+cantPaq+' '+unidad+' = '+total+' '+unidad+'s en total';
@@ -2112,10 +2145,9 @@ function calcularTotalPaquetes(){
 
 function previewCorrelativo(){
   const primer=parseInt(document.getElementById('es-primer-num')?.value)||0;
-  // Get quantity from either paquete or cantidad field
-  const sel=document.getElementById('es-material');
-  const opt=sel.options[sel.selectedIndex];
-  const cantPaq=parseFloat(opt?.dataset?.cantpaq)||1;
+  const matId=parseInt(document.getElementById('es-material').value)||0;
+  const mat=ES_MATERIALES.find(m=>m.id===matId)||{};
+  const cantPaq=parseFloat(mat.cant_por_paquete)||1;
   const numPaq=parseFloat(document.getElementById('es-num-paquetes').value)||0;
   const cant=numPaq>0?Math.round(numPaq*cantPaq):parseInt(document.getElementById('es-cantidad').value)||0;
   if(primer&&cant){
@@ -2132,10 +2164,9 @@ function previewCorrelativo(){
 async function confirmarEntradaStock(){
   const err=document.getElementById('es-err');
   const matId=parseInt(document.getElementById('es-material').value);
-  const sel=document.getElementById('es-material');
-  const opt=sel.options[sel.selectedIndex];
-  const tipo=opt?.dataset?.tipo||'NINGUNO';
-  const cantPaq=parseFloat(opt?.dataset?.cantpaq)||1;
+  const matObj=ES_MATERIALES.find(m=>m.id===matId)||{};
+  const tipo=matObj.serial_tipo||'NINGUNO';
+  const cantPaq=parseFloat(matObj.cant_por_paquete)||1;
   const tienePaquete=cantPaq>1&&tipo!=='CORRELATIVO'&&tipo!=='INDIVIDUAL';
 
   let cant=0;
@@ -2165,7 +2196,7 @@ async function confirmarEntradaStock(){
   err.textContent='';
 
   try{
-    const nomPaq=opt?.dataset?.nompaq||'';
+    const nomPaq=matObj.nombre_paquete||'';
     const numPaq=tienePaquete?document.getElementById('es-num-paquetes').value:'';
     const obsStr='Entrada Gigared'+(numPaq?' — '+numPaq+' '+nomPaq+(parseFloat(numPaq)!==1?'s':''):'')
       +(tipo==='CORRELATIVO'?' — Precintos correlativos':tipo==='INDIVIDUAL'?' — Seriales individuales':'');
@@ -2234,7 +2265,26 @@ async function renderConfig(tab){
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
     if(tab==='estados'){const d=await sbGet('estados_ot','?order=orden_display')||[];el.innerHTML=`<div class="card">${d.map(e=>`<div class="row"><div><div style="font-weight:600">${e.nombre.replace(/_/g,' ')}</div><div style="font-size:12px;color:#64748b">${e.descripcion||''}</div></div><span class="badge ${e.activo?'b-green':'b-gray'}">${e.activo?'Activo':'Inactivo'}</span></div>`).join('')}</div>`;}
-    else if(tab==='materiales'){const d=await sbGet('catalogo_materiales','?order=orden_display')||[];el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Material</th><th>Unidad</th><th>Crítico</th><th>Serial</th></tr></thead><tbody>${d.map(m=>`<tr><td>${m.nombre}</td><td>${m.unidad||''}</td><td>${m.es_critico?'✓':'—'}</td><td>${m.requiere_serial?'✓':'—'}</td></tr>`).join('')}</tbody></table></div>`;}
+    else if(tab==='materiales'){const d=await sbGet('catalogo_materiales','?order=orden_display')||[];el.innerHTML='<div class="ot-table-wrap"><table class="ot-table"><thead><tr><th>Material</th><th>Unidad</th><th>Crítico</th><th>Serial</th></tr></thead><tbody>'+d.map(m=>'<tr><td>'+m.nombre+'</td><td>'+(m.unidad||'')+'</td><td>'+(m.es_critico?'✓':'—')+'</td><td>'+(m.requiere_serial?'✓':'—')+'</td></tr>').join('')+'</tbody></table></div>';}
+    else if(tab==='mat-config'){
+      const d=await sbGet('catalogo_materiales','?order=orden_display&activo=eq.true')||[];
+      const tipoOpts='<option value="NINGUNO">Sin serial</option><option value="CORRELATIVO">Correlativo (precintos)</option><option value="INDIVIDUAL">Individual (equipos)</option>';
+      el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.75rem">Configurá cómo se recibe y entrega cada material. Los cambios aplican inmediatamente.</div>'
+        +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+        +'<th>Material</th><th>Unidad</th><th>Cant/paquete</th><th>Nombre paquete</th><th>Tipo serial</th><th></th>'
+        +'</tr></thead><tbody>'
+        +d.map(m=>'<tr id="mcfg-'+m.id+'">'
+          +'<td style="font-weight:600;font-size:12px">'+m.nombre+'</td>'
+          +'<td style="font-size:12px;color:#64748b">'+m.unidad+'</td>'
+          +'<td><input type="number" value="'+(m.cant_por_paquete||1)+'" min="1" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px" id="mcfg-paq-'+m.id+'"/></td>'
+          +'<td><input type="text" value="'+(m.nombre_paquete||'unidad')+'" style="width:90px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px" id="mcfg-nom-'+m.id+'"/></td>'
+          +'<td><select style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px" id="mcfg-tipo-'+m.id+'">'
+          +tipoOpts.replace('value="'+(m.serial_tipo||'NINGUNO')+'"','value="'+(m.serial_tipo||'NINGUNO')+'" selected')
+          +'</select></td>'
+          +'<td><button class="btn btn-sm btn-primary" style="font-size:11px" onclick="guardarConfigMat('+m.id+')">Guardar</button></td>'
+          +'</tr>').join('')
+        +'</tbody></table></div>';
+    }
     else if(tab==='servicios'){const d=await sbGet('catalogo_servicios','?order=categoria,orden_display')||[];el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Servicio</th><th>Categoría</th></tr></thead><tbody>${d.map(s=>`<tr><td>${s.nombre}</td><td><span class="badge b-gray">${s.categoria||''}</span></td></tr>`).join('')}</tbody></table></div>`;}
     else if(tab==='motivos'){const d=await sbGet('motivos_estado','?select=*,estados_ot(nombre)&order=estado_ot_id')||[];el.innerHTML=`<div class="card">${d.map(m=>`<div class="row"><div><div style="font-weight:600">${m.descripcion}</div><div style="font-size:12px;color:#64748b">${m.estados_ot?.nombre||''}</div></div><span class="badge ${m.activo?'b-green':'b-gray'}">${m.activo?'Activo':'Inactivo'}</span></div>`).join('')}</div>`;}
     else if(tab==='usuarios'&&CU.rol==='superadmin'){
@@ -2247,6 +2297,25 @@ async function renderConfig(tab){
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
 function cfgTab(tab,el){document.querySelectorAll('#cfg-nav .ntab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderConfig(tab);}
+
+// ─── CONFIG MATERIALES ───
+async function guardarConfigMat(matId){
+  const cantPaq=parseFloat(document.getElementById('mcfg-paq-'+matId).value)||1;
+  const nomPaq=document.getElementById('mcfg-nom-'+matId).value.trim()||'unidad';
+  const tipo=document.getElementById('mcfg-tipo-'+matId).value;
+  try{
+    await sbPatch('catalogo_materiales','?id=eq.'+matId,{
+      cant_por_paquete:cantPaq,
+      nombre_paquete:nomPaq,
+      serial_tipo:tipo
+    });
+    // Visual feedback
+    const row=document.getElementById('mcfg-'+matId);
+    if(row){row.style.background='#f0fdf4';setTimeout(()=>{row.style.background='';},1200);}
+    // Refresh cache
+    ES_MATERIALES=[];
+  }catch(e){alert('Error: '+e.message);}
+}
 
 // ─── ABM USUARIOS ───
 let USR_EDIT_ID=null;
