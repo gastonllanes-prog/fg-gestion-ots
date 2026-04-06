@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v41</title>
+<title>FG Gestión OTs v42</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V41</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V42</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v41</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v42</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -407,7 +407,6 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="ntab active" onclick="cfgTab('estados',this)">Estados</div>
     <div class="ntab" onclick="cfgTab('motivos',this)">Motivos</div>
     <div class="ntab" onclick="cfgTab('materiales',this)">Materiales</div>
-    <div class="ntab" onclick="cfgTab('mat-config',this)">Config materiales</div>
     <div class="ntab" onclick="cfgTab('servicios',this)">Servicios</div>
     <div class="ntab" id="cfg-tab-usuarios" style="display:none" onclick="cfgTab('usuarios',this)">Usuarios</div>
   </div>
@@ -637,7 +636,39 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
 </div>
 
-<!-- MODAL USUARIO -->
+<!-- MODAL ABM MATERIAL -->
+<div class="modal-overlay hidden" id="mat-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title" id="mat-modal-titulo">Nuevo material <button class="modal-close" onclick="cerrarModal('mat-modal')">✕</button></div>
+    <input type="hidden" id="mat-id"/>
+    <div class="form-2col">
+      <div class="fg" style="grid-column:1/-1"><label>Nombre del material</label><input id="mat-nombre" placeholder="Ej: Splitter domic. 4 salidas"/></div>
+      <div class="fg"><label>Unidad</label>
+        <select id="mat-unidad">
+          <option value="unidad">unidad</option>
+          <option value="metro">metro</option>
+        </select>
+      </div>
+      <div class="fg"><label>Tipo de serial</label>
+        <select id="mat-serial">
+          <option value="NINGUNO">Sin serial</option>
+          <option value="CORRELATIVO">Correlativo (precintos)</option>
+          <option value="INDIVIDUAL">Individual (equipos)</option>
+        </select>
+      </div>
+      <div class="fg"><label>Cantidad por paquete</label><input type="number" id="mat-cant-paq" min="1" value="1" placeholder="1"/></div>
+      <div class="fg"><label>Nombre del paquete</label><input id="mat-nom-paq" placeholder="unidad, bobina, bolsa..."/></div>
+      <div class="fg"><label>Estado</label>
+        <select id="mat-activo"><option value="true">Activo</option><option value="false">Inactivo</option></select>
+      </div>
+    </div>
+    <p class="err-msg" id="mat-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="guardarMaterial()">Guardar</button>
+      <button class="btn" onclick="cerrarModal('mat-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay hidden" id="usr-modal">
   <div class="modal" style="max-width:480px">
     <div class="modal-title" id="usr-modal-titulo">Nuevo usuario <button class="modal-close" onclick="cerrarModal('usr-modal')">✕</button></div>
@@ -2328,30 +2359,30 @@ async function renderEquipos(){
 
 // CONFIG
 async function renderConfig(tab){
-  document.querySelectorAll('#cfg-estados,#cfg-motivos,#cfg-materiales,#cfg-mat-config,#cfg-servicios,#cfg-usuarios').forEach(d=>d.style.display='none');
+  document.querySelectorAll('#cfg-estados,#cfg-motivos,#cfg-materiales,#cfg-servicios,#cfg-usuarios').forEach(d=>d.style.display='none');
   const el=document.getElementById('cfg-'+tab);el.style.display='';
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
     if(tab==='estados'){const d=await sbGet('estados_ot','?order=orden_display')||[];el.innerHTML=`<div class="card">${d.map(e=>`<div class="row"><div><div style="font-weight:600">${e.nombre.replace(/_/g,' ')}</div><div style="font-size:12px;color:#64748b">${e.descripcion||''}</div></div><span class="badge ${e.activo?'b-green':'b-gray'}">${e.activo?'Activo':'Inactivo'}</span></div>`).join('')}</div>`;}
-    else if(tab==='materiales'){const d=await sbGet('catalogo_materiales','?order=orden_display')||[];el.innerHTML='<div class="ot-table-wrap"><table class="ot-table"><thead><tr><th>Material</th><th>Unidad</th><th>Crítico</th><th>Serial</th></tr></thead><tbody>'+d.map(m=>'<tr><td>'+m.nombre+'</td><td>'+(m.unidad||'')+'</td><td>'+(m.es_critico?'✓':'—')+'</td><td>'+(m.requiere_serial?'✓':'—')+'</td></tr>').join('')+'</tbody></table></div>';}
-    else if(tab==='mat-config'){
+    else if(tab==='materiales'){
       const d=await sbGet('catalogo_materiales','?order=activo.desc,orden_display')||[];
-      const tipoOpts='<option value="NINGUNO">Sin serial</option><option value="CORRELATIVO">Correlativo (precintos)</option><option value="INDIVIDUAL">Individual (equipos)</option>';
-      el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.75rem">Configurá cada material. Desactivá los que no usás para que no aparezcan en los listados.</div>'
+      const tipoLabel={NINGUNO:'—',CORRELATIVO:'📌 Correlativo',INDIVIDUAL:'🔢 Individual'};
+      el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
+        +'<div style="font-size:12px;color:#64748b">'+d.length+' materiales en el catálogo</div>'
+        +'<button class="btn btn-sm btn-primary" onclick="abrirModalMaterial()">+ Nuevo material</button></div>'
         +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
-        +'<th>Material</th><th>Unidad</th><th>Cant/paquete</th><th>Nombre paquete</th><th>Tipo serial</th><th>Estado</th><th></th>'
+        +'<th>Material</th><th>Unidad</th><th>Paquete</th><th>Serial</th><th>Estado</th><th></th>'
         +'</tr></thead><tbody>'
-        +d.map(m=>'<tr id="mcfg-'+m.id+'" style="'+(m.activo?'':'opacity:.5;background:#fafafa')+'">'
+        +d.map(m=>'<tr style="'+(m.activo?'':'opacity:.5;background:#fafafa')+'">'
           +'<td style="font-weight:600;font-size:12px">'+m.nombre+'</td>'
           +'<td style="font-size:12px;color:#64748b">'+m.unidad+'</td>'
-          +'<td><input type="number" value="'+(m.cant_por_paquete||1)+'" min="1" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px" id="mcfg-paq-'+m.id+'"/></td>'
-          +'<td><input type="text" value="'+(m.nombre_paquete||'unidad')+'" style="width:90px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px" id="mcfg-nom-'+m.id+'"/></td>'
-          +'<td><select style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px" id="mcfg-tipo-'+m.id+'">'
-          +tipoOpts.replace('value="'+(m.serial_tipo||'NINGUNO')+'"','value="'+(m.serial_tipo||'NINGUNO')+'" selected')
-          +'</select></td>'
-          +'<td><button class="btn btn-sm" style="font-size:11px;'+(m.activo?'color:#dc2626':'color:#16a34a')+'" onclick="toggleActivoMat('+m.id+','+m.activo+')">'+(m.activo?'🔴 Desactivar':'🟢 Activar')+'</button></td>'
-          +'<td><button class="btn btn-sm btn-primary" style="font-size:11px" onclick="guardarConfigMat('+m.id+')">Guardar</button></td>'
-          +'</tr>').join('')
+          +'<td style="font-size:12px;color:#64748b">'+((m.cant_por_paquete||1)>1?(m.cant_por_paquete+' '+m.nombre_paquete):'—')+'</td>'
+          +'<td style="font-size:12px">'+(tipoLabel[m.serial_tipo||'NINGUNO']||'—')+'</td>'
+          +'<td><span class="badge '+(m.activo?'b-green':'b-gray')+'">'+(m.activo?'Activo':'Inactivo')+'</span></td>'
+          +'<td style="display:flex;gap:4px">'
+          +'<button class="btn btn-sm" style="font-size:11px" onclick="abrirModalMaterial('+JSON.stringify(m).replace(/"/g,"'").replace(/'/g,"&#39;")+')">✏️</button>'
+          +'<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarMaterial('+m.id+',\''+m.nombre.replace(/'/g,'')+'\')" >🗑️</button>'
+          +'</td></tr>').join('')
         +'</tbody></table></div>';
     }
     else if(tab==='servicios'){const d=await sbGet('catalogo_servicios','?order=categoria,orden_display')||[];el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Servicio</th><th>Categoría</th></tr></thead><tbody>${d.map(s=>`<tr><td>${s.nombre}</td><td><span class="badge b-gray">${s.categoria||''}</span></td></tr>`).join('')}</tbody></table></div>`;}
@@ -2504,7 +2535,64 @@ async function imprimirEntregaSeriales(matId){
   setTimeout(()=>win.print(),500);
 }
 
-// ─── CONFIG MATERIALES ───
+// ─── ABM MATERIALES ───
+function abrirModalMaterial(m){
+  document.getElementById('mat-err').textContent='';
+  if(m){
+    document.getElementById('mat-modal-titulo').textContent='Editar material';
+    document.getElementById('mat-id').value=m.id||'';
+    document.getElementById('mat-nombre').value=m.nombre||'';
+    document.getElementById('mat-unidad').value=m.unidad||'unidad';
+    document.getElementById('mat-serial').value=m.serial_tipo||'NINGUNO';
+    document.getElementById('mat-cant-paq').value=m.cant_por_paquete||1;
+    document.getElementById('mat-nom-paq').value=m.nombre_paquete||'unidad';
+    document.getElementById('mat-activo').value=String(m.activo!==false);
+  }else{
+    document.getElementById('mat-modal-titulo').textContent='Nuevo material';
+    document.getElementById('mat-id').value='';
+    document.getElementById('mat-nombre').value='';
+    document.getElementById('mat-unidad').value='unidad';
+    document.getElementById('mat-serial').value='NINGUNO';
+    document.getElementById('mat-cant-paq').value='1';
+    document.getElementById('mat-nom-paq').value='unidad';
+    document.getElementById('mat-activo').value='true';
+  }
+  abrirModal('mat-modal');
+  setTimeout(()=>document.getElementById('mat-nombre').focus(),100);
+}
+
+async function guardarMaterial(){
+  const err=document.getElementById('mat-err');
+  const id=document.getElementById('mat-id').value;
+  const nombre=document.getElementById('mat-nombre').value.trim();
+  if(!nombre){err.textContent='El nombre es obligatorio';return;}
+  const data={
+    nombre,
+    unidad:document.getElementById('mat-unidad').value,
+    serial_tipo:document.getElementById('mat-serial').value,
+    cant_por_paquete:parseInt(document.getElementById('mat-cant-paq').value)||1,
+    nombre_paquete:document.getElementById('mat-nom-paq').value.trim()||'unidad',
+    activo:document.getElementById('mat-activo').value==='true'
+  };
+  try{
+    if(id){await sbPatch('catalogo_materiales','?id=eq.'+id,data);}
+    else{await sbPost('catalogo_materiales',data);}
+    cerrarModal('mat-modal');
+    ES_MATERIALES=[];
+    renderConfig('materiales');
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+async function eliminarMaterial(id,nombre){
+  if(!confirm('¿Eliminar "'+nombre+'" del catálogo?\n⚠️ Solo eliminá si nunca tuvo movimientos.'))return;
+  try{
+    await sbFetch('catalogo_materiales','DELETE',null,'?id=eq.'+id);
+    ES_MATERIALES=[];
+    renderConfig('materiales');
+  }catch(e){alert('Error al eliminar: '+e.message+'\n(El material puede tener movimientos o stock asociado)');}
+}
+
+// ─── CONFIG MATERIALES (legacy, redirige al ABM) ───
 async function toggleActivoMat(matId, activo){
   try{
     await sbPatch('catalogo_materiales','?id=eq.'+matId,{activo:!activo});
