@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v29</title>
+<title>FG Gestión OTs v30</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V29</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V30</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v29</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v30</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -320,10 +320,60 @@ tr:hover td{background:rgba(37,99,235,.02)}
 </div>
 
 <div id="s-cuadrillas" style="display:none">
-  <div class="ph"><div class="ph-icon blue">🔧</div><div><div class="ph-title">Cuadrillas</div><div class="ph-sub">Gestión de cuadrillas</div></div>
-    <div style="margin-left:auto"><button class="btn btn-sm btn-primary" onclick="alert('Próximamente')">+ Nueva</button></div>
+  <!-- LISTA -->
+  <div id="cuad-list-view">
+    <div class="ph"><div class="ph-icon blue">🔧</div><div><div class="ph-title">Cuadrillas</div><div class="ph-sub">Gestión de cuadrillas</div></div>
+      <div style="margin-left:auto"><button class="btn btn-sm btn-primary" onclick="abrirFormCuadrilla()">+ Nueva</button></div>
+    </div>
+    <div id="cuad-lista"><div class="loading"><span class="spinner"></span></div></div>
   </div>
-  <div id="cuad-lista"><div class="loading"><span class="spinner"></span></div></div>
+  <!-- FORM NUEVA/EDITAR -->
+  <div id="cuad-form-view" style="display:none">
+    <div class="ph">
+      <button class="btn btn-sm" onclick="cerrarFormCuadrilla()" style="margin-right:8px">← Volver</button>
+      <div class="ph-icon blue">🔧</div>
+      <div><div class="ph-title" id="cuad-form-titulo">Nueva cuadrilla</div></div>
+    </div>
+    <div class="card" style="max-width:500px">
+      <div class="fg"><label>Nombre de la cuadrilla</label><input id="cuad-nombre" placeholder="Ej: Enzo - Fernando"/></div>
+      <div class="fg"><label>Técnico 1</label><select id="cuad-tec1"><option value="">Seleccionar técnico...</option></select></div>
+      <div class="fg"><label>Técnico 2</label><select id="cuad-tec2"><option value="">Seleccionar técnico...</option></select></div>
+      <div class="fg"><label>Estado</label><select id="cuad-activo"><option value="true">Activa</option><option value="false">Inactiva</option></select></div>
+      <p class="err-msg" id="cuad-err"></p>
+      <div style="display:flex;gap:8px;margin-top:1rem">
+        <button class="btn btn-primary" style="flex:2" onclick="guardarCuadrilla()">Guardar</button>
+        <button class="btn" onclick="cerrarFormCuadrilla()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECCIÓN TÉCNICOS -->
+<div id="s-tecnicos" style="display:none">
+  <div id="tec-list-view">
+    <div class="ph"><div class="ph-icon blue">👷</div><div><div class="ph-title">Técnicos</div><div class="ph-sub">Personal de campo</div></div>
+      <div style="margin-left:auto"><button class="btn btn-sm btn-primary" onclick="abrirFormTecnico()">+ Nuevo</button></div>
+    </div>
+    <div id="tec-lista"><div class="loading"><span class="spinner"></span></div></div>
+  </div>
+  <div id="tec-form-view" style="display:none">
+    <div class="ph">
+      <button class="btn btn-sm" onclick="cerrarFormTecnico()" style="margin-right:8px">← Volver</button>
+      <div class="ph-icon blue">👷</div>
+      <div><div class="ph-title" id="tec-form-titulo">Nuevo técnico</div></div>
+    </div>
+    <div class="card" style="max-width:500px">
+      <input type="hidden" id="tec-id"/>
+      <div class="fg"><label>Nombre completo</label><input id="tec-nombre" placeholder="Ej: Enzo García"/></div>
+      <div class="fg"><label>Teléfono</label><input id="tec-tel" placeholder="376-4123456"/></div>
+      <div class="fg"><label>Estado</label><select id="tec-activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
+      <p class="err-msg" id="tec-err"></p>
+      <div style="display:flex;gap:8px;margin-top:1rem">
+        <button class="btn btn-primary" style="flex:2" onclick="guardarTecnico()">Guardar</button>
+        <button class="btn" onclick="cerrarFormTecnico()">Cancelar</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="s-stock" style="display:none">
@@ -504,6 +554,35 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
 </div>
 
+<!-- MODAL USUARIO -->
+<div class="modal-overlay hidden" id="usr-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title" id="usr-modal-titulo">Nuevo usuario <button class="modal-close" onclick="cerrarModal('usr-modal')">✕</button></div>
+    <input type="hidden" id="usr-id-hidden"/>
+    <div class="fg"><label>Nombre completo</label><input id="usr-nombre" placeholder="Gaston Llanes"/></div>
+    <div class="fg"><label>Email</label><input id="usr-email" type="email" placeholder="email@ejemplo.com" autocapitalize="none"/></div>
+    <div class="fg"><label>Rol</label>
+      <select id="usr-rol">
+        <option value="superadmin">Superadmin</option>
+        <option value="admin">Admin</option>
+        <option value="operador">Operador (solo lectura)</option>
+      </select>
+    </div>
+    <div class="fg"><label>Estado</label><select id="usr-activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
+    <div id="usr-pass-wrap">
+      <div class="fg"><label>Contraseña</label><input id="usr-pass" type="password" placeholder="Mínimo 6 caracteres"/></div>
+    </div>
+    <div id="usr-pass-change" style="display:none">
+      <div class="fg"><label>Nueva contraseña <span style="font-size:11px;color:#94a3b8">(dejar vacío para no cambiar)</span></label><input id="usr-new-pass" type="password" placeholder="Nueva contraseña..."/></div>
+    </div>
+    <p class="err-msg" id="usr-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="guardarUsuario()">Guardar</button>
+      <button class="btn" onclick="cerrarModal('usr-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SB_URL='https://hsoomkdhnanyunqwwxam.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhzb29ta2RobmFueXVucXd3eGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NjM4NTEsImV4cCI6MjA5MDUzOTg1MX0.T2aeJ0wEXT_QcS2GBPwQGxPrnLlMnRASn2RepylKwRc';
@@ -646,7 +725,7 @@ function construirMenu(){
   const items=[
     {sec:'Principal'},{id:'dashboard',icon:'📊',label:'Dashboard'},{id:'ots',icon:'📋',label:'Órdenes de trabajo'},
     {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},
-    {id:'stock',icon:'📦',label:'Stock'},{id:'equipos',icon:'📡',label:'Equipos'},
+    {id:'tecnicos',icon:'👷',label:'Técnicos'},{id:'stock',icon:'📦',label:'Stock'},{id:'equipos',icon:'📡',label:'Equipos'},
   ];
   if(CU.rol==='superadmin'||CU.rol==='admin')items.push({sec:'Sistema'},{id:'config',icon:'⚙️',label:'Configuración'});
   nav.innerHTML='';
@@ -662,9 +741,9 @@ function irA(sec){
   const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
   document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
-  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',clientes:'Clientes',cuadrillas:'Cuadrillas',stock:'Stock',equipos:'Equipos',config:'Config'}[sec]||'FG';
+  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos',stock:'Stock',equipos:'Equipos',config:'Config'}[sec]||'FG';
   closeSidebar();
-  const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},clientes:renderClientes,cuadrillas:renderCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
+  const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
 }
 
@@ -1672,19 +1751,179 @@ function cerrarDetalleCli(){
 }
 
 // CUADRILLAS
+let CUAD_EDIT_ID=null;
+
 async function renderCuadrillas(){
-  const el=document.getElementById('cuad-lista');el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  document.getElementById('cuad-list-view').style.display='';
+  document.getElementById('cuad-form-view').style.display='none';
+  const el=document.getElementById('cuad-lista');
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
-    const d=await sbGet('cuadrillas','?activo=eq.true&order=nombre')||[];
-    if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🔧</div><div>Sin cuadrillas</div></div>';return;}
-    el.innerHTML='';
-    for(const c of d){
-      const t=await sbGet('cuadrilla_tecnicos',`?cuadrilla_id=eq.${c.id}&activo=eq.true&select=*,usuarios(nombre)`)||[];
-      const div=document.createElement('div');div.className='card';
-      div.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:16px;font-weight:800">${c.nombre}</div><div style="font-size:12px;color:#64748b;margin-top:3px">${t.map(x=>x.usuarios?.nombre||'').filter(Boolean).join(' · ')||'Sin técnicos'}</div></div><button class="btn btn-sm" onclick="alert('Próximamente')">Editar</button></div>`;
-      el.appendChild(div);
-    }
+    const [cuads,tecs]=await Promise.all([
+      sbGet('cuadrillas','?order=activo.desc,nombre'),
+      sbGet('tecnicos','?activo=eq.true&order=nombre')
+    ]);
+    const d=cuads||[];
+    if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🔧</div><div>Sin cuadrillas — creá la primera</div></div>';return;}
+    // Para cada cuadrilla traer sus técnicos actuales
+    const asigs=await sbGet('cuadrilla_tecnicos','?activo=eq.true&select=cuadrilla_id,tecnico_id,tecnicos(nombre)')||[];
+    const tecsPorCuad={};
+    asigs.forEach(a=>{if(!tecsPorCuad[a.cuadrilla_id])tecsPorCuad[a.cuadrilla_id]=[];tecsPorCuad[a.cuadrilla_id].push(a.tecnicos?.nombre||'');});
+    el.innerHTML=`<div class="ot-table-wrap"><table class="ot-table"><thead><tr>
+      <th>Cuadrilla</th><th>Técnicos actuales</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${d.map(c=>`<tr>
+        <td style="font-weight:700">${c.nombre}</td>
+        <td style="font-size:12px;color:#64748b">${(tecsPorCuad[c.id]||[]).join(' · ')||'<span style="color:#cbd5e1">Sin técnicos asignados</span>'}</td>
+        <td><span class="badge ${c.activo?'b-green':'b-gray'}">${c.activo?'Activa':'Inactiva'}</span></td>
+        <td><button class="btn btn-sm" onclick="editarCuadrilla(${c.id})">✏️ Editar</button></td>
+      </tr>`).join('')}</tbody></table></div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:.5rem">${d.length} cuadrilla${d.length!==1?'s':''}</div>`;
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
+}
+
+async function abrirFormCuadrilla(id=null){
+  CUAD_EDIT_ID=id;
+  document.getElementById('cuad-list-view').style.display='none';
+  document.getElementById('cuad-form-view').style.display='';
+  document.getElementById('cuad-form-titulo').textContent=id?'Editar cuadrilla':'Nueva cuadrilla';
+  document.getElementById('cuad-err').textContent='';
+  // Llenar selects de técnicos
+  const tecs=await sbGet('tecnicos','?activo=eq.true&order=nombre')||[];
+  ['cuad-tec1','cuad-tec2'].forEach(sid=>{
+    const sel=document.getElementById(sid);
+    sel.innerHTML='<option value="">Sin asignar</option>';
+    tecs.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.nombre;sel.appendChild(o);});
+  });
+  if(id){
+    const [c,asigs]=await Promise.all([
+      sbGet('cuadrillas',`?id=eq.${id}`),
+      sbGet('cuadrilla_tecnicos',`?cuadrilla_id=eq.${id}&activo=eq.true&select=tecnico_id&order=id`)
+    ]);
+    if(c&&c[0]){
+      document.getElementById('cuad-nombre').value=c[0].nombre||'';
+      document.getElementById('cuad-activo').value=String(c[0].activo);
+    }
+    const ids=(asigs||[]).map(a=>a.tecnico_id);
+    if(ids[0])document.getElementById('cuad-tec1').value=ids[0];
+    if(ids[1])document.getElementById('cuad-tec2').value=ids[1];
+  }else{
+    document.getElementById('cuad-nombre').value='';
+    document.getElementById('cuad-activo').value='true';
+    document.getElementById('cuad-tec1').value='';
+    document.getElementById('cuad-tec2').value='';
+  }
+}
+
+async function editarCuadrilla(id){await abrirFormCuadrilla(id);}
+
+function cerrarFormCuadrilla(){
+  document.getElementById('cuad-form-view').style.display='none';
+  document.getElementById('cuad-list-view').style.display='';
+}
+
+async function guardarCuadrilla(){
+  const err=document.getElementById('cuad-err');
+  const nombre=document.getElementById('cuad-nombre').value.trim();
+  const activo=document.getElementById('cuad-activo').value==='true';
+  const t1=document.getElementById('cuad-tec1').value;
+  const t2=document.getElementById('cuad-tec2').value;
+  if(!nombre){err.textContent='El nombre es obligatorio';return;}
+  if(t1&&t2&&t1===t2){err.textContent='Los dos técnicos no pueden ser el mismo';return;}
+  err.textContent='';
+  try{
+    let cuadId=CUAD_EDIT_ID;
+    if(cuadId){
+      await sbPatch('cuadrillas',`?id=eq.${cuadId}`,{nombre,activo});
+    }else{
+      const r=await sbPost('cuadrillas',{nombre,activo});
+      cuadId=(Array.isArray(r)?r[0]:r)?.id;
+    }
+    // Desactivar asignaciones anteriores y crear nuevas
+    await sbPatch('cuadrilla_tecnicos',`?cuadrilla_id=eq.${cuadId}&activo=eq.true`,{activo:false,fecha_hasta:new Date().toISOString().slice(0,10)});
+    const nuevos=[t1,t2].filter(Boolean);
+    for(const tid of nuevos){
+      await sbPost('cuadrilla_tecnicos',{cuadrilla_id:cuadId,tecnico_id:parseInt(tid),fecha_desde:new Date().toISOString().slice(0,10),activo:true});
+    }
+    cerrarFormCuadrilla();
+    renderCuadrillas();
+    // Refrescar el select global de cuadrillas
+    cargarCuadrillas();
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+// TÉCNICOS
+async function renderTecnicos(){
+  document.getElementById('tec-list-view').style.display='';
+  document.getElementById('tec-form-view').style.display='none';
+  const el=document.getElementById('tec-lista');
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    const d=await sbGet('tecnicos','?order=activo.desc,nombre')||[];
+    if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">👷</div><div>Sin técnicos — creá el primero</div></div>';return;}
+    // Traer cuadrillas actuales de cada técnico
+    const asigs=await sbGet('cuadrilla_tecnicos','?activo=eq.true&select=tecnico_id,cuadrillas(nombre)')||[];
+    const cuadPorTec={};
+    asigs.forEach(a=>{cuadPorTec[a.tecnico_id]=a.cuadrillas?.nombre||'';});
+    el.innerHTML=`<div class="ot-table-wrap"><table class="ot-table"><thead><tr>
+      <th>Nombre</th><th>Teléfono</th><th>Cuadrilla actual</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${d.map(t=>`<tr>
+        <td style="font-weight:700">${t.nombre}</td>
+        <td style="font-size:12px">${t.telefono||'—'}</td>
+        <td style="font-size:12px;color:#64748b">${cuadPorTec[t.id]||'<span style="color:#cbd5e1">Sin cuadrilla</span>'}</td>
+        <td><span class="badge ${t.activo?'b-green':'b-gray'}">${t.activo?'Activo':'Inactivo'}</span></td>
+        <td><button class="btn btn-sm" onclick="editarTecnico(${t.id})">✏️ Editar</button></td>
+      </tr>`).join('')}</tbody></table></div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:.5rem">${d.length} técnico${d.length!==1?'s':''}</div>`;
+  }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
+}
+
+function abrirFormTecnico(id=null){
+  document.getElementById('tec-list-view').style.display='none';
+  document.getElementById('tec-form-view').style.display='';
+  document.getElementById('tec-id').value=id||'';
+  document.getElementById('tec-form-titulo').textContent=id?'Editar técnico':'Nuevo técnico';
+  document.getElementById('tec-err').textContent='';
+  if(!id){
+    document.getElementById('tec-nombre').value='';
+    document.getElementById('tec-tel').value='';
+    document.getElementById('tec-activo').value='true';
+  }
+}
+
+async function editarTecnico(id){
+  abrirFormTecnico(id);
+  try{
+    const d=await sbGet('tecnicos',`?id=eq.${id}`)||[];
+    if(d[0]){
+      document.getElementById('tec-nombre').value=d[0].nombre||'';
+      document.getElementById('tec-tel').value=d[0].telefono||'';
+      document.getElementById('tec-activo').value=String(d[0].activo);
+    }
+  }catch(e){document.getElementById('tec-err').textContent='Error: '+e.message;}
+}
+
+function cerrarFormTecnico(){
+  document.getElementById('tec-form-view').style.display='none';
+  document.getElementById('tec-list-view').style.display='';
+}
+
+async function guardarTecnico(){
+  const err=document.getElementById('tec-err');
+  const nombre=document.getElementById('tec-nombre').value.trim();
+  const telefono=document.getElementById('tec-tel').value.trim();
+  const activo=document.getElementById('tec-activo').value==='true';
+  const id=document.getElementById('tec-id').value;
+  if(!nombre){err.textContent='El nombre es obligatorio';return;}
+  err.textContent='';
+  try{
+    if(id){
+      await sbPatch('tecnicos',`?id=eq.${id}`,{nombre,telefono,activo});
+    }else{
+      await sbPost('tecnicos',{nombre,telefono,activo});
+    }
+    cerrarFormTecnico();
+    renderTecnicos();
+  }catch(e){err.textContent='Error: '+e.message;}
 }
 
 // STOCK
@@ -1723,10 +1962,74 @@ async function renderConfig(tab){
     else if(tab==='materiales'){const d=await sbGet('catalogo_materiales','?order=orden_display')||[];el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Material</th><th>Unidad</th><th>Crítico</th><th>Serial</th></tr></thead><tbody>${d.map(m=>`<tr><td>${m.nombre}</td><td>${m.unidad||''}</td><td>${m.es_critico?'✓':'—'}</td><td>${m.requiere_serial?'✓':'—'}</td></tr>`).join('')}</tbody></table></div>`;}
     else if(tab==='servicios'){const d=await sbGet('catalogo_servicios','?order=categoria,orden_display')||[];el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Servicio</th><th>Categoría</th></tr></thead><tbody>${d.map(s=>`<tr><td>${s.nombre}</td><td><span class="badge b-gray">${s.categoria||''}</span></td></tr>`).join('')}</tbody></table></div>`;}
     else if(tab==='motivos'){const d=await sbGet('motivos_estado','?select=*,estados_ot(nombre)&order=estado_ot_id')||[];el.innerHTML=`<div class="card">${d.map(m=>`<div class="row"><div><div style="font-weight:600">${m.descripcion}</div><div style="font-size:12px;color:#64748b">${m.estados_ot?.nombre||''}</div></div><span class="badge ${m.activo?'b-green':'b-gray'}">${m.activo?'Activo':'Inactivo'}</span></div>`).join('')}</div>`;}
-    else if(tab==='usuarios'&&CU.rol==='superadmin'){const d=await sbGet('usuarios','?order=nombre')||[];el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th></tr></thead><tbody>${d.map(u=>`<tr><td style="font-weight:600">${u.nombre}</td><td style="font-size:12px">${u.email}</td><td><span class="badge b-blue">${u.rol}</span></td><td><span class="badge ${u.activo?'b-green':'b-gray'}">${u.activo?'Activo':'Inactivo'}</span></td></tr>`).join('')}</tbody></table></div>`;}
+    else if(tab==='usuarios'&&CU.rol==='superadmin'){
+      const d=await sbGet('usuarios','?order=nombre')||[];
+      el.innerHTML='<div style="margin-bottom:.75rem;text-align:right"><button class="btn btn-sm btn-primary" onclick="abrirModalUsuario()">+ Nuevo usuario</button></div>'
+        +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>'
+        +d.map(u=>'<tr><td style="font-weight:600">'+u.nombre+'</td><td style="font-size:12px">'+u.email+'</td><td><span class="badge b-blue">'+u.rol+'</span></td><td><span class="badge '+(u.activo?'b-green':'b-gray')+'">'+(u.activo?'Activo':'Inactivo')+'</span></td><td><button class="btn btn-sm" onclick="abrirModalUsuario('+u.id+')">✏️</button></td></tr>').join('')
+        +'</tbody></table></div>';
+    }
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
 function cfgTab(tab,el){document.querySelectorAll('#cfg-nav .ntab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderConfig(tab);}
+
+// ─── ABM USUARIOS ───
+let USR_EDIT_ID=null;
+function abrirModalUsuario(id){
+  USR_EDIT_ID=id||null;
+  document.getElementById('usr-modal-titulo').textContent=id?'Editar usuario':'Nuevo usuario';
+  document.getElementById('usr-id-hidden').value=id||'';
+  document.getElementById('usr-err').textContent='';
+  document.getElementById('usr-pass-wrap').style.display=id?'none':'';
+  document.getElementById('usr-pass-change').style.display=id?'':'none';
+  if(!id){
+    document.getElementById('usr-nombre').value='';
+    document.getElementById('usr-email').value='';
+    document.getElementById('usr-pass').value='';
+    document.getElementById('usr-rol').value='admin';
+    document.getElementById('usr-activo').value='true';
+  }else{
+    sbGet('usuarios','?id=eq.'+id).then(d=>{
+      if(d&&d[0]){
+        document.getElementById('usr-nombre').value=d[0].nombre||'';
+        document.getElementById('usr-email').value=d[0].email||'';
+        document.getElementById('usr-rol').value=d[0].rol||'admin';
+        document.getElementById('usr-activo').value=String(d[0].activo);
+        if(document.getElementById('usr-new-pass'))document.getElementById('usr-new-pass').value='';
+      }
+    });
+  }
+  abrirModal('usr-modal');
+}
+async function guardarUsuario(){
+  const err=document.getElementById('usr-err');
+  const nombre=document.getElementById('usr-nombre').value.trim();
+  const email=document.getElementById('usr-email').value.trim().toLowerCase();
+  const rol=document.getElementById('usr-rol').value;
+  const activo=document.getElementById('usr-activo').value==='true';
+  const id=USR_EDIT_ID;
+  if(!nombre||!email){err.textContent='Nombre y email son obligatorios';return;}
+  const data={nombre,email,rol,activo};
+  if(!id){
+    const pass=document.getElementById('usr-pass').value;
+    if(!pass||pass.length<6){err.textContent='Contraseña mínimo 6 caracteres';return;}
+    data.password=pass;
+  }else{
+    const np=(document.getElementById('usr-new-pass')||{}).value||'';
+    if(np.trim()){if(np.trim().length<6){err.textContent='Nueva contraseña mínimo 6 caracteres';return;}data.password=np.trim();}
+  }
+  err.textContent='';
+  try{
+    if(id){await sbPatch('usuarios','?id=eq.'+id,data);}
+    else{
+      const ex=await sbGet('usuarios','?email=eq.'+encodeURIComponent(email))||[];
+      if(ex.length){err.textContent='Ya existe un usuario con ese email';return;}
+      await sbPost('usuarios',data);
+    }
+    cerrarModal('usr-modal');
+    renderConfig('usuarios');
+  }catch(e){err.textContent='Error: '+e.message;}
+}
 
 window.onload=()=>{const cu=sessionStorage.getItem('cu');if(cu){CU=JSON.parse(cu);iniciarApp();}};
 </script>
