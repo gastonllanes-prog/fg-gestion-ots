@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v30</title>
+<title>FG Gestión OTs v31</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V30</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V31</div>
   </div>
 </div>
 
@@ -177,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v30</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v31</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -377,7 +377,9 @@ tr:hover td{background:rgba(37,99,235,.02)}
 </div>
 
 <div id="s-stock" style="display:none">
-  <div class="ph"><div class="ph-icon amber">📦</div><div><div class="ph-title">Stock</div><div class="ph-sub">Materiales y equipos</div></div></div>
+  <div class="ph"><div class="ph-icon amber">📦</div><div><div class="ph-title">Stock</div><div class="ph-sub">Materiales y equipos</div></div>
+    <div style="margin-left:auto"><button class="btn btn-sm btn-primary" id="stock-entrada-btn" onclick="abrirEntradaStock()">+ Entrada Gigared</button></div>
+  </div>
   <div class="nav" id="stock-nav">
     <div class="ntab active" onclick="stockTab('deposito',this)">Depósito</div>
     <div class="ntab" onclick="stockTab('cuadrillas',this)">Por cuadrilla</div>
@@ -551,6 +553,49 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <button class="btn" onclick="cerrarModal('cierre-modal')">Cancelar</button>
     </div>
     <p class="err-msg" id="cierre-err"></p>
+  </div>
+</div>
+
+<!-- MODAL ENTRADA STOCK GIGARED -->
+<div class="modal-overlay hidden" id="entrada-stock-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">📦 Entrada de material — Gigared <button class="modal-close" onclick="cerrarModal('entrada-stock-modal')">✕</button></div>
+
+    <!-- PASO 1: Elegir material -->
+    <div id="es-paso1">
+      <div class="fg"><label>Material</label>
+        <select id="es-material" onchange="onCambioMaterialEntrada()">
+          <option value="">Seleccionar material...</option>
+        </select>
+      </div>
+      <div class="fg"><label>Cantidad</label>
+        <input type="number" id="es-cantidad" min="1" placeholder="Ej: 100" oninput="onCambioMaterialEntrada()"/>
+      </div>
+
+      <!-- CORRELATIVO (precintos) -->
+      <div id="es-correlativo-wrap" style="display:none;background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:1rem;margin-bottom:.75rem">
+        <div style="font-size:12px;font-weight:700;color:#0369a1;margin-bottom:.75rem">📌 Entrada correlativa (precintos)</div>
+        <div class="form-2col">
+          <div class="fg"><label>Primer número</label><input type="number" id="es-primer-num" placeholder="Ej: 1000" oninput="previewCorrelativo()"/></div>
+          <div class="fg"><label>Último número (calculado)</label><input id="es-ultimo-num" readonly style="background:#f8fafc;color:#64748b"/></div>
+        </div>
+        <div id="es-preview-corr" style="font-size:12px;color:#0369a1;margin-top:.25rem"></div>
+      </div>
+
+      <!-- INDIVIDUAL (equipos con serial) -->
+      <div id="es-individual-wrap" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:1rem;margin-bottom:.75rem">
+        <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:.75rem">🔢 Seriales individuales</div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:.5rem">Ingresá un serial por línea o escaneá uno por uno:</div>
+        <textarea id="es-seriales-txt" rows="6" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:13px;resize:vertical" placeholder="1C60D2F96288&#10;A0B1C2D3E4F5&#10;...uno por línea"></textarea>
+        <div id="es-serial-count" style="font-size:12px;color:#64748b;margin-top:.4rem"></div>
+      </div>
+
+      <p class="err-msg" id="es-err"></p>
+      <div class="modal-footer">
+        <button class="btn btn-primary" style="flex:2" onclick="confirmarEntradaStock()">✓ Registrar entrada</button>
+        <button class="btn" onclick="cerrarModal('entrada-stock-modal')">Cancelar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1929,17 +1974,187 @@ async function guardarTecnico(){
 // STOCK
 async function renderStock(tab){
   document.querySelectorAll('#stock-deposito,#stock-cuadrillas,#stock-movimientos').forEach(d=>d.style.display='none');
+  // Mostrar/ocultar botón entrada según tab
+  const btnE=document.getElementById('stock-entrada-btn');
+  if(btnE)btnE.style.display=tab==='deposito'?'':'none';
   const el=document.getElementById('stock-'+tab);el.style.display='';
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   if(tab==='deposito'){
     try{
-      const d=await sbGet('stock_deposito','?select=cantidad,cantidad_minima,catalogo_materiales(nombre,unidad)&order=catalogo_materiales(nombre)')||[];
+      const d=await sbGet('stock_deposito','?select=cantidad,cantidad_minima,catalogo_materiales(id,nombre,unidad,es_critico,serial_tipo)&order=catalogo_materiales(orden_display)')||[];
       if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📦</div><div>Stock vacío</div></div>';return;}
-      el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Material</th><th>Unidad</th><th>Stock</th><th>Mínimo</th></tr></thead><tbody>${d.map(s=>`<tr><td>${s.catalogo_materiales?.nombre||'—'}</td><td>${s.catalogo_materiales?.unidad||''}</td><td style="font-weight:700;color:${s.cantidad<=(s.cantidad_minima||0)?'#dc2626':'#16a34a'}">${s.cantidad}</td><td>${s.cantidad_minima||0}</td></tr>`).join('')}</tbody></table></div>`;
-    }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
+      el.innerHTML='<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+        +'<th>Material</th><th>Unidad</th><th>Stock</th><th>Mínimo</th><th>Crítico</th><th>Seriales</th></tr></thead><tbody>'
+        +d.map(s=>{
+          const bajo=s.cantidad<=(s.cantidad_minima||0);
+          const critico=s.catalogo_materiales?.es_critico;
+          const tipo=s.catalogo_materiales?.serial_tipo||'NINGUNO';
+          const verSeriales=tipo!=='NINGUNO'?'<button class="btn btn-sm" style="font-size:10px" onclick="verSeriales('+s.catalogo_materiales?.id+')">Ver</button>':'—';
+          return '<tr>'
+            +'<td style="font-weight:600">'+( s.catalogo_materiales?.nombre||'—')+'</td>'
+            +'<td style="font-size:12px;color:#64748b">'+( s.catalogo_materiales?.unidad||'')+'</td>'
+            +'<td style="font-weight:700;color:'+(bajo?'#dc2626':'#16a34a')+'">'+s.cantidad+'</td>'
+            +'<td>'+(s.cantidad_minima||0)+'</td>'
+            +'<td>'+(critico?'<span style="color:#dc2626;font-weight:700">✓</span>':'—')+'</td>'
+            +'<td>'+verSeriales+'</td>'
+            +'</tr>';
+        }).join('')
+        +'</tbody></table></div>';
+    }catch(e){el.innerHTML='<div class="card"><p style="color:#dc2626">'+e.message+'</p></div>';}
+  }else if(tab==='movimientos'){
+    try{
+      const d=await sbGet('movimientos_stock','?select=tipo,cantidad,fecha,obs,catalogo_materiales(nombre),cuadrillas(nombre)&order=fecha.desc&limit=50')||[];
+      if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div>Sin movimientos</div></div>';return;}
+      const tc={ENTRADA_DEPOSITO:'b-green',REPARTO_CUADRILLA:'b-blue',CONSUMO_OT:'b-amber',AJUSTE_VALIDACION:'b-orange',DEVOLUCION:'b-gray'};
+      el.innerHTML='<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+        +'<th>Fecha</th><th>Tipo</th><th>Material</th><th>Cantidad</th><th>Cuadrilla</th><th>Obs</th></tr></thead><tbody>'
+        +d.map(m=>'<tr>'
+          +'<td style="font-size:11px;color:#64748b">'+fmtF(m.fecha?.slice(0,10))+'</td>'
+          +'<td><span class="badge '+(tc[m.tipo]||'b-gray')+'" style="font-size:10px">'+m.tipo.replace(/_/g,' ')+'</span></td>'
+          +'<td style="font-size:12px">'+(m.catalogo_materiales?.nombre||'—')+'</td>'
+          +'<td style="font-weight:700;color:'+(m.cantidad>0?'#16a34a':'#dc2626')+'">'+(m.cantidad>0?'+':'')+m.cantidad+'</td>'
+          +'<td style="font-size:12px">'+(m.cuadrillas?.nombre||'—')+'</td>'
+          +'<td style="font-size:11px;color:#64748b">'+(m.obs||'—')+'</td>'
+          +'</tr>').join('')
+        +'</tbody></table></div>';
+    }catch(e){el.innerHTML='<div class="card"><p style="color:#dc2626">'+e.message+'</p></div>';}
   }
 }
 function stockTab(tab,el){document.querySelectorAll('#stock-nav .ntab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderStock(tab);}
+
+// ─── ENTRADA STOCK ───
+let ES_MATERIALES=[];
+async function abrirEntradaStock(){
+  document.getElementById('es-err').textContent='';
+  document.getElementById('es-cantidad').value='';
+  document.getElementById('es-correlativo-wrap').style.display='none';
+  document.getElementById('es-individual-wrap').style.display='none';
+  // Cargar materiales con serial_tipo
+  if(!ES_MATERIALES.length){
+    ES_MATERIALES=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
+  }
+  const sel=document.getElementById('es-material');
+  sel.innerHTML='<option value="">Seleccionar material...</option>';
+  ES_MATERIALES.forEach(m=>{
+    const o=document.createElement('option');
+    o.value=m.id;
+    o.dataset.tipo=m.serial_tipo||'NINGUNO';
+    o.textContent=m.nombre+(m.serial_tipo==='CORRELATIVO'?' 📌':m.serial_tipo==='INDIVIDUAL'?' 🔢':'');
+    sel.appendChild(o);
+  });
+  abrirModal('entrada-stock-modal');
+}
+
+function onCambioMaterialEntrada(){
+  const sel=document.getElementById('es-material');
+  const opt=sel.options[sel.selectedIndex];
+  const tipo=opt?.dataset?.tipo||'NINGUNO';
+  const cant=parseInt(document.getElementById('es-cantidad').value)||0;
+  document.getElementById('es-correlativo-wrap').style.display=tipo==='CORRELATIVO'?'':'none';
+  document.getElementById('es-individual-wrap').style.display=tipo==='INDIVIDUAL'?'':'none';
+  // Update serial textarea rows hint
+  if(tipo==='INDIVIDUAL'&&cant>0){
+    document.getElementById('es-serial-count').textContent='Necesitás ingresar '+cant+' serial'+( cant!==1?'es':'');
+  }
+  previewCorrelativo();
+}
+
+function previewCorrelativo(){
+  const primer=parseInt(document.getElementById('es-primer-num')?.value)||0;
+  const cant=parseInt(document.getElementById('es-cantidad').value)||0;
+  if(primer&&cant){
+    const ultimo=primer+cant-1;
+    document.getElementById('es-ultimo-num').value=ultimo;
+    document.getElementById('es-preview-corr').textContent='Se cargarán los precintos del '+primer+' al '+ultimo+' ('+cant+' unidades)';
+  }else{
+    document.getElementById('es-ultimo-num').value='';
+    document.getElementById('es-preview-corr').textContent='';
+  }
+}
+
+async function confirmarEntradaStock(){
+  const err=document.getElementById('es-err');
+  const matId=parseInt(document.getElementById('es-material').value);
+  const cant=parseInt(document.getElementById('es-cantidad').value)||0;
+  const sel=document.getElementById('es-material');
+  const tipo=sel.options[sel.selectedIndex]?.dataset?.tipo||'NINGUNO';
+  if(!matId){err.textContent='Seleccioná un material';return;}
+  if(!cant||cant<1){err.textContent='Ingresá una cantidad válida';return;}
+
+  let seriales=[];
+  if(tipo==='CORRELATIVO'){
+    const primer=parseInt(document.getElementById('es-primer-num').value)||0;
+    if(!primer){err.textContent='Ingresá el primer número de precinto';return;}
+    for(let i=0;i<cant;i++)seriales.push(String(primer+i));
+  }else if(tipo==='INDIVIDUAL'){
+    const txt=document.getElementById('es-seriales-txt').value.trim();
+    seriales=txt.split('\n').map(s=>s.trim().toUpperCase()).filter(Boolean);
+    if(seriales.length!==cant){err.textContent='Ingresaste '+seriales.length+' seriales pero la cantidad es '+cant;return;}
+    const unicos=new Set(seriales);
+    if(unicos.size!==seriales.length){err.textContent='Hay seriales duplicados en la lista';return;}
+  }
+  err.textContent='';
+
+  try{
+    // 1. Registrar movimiento de entrada
+    const mov=await sbPost('movimientos_stock',{
+      tipo:'ENTRADA_DEPOSITO',
+      material_id:matId,
+      cantidad:cant,
+      obs:'Entrada Gigared — '+(tipo==='CORRELATIVO'?'Precintos correlativos':tipo==='INDIVIDUAL'?'Seriales individuales':'Sin serial')
+    });
+    const movId=(Array.isArray(mov)?mov[0]:mov)?.id;
+
+    // 2. Actualizar stock depósito
+    const sd=await sbGet('stock_deposito','?material_id=eq.'+matId)||[];
+    if(sd.length){
+      await sbPatch('stock_deposito','?material_id=eq.'+matId,{
+        cantidad:sd[0].cantidad+cant,
+        updated_at:new Date().toISOString()
+      });
+    }else{
+      await sbPost('stock_deposito',{material_id:matId,cantidad:cant});
+    }
+
+    // 3. Registrar seriales en stock_seriales
+    if(seriales.length){
+      for(const s of seriales){
+        try{
+          await sbPost('stock_seriales',{
+            material_id:matId,
+            serial:s,
+            ubicacion:'DEPOSITO',
+            movimiento_id:movId||null
+          });
+        }catch(e2){
+          // Serial ya existe — ignorar duplicado silenciosamente
+          if(!e2.message.includes('unique'))throw e2;
+        }
+      }
+    }
+
+    cerrarModal('entrada-stock-modal');
+    renderStock('deposito');
+    document.getElementById('es-material').value='';
+    document.getElementById('es-cantidad').value='';
+    ES_MATERIALES=[];
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+// Ver seriales de un material en depósito
+async function verSeriales(matId){
+  const mat=ES_MATERIALES.find(m=>m.id===matId)||(await sbGet('catalogo_materiales','?id=eq.'+matId)||[])[0];
+  const d=await sbGet('stock_seriales','?material_id=eq.'+matId+'&ubicacion=eq.DEPOSITO&order=serial')||[];
+  const html='<div style="font-size:13px;font-weight:700;margin-bottom:.75rem">'+(mat?.nombre||'Material')+' — '+d.length+' en depósito</div>'
+    +(d.length?'<div style="max-height:300px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr><th>Serial/N°</th><th>Ingreso</th></tr></thead><tbody>'
+      +d.map(s=>'<tr><td style="font-family:monospace;font-weight:600">'+s.serial+'</td><td style="color:#64748b">'+fmtF(s.fecha_ingreso?.slice(0,10))+'</td></tr>').join('')
+      +'</tbody></table></div>'
+    :'<div class="empty-state"><div class="empty-state-icon">📭</div><div>Sin seriales registrados</div></div>');
+  // Reusar ot-modal para mostrar
+  document.getElementById('ot-modal-body').innerHTML=html;
+  document.getElementById('ot-modal-footer').innerHTML='<button class="btn" onclick="cerrarModal(\'ot-modal\')">Cerrar</button>';
+  abrirModal('ot-modal');
+}
 
 // EQUIPOS
 async function renderEquipos(){
