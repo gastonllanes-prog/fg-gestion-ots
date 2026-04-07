@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v75</title>
+<title>FG Gestión OTs v76</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V75</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V76</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v75</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v76</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -194,10 +194,10 @@ tr:hover td{background:rgba(37,99,235,.02)}
 <div id="s-dashboard" style="display:none">
   <div class="ph"><div class="ph-icon blue">📊</div><div><div class="ph-title">Dashboard</div><div class="ph-sub">Resumen general</div></div></div>
   <div class="stat-grid">
-    <div class="stat"><div class="lbl">Total pendientes</div><div class="val amber" id="dash-pend">—</div></div>
-    <div class="stat"><div class="lbl">Asignadas</div><div class="val blue" id="dash-asig">—</div></div>
-    <div class="stat"><div class="lbl">Finalizadas hoy</div><div class="val green" id="dash-fin">—</div></div>
-    <div class="stat"><div class="lbl">A reprogramar</div><div class="val red" id="dash-repro">—</div></div>
+    <div class="stat" style="cursor:pointer" onclick="irAConFiltroEstado('PENDIENTE')"><div class="lbl">Total pendientes</div><div class="val amber" id="dash-pend">—</div></div>
+    <div class="stat" style="cursor:pointer" onclick="irAOTsAsignadas()"><div class="lbl">Asignadas</div><div class="val blue" id="dash-asig">—</div></div>
+    <div class="stat" style="cursor:pointer" onclick="irAConFiltroEstado('FINALIZADA')"><div class="lbl">Finalizadas hoy</div><div class="val green" id="dash-fin">—</div></div>
+    <div class="stat" style="cursor:pointer" onclick="irAConFiltroEstado('A_REPROGRAMAR')"><div class="lbl">A reprogramar</div><div class="val red" id="dash-repro">—</div></div>
   </div>
   <div class="card-title" style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Pendientes por tipo — clic para ver</div>
   <div class="tipo-grid">
@@ -322,6 +322,33 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <button class="btn" onclick="volverAsignar()">Cancelar</button>
   </div>
   <p class="err-msg" id="asgn-res-err" style="margin-top:.5rem"></p>
+</div>
+
+<!-- ═══ OTs ASIGNADAS ═══ -->
+<div id="s-asignadas" style="display:none">
+  <div class="ph">
+    <div class="ph-icon blue">📋</div>
+    <div><div class="ph-title">OTs Asignadas</div><div class="ph-sub">Gestión de órdenes programadas</div></div>
+  </div>
+  <!-- Filtros -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;align-items:flex-end">
+    <div style="flex:1;min-width:140px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Fecha</label>
+      <input type="date" id="asig-list-fecha" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit" onchange="renderAsignadas()"/>
+    </div>
+    <div style="flex:1;min-width:160px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Cuadrilla</label>
+      <select id="asig-list-cuad" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit" onchange="renderAsignadas()">
+        <option value="">Todas las cuadrillas</option>
+      </select>
+    </div>
+    <div style="flex:2;min-width:180px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Buscar</label>
+      <input id="asig-list-buscar" placeholder="Cliente, nodo, número OT..." style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit" oninput="filtrarAsignadas()"/>
+    </div>
+    <button class="btn btn-sm" onclick="renderAsignadas()" style="align-self:flex-end;padding:8px 14px">🔄 Actualizar</button>
+  </div>
+  <div id="asig-list-tabla"><div class="loading"><span class="spinner"></span></div></div>
 </div>
 
 <div id="s-ots" style="display:none">
@@ -2059,9 +2086,10 @@ async function imprimirOrdenesProgramadas(){
   <div class="filtro">Desde: ${fechaDisplay} &nbsp;&nbsp; Hasta: ${fechaDisplay}</div>`;
 
   Object.entries(porcuad).sort(([a],[b])=>a.localeCompare(b)).forEach(([cuad,grps])=>{
-    html+=`<div class="cuad-titulo">${cuad}</div>`;
+    const totalOtsCuad=grps.reduce((s,g)=>s+(g.ordenes_trabajo||[]).length,0);
+    html+=`<div class="cuad-titulo">${cuad} <span style="font-weight:400;font-size:10px;opacity:.8">(${totalOtsCuad} OT${totalOtsCuad!==1?'s':''})</span></div>`;
     html+=`<table><thead><tr>
-      <th>N° Cliente</th><th>Nombre</th><th>N° OT</th><th>Tipo</th><th>Estado</th><th>Horario</th><th>Nodo</th>
+      <th>N° Cliente</th><th>Nombre / Domicilio</th><th>N° OT</th><th>Tipo</th><th>Estado</th><th>Horario</th><th>Nodo</th>
     </tr></thead><tbody>`;
     grps.sort((a,b)=>(a.horario_visita||'').localeCompare(b.horario_visita||'')).forEach(g=>{
       const ots=g.ordenes_trabajo||[];
@@ -2081,7 +2109,24 @@ async function imprimirOrdenesProgramadas(){
     html+=`</tbody></table>`;
   });
 
-  // Totales
+  // Totales por cuadrilla
+  html+=`<div style="margin-top:16px;border-top:2px solid #1e3a5f;padding-top:8px">
+    <div style="font-weight:700;font-size:11px;margin-bottom:6px;color:#1e3a5f">Resumen por cuadrilla</div>
+    <table class="tot-table"><thead><tr><th>Cuadrilla</th><th style="text-align:right">OTs asignadas</th><th style="text-align:right">Clientes</th></tr></thead><tbody>`;
+  let totalGenOts=0, totalGenCli=0;
+  Object.entries(porcuad).sort(([a],[b])=>a.localeCompare(b)).forEach(([cuad,grps])=>{
+    const otsC=grps.reduce((s,g)=>s+(g.ordenes_trabajo||[]).length,0);
+    const cliC=grps.length;
+    totalGenOts+=otsC; totalGenCli+=cliC;
+    html+=`<tr><td>${cuad}</td><td style="text-align:right;font-weight:700">${otsC}</td><td style="text-align:right">${cliC}</td></tr>`;
+  });
+  html+=`<tr style="border-top:2px solid #1e3a5f;background:#e8edf3">
+    <td style="font-weight:700">TOTAL GENERAL</td>
+    <td style="text-align:right;font-weight:700;font-size:13px">${totalGenOts}</td>
+    <td style="text-align:right;font-weight:700">${totalGenCli}</td>
+  </tr></tbody></table></div>`;
+
+  // Totales por tipo
   html+=`<div style="margin-top:16px;border-top:2px solid #1e3a5f;padding-top:8px">
     <div style="font-weight:700;font-size:11px;margin-bottom:6px">Tipo de OT — Totales</div>
     <table class="tot-table"><tbody>`;
@@ -2340,13 +2385,13 @@ async function abrirResumenAsignacion(){
         </td>
         <td>
           <div style="display:flex;flex-wrap:wrap;gap:4px">
-            ${slotsDisplay.map(s=>`<button type="button" id="slot-${i}-${s.replace(':','-')}"
+            ${slotsDisplay.map(s=>{const sid='slot-'+i+'-'+s.replace(':','_');const sel=s===g.hora;return `<button type="button" id="${sid}"
               onclick="elegirSlotResumen(${i},'${s}')"
               style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;
-                border:1px solid ${s===g.hora?'#2563eb':'#cbd5e1'};
-                background:${s===g.hora?'#2563eb':'transparent'};
-                color:${s===g.hora?'#fff':'#475569'}"
-              >${s}</button>`).join('')}
+                border:1px solid ${sel?'#2563eb':'#cbd5e1'};
+                background:${sel?'#2563eb':'transparent'};
+                color:${sel?'#fff':'#475569'}"
+              >${s}</button>`;}).join('')}
           </div>
         </td>
       </tr>`;
@@ -2375,7 +2420,7 @@ function actualizarBotonesSlot(idx){
     slotsDisplay.push(`${h}:${m}`);
   }
   slotsDisplay.forEach(s=>{
-    const btn=document.getElementById('slot-'+idx+'-'+s.replace(':','-'));
+    const btn=document.getElementById('slot-'+idx+'-'+s.replace(':','_'));
     if(!btn)return;
     const sel=s===hora;
     btn.style.background=sel?'#2563eb':'transparent';
@@ -2431,6 +2476,121 @@ async function confirmarAsignacion(){
     await renderAsignarOTs();
   }catch(e){err.textContent='Error: '+e.message;err.style.color='';}
 }
+// ─── NAVEGACIÓN DASHBOARD → OTs ───
+function irAConFiltroEstado(estado){
+  irA('ots');
+  setTimeout(()=>{
+    const sel=document.getElementById('ot-fil-estado');
+    if(sel){sel.value=estado;OT_PAGE=0;renderOTs();}
+  },100);
+}
+
+function irAOTsAsignadas(){
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
+  document.getElementById('s-asignadas').style.display='';
+  document.getElementById('mobile-title').textContent='OTs Asignadas';
+  const hoy=new Date().toISOString().slice(0,10);
+  document.getElementById('asig-list-fecha').value=hoy;
+  const sel=document.getElementById('asig-list-cuad');
+  if(sel.options.length<=1){
+    sbGet('cuadrillas','?activo=eq.true&order=nombre').then(cuads=>{
+      (cuads||[]).forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;sel.appendChild(o);});
+    });
+  }
+  renderAsignadas();
+}
+
+let ASIG_LIST_DATA=[];
+async function renderAsignadas(){
+  const el=document.getElementById('asig-list-tabla');
+  const fecha=document.getElementById('asig-list-fecha')?.value;
+  const cuadId=document.getElementById('asig-list-cuad')?.value;
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    let q='?select=id,horario_visita,duracion_minutos,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_tarea,tipo_item,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,telefono1))&order=horario_visita';
+    if(fecha) q+='&fecha_trabajo=eq.'+fecha;
+    if(cuadId) q+='&cuadrilla_id=eq.'+cuadId;
+    else q+='&cuadrilla_id=not.is.null';
+    const d=await sbGet('grupos_ot',q)||[];
+    ASIG_LIST_DATA=d.filter(g=>(g.ordenes_trabajo||[]).some(o=>['ASIGNADA','EN_PROCESO'].includes(o.estados_ot?.nombre)));
+    filtrarAsignadas();
+  }catch(e){el.innerHTML='<div class="card"><p style="color:#dc2626">'+e.message+'</p></div>';}
+}
+
+function filtrarAsignadas(){
+  const busq=(document.getElementById('asig-list-buscar')?.value||'').toLowerCase();
+  let lista=ASIG_LIST_DATA;
+  if(busq) lista=lista.filter(g=>{
+    const ots=g.ordenes_trabajo||[];
+    const cl=ots[0]?.clientes||{};
+    return (cl.codigo_gigared||'').toLowerCase().includes(busq)||(cl.apellido||'').toLowerCase().includes(busq)||(cl.nodo||'').toLowerCase().includes(busq)||ots.some(o=>(o.numero_ot||'').toLowerCase().includes(busq));
+  });
+  renderTablaAsignadas(lista);
+}
+
+function renderTablaAsignadas(lista){
+  const el=document.getElementById('asig-list-tabla');
+  if(!lista.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div>Sin OTs asignadas para los filtros seleccionados</div></div>';return;}
+  el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.5rem">'+lista.length+' grupo'+(lista.length!==1?'s':'')+' asignados</div>'
+    +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+    +'<th>Horario</th><th>Cuadrilla</th><th>Cliente</th><th>OTs</th><th>Acciones</th>'
+    +'</tr></thead><tbody>'
+    +lista.map(g=>{
+      const ots=g.ordenes_trabajo||[];
+      const cl=ots[0]?.clientes||{};
+      const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
+      const hora12=g.horario_visita?formatHora12(g.horario_visita):'—';
+      const tipos=[...new Set(ots.map(o=>o.tipo_item||o.tipo_tarea))];
+      return '<tr>'
+        +'<td style="font-weight:700;color:#2563eb;white-space:nowrap">'+hora12+'</td>'
+        +'<td style="font-size:12px;font-weight:600">'+(g.cuadrillas?.nombre||'—')+'</td>'
+        +'<td style="font-size:12px"><div style="font-weight:600">'+(cl.codigo_gigared||'—')+' — '+(cl.apellido||'')+' '+(cl.nombre||'')+'</div>'
+          +'<div style="font-size:11px;color:#64748b">'+dom+' <span style="color:#94a3b8">'+(cl.nodo||'')+'</span></div></td>'
+        +'<td style="font-size:11px">'
+          +tipos.map(t=>'<span class="badge '+(t==='REPARACION'?'b-orange':'b-green')+'" style="font-size:10px">'+(t||'').replace(/_/g,' ')+'</span>').join(' ')
+          +(ots.length>1?'<div style="font-size:10px;color:#94a3b8">'+ots.length+' OTs</div>':'')
+        +'</td>'
+        +'<td><div style="display:flex;gap:4px;flex-wrap:wrap">'
+          +'<button class="btn btn-sm" style="font-size:10px;color:#f59e0b;border-color:rgba(245,158,11,.3)" onclick="cambiarEstadoGrupo('+g.id+',\'A_REPROGRAMAR\')">↩ Reprogram.</button>'
+          +'<button class="btn btn-sm" style="font-size:10px" onclick="cambiarEstadoGrupo('+g.id+',\'PENDIENTE\')">↺ Pendiente</button>'
+          +'<button class="btn btn-sm btn-primary" style="font-size:10px" onclick="abrirReasignarDesdeAsignadas('+g.id+')">🔀 Reasignar</button>'
+          +(ots.length?'<button class="btn btn-sm" style="font-size:10px;background:#16a34a;color:#fff;border-color:#16a34a" onclick="abrirCierre('+ots[0].id+',\''+ots[0].numero_ot+'\',\''+( ots[0].tipo_tarea||'')+'\')" >✓ Cerrar</button>':'')
+        +'</div></td>'
+        +'</tr>';
+    }).join('')+'</tbody></table></div>';
+}
+
+async function cambiarEstadoGrupo(grupoId, nuevoEstado){
+  const est=ESTADOS.find(e=>e.nombre===nuevoEstado);
+  if(!est){alert('Estado no encontrado');return;}
+  if(!confirm('¿Mover a "'+nuevoEstado.replace(/_/g,' ')+'"?'))return;
+  try{
+    const patch={estado_id:est.id};
+    if(nuevoEstado!=='EN_PROCESO'){patch.cuadrilla_id=null;patch.fecha_trabajo=null;patch.horario_visita=null;}
+    await sbPatch('grupos_ot',`?id=eq.${grupoId}`,patch);
+    await sbPatch('ordenes_trabajo',`?grupo_id=eq.${grupoId}`,{estado_id:est.id,fecha_trabajo:null});
+    renderAsignadas();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function abrirReasignarDesdeAsignadas(grupoId){
+  const g=await sbGet('grupos_ot','?id=eq.'+grupoId+'&select=id,cuadrillas(nombre),ordenes_trabajo(tipo_tarea,clientes(codigo_gigared,apellido,nombre))').then(d=>d?.[0]);
+  if(!g)return;
+  const ots=g.ordenes_trabajo||[];
+  const cl=ots[0]?.clientes;
+  ASGN_SEL={};
+  ASGN_SEL[grupoId]={
+    gid:grupoId,dur:duracionMinutos([...new Set(ots.map(o=>o.tipo_tarea))]),
+    label:(cl?.codigo_gigared||'')+'  '+(cl?.apellido||'')+(cl?.nombre?' '+cl.nombre:''),
+    tipos:[...new Set(ots.map(o=>o.tipo_tarea))],hora:null
+  };
+  document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
+  document.getElementById('s-asignar').style.display='';
+  await renderAsignarOTs();
+  setTimeout(()=>{const cb=document.querySelector('.asgn-cb[data-gid="'+grupoId+'"]');if(cb){cb.checked=true;toggleAsignarCB(cb);}},600);
+}
+
 function toggleSelAll(cb){
   document.querySelectorAll('.ot-sel-cb').forEach(c=>c.checked=cb.checked);
   actualizarBarraSeleccion();
