@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v52</title>
+<title>FG Gestión OTs v53</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V52</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V53</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v52</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v53</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -677,6 +677,19 @@ tr:hover td{background:rgba(37,99,235,.02)}
     </div>
   </div>
 </div>
+<!-- MODAL AUTOCOMPLETADO -->
+<div class="modal-overlay hidden" id="autocomplete-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title" id="ac-modal-titulo">⚡ Autocompletar <button class="modal-close" onclick="cerrarModal('autocomplete-modal')">✕</button></div>
+    <div id="ac-modal-body" style="max-height:55vh;overflow-y:auto;padding-right:4px"></div>
+    <p class="err-msg" id="ac-modal-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="confirmarAutocompletado()">✓ Confirmar y asignar</button>
+      <button class="btn" onclick="cerrarModal('autocomplete-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="fecha-entrega-modal">
   <div class="modal" style="max-width:360px">
     <div class="modal-title">🖨️ Imprimir entrega <button class="modal-close" onclick="cerrarModal('fecha-entrega-modal')">✕</button></div>
@@ -2177,39 +2190,118 @@ function repartirACuadrillaActual(){
 
 async function autocompletarCuadrilla(){
   const cuadId=document.getElementById('cuad-selector').value;
+  const cuadNombre=document.getElementById('cuad-selector').selectedOptions[0]?.text||'';
   if(!cuadId){alert('Seleccioná una cuadrilla primero');return;}
-  // Traer config de autocompletado y stock actual
-  const mats=await sbGet('catalogo_materiales','?activo=eq.true')||[];
+  const mats=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
   const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[];
   const autocfg=await sbGet('autocomplete_config','?activo=eq.true')||[];
   const scMap={};sc.forEach(s=>{scMap[s.material_id]=s.cantidad||0;});
   const cfgMap={};autocfg.forEach(c=>{cfgMap[c.material_id]=c;});
-  const aAsignar=[];
+  const sinSerial=[], conSerial=[];
   for(const m of mats){
     const cfg=cfgMap[m.id];
     if(!cfg||!cfg.activo)continue;
     const actual=scMap[m.id]||0;
     const minimo=cfg.minimo_trigger||0;
     if(actual<minimo){
-      const falta=minimo-actual; // cuánto falta para llegar al mínimo
-      aAsignar.push({mat:m, cant:falta});
+      const falta=minimo-actual;
+      if(m.serial_tipo==='NINGUNO'||m.serial_tipo==='CORRELATIVO') sinSerial.push({mat:m,cant:falta,actual,minimo});
+      else conSerial.push({mat:m,cant:falta,actual,minimo});
     }
   }
-  if(!aAsignar.length){alert('El stock de la cuadrilla está completo, no necesita reposición.');return;}
-  const lista=aAsignar.map(x=>x.mat.nombre+': +'+x.cant+' '+x.mat.unidad).join('\n');
-  if(!confirm('Se va a asignar:\n\n'+lista+'\n\n¿Confirmás?'))return;
-  for(const item of aAsignar){
-    const sd=await sbGet('stock_deposito','?material_id=eq.'+item.mat.id)||[];
-    const dep=sd[0]?.cantidad||0;
-    const cant=Math.min(item.cant,dep);
-    if(!cant)continue;
-    await sbPatch('stock_deposito','?material_id=eq.'+item.mat.id,{cantidad:dep-cant,updated_at:new Date().toISOString()});
-    const scr=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id)||[];
-    if(scr.length)await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id,{cantidad:(scr[0].cantidad||0)+cant});
-    else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:item.mat.id,cantidad:cant});
-    await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:item.mat.id,cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs:'Autocompletado'});
+  if(!sinSerial.length&&!conSerial.length){
+    alert('✅ El stock de '+cuadNombre+' está completo.');return;
   }
-  renderStockCuadrillaSeleccionada();
+  // Mostrar modal de confirmación bonito
+  AUTOCOMPLETE_PENDING={cuadId,cuadNombre,sinSerial,conSerial};
+  const modal=document.getElementById('autocomplete-modal');
+  document.getElementById('ac-modal-titulo').textContent='⚡ Autocompletar — '+cuadNombre;
+  let html='';
+  if(sinSerial.length){
+    html+='<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Materiales sin serial</div>';
+    html+=sinSerial.map(x=>{
+      const color=x.mat.serial_tipo==='CORRELATIVO'?'#7c3aed':'#2563eb';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .875rem;background:#f8fafc;border-radius:10px;margin-bottom:.4rem">
+        <div style="font-weight:600;font-size:13px">${x.mat.nombre}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:12px;color:#94a3b8">Tiene: ${x.actual}</span>
+          <span style="font-size:18px">→</span>
+          <span style="font-size:14px;font-weight:800;color:${color}">+${x.cant} ${x.mat.unidad}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  if(conSerial.length){
+    html+='<div style="font-size:11px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .5rem">Equipos con serial — requieren escaneo</div>';
+    html+=conSerial.map(x=>`
+      <div style="padding:.6rem .875rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;margin-bottom:.4rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+          <span style="font-weight:600;font-size:13px">📱 ${x.mat.nombre}</span>
+          <span style="font-size:13px;font-weight:700;color:#ea580c">Faltan ${x.cant}</span>
+        </div>
+        <textarea id="ac-serial-${x.mat.id}" rows="2" placeholder="Escaneá o pegá los seriales (uno por línea)..."
+          style="width:100%;padding:6px 8px;border:1px solid #fed7aa;border-radius:8px;font-family:monospace;font-size:12px;resize:vertical"></textarea>
+      </div>`).join('');
+  }
+  document.getElementById('ac-modal-body').innerHTML=html;
+  abrirModal('autocomplete-modal');
+}
+
+let AUTOCOMPLETE_PENDING=null;
+
+async function confirmarAutocompletado(){
+  const {cuadId,sinSerial,conSerial}=AUTOCOMPLETE_PENDING||{};
+  if(!cuadId)return;
+  const err=document.getElementById('ac-modal-err');
+  err.textContent='';
+  // Validar seriales
+  const serialesPorMat={};
+  for(const item of conSerial||[]){
+    const txt=(document.getElementById('ac-serial-'+item.mat.id)?.value||'').trim();
+    const seriales=txt.split('\n').map(s=>s.trim().toUpperCase()).filter(Boolean);
+    if(seriales.length!==item.cant){err.textContent=''+item.mat.nombre+': ingresaste '+seriales.length+' seriales pero faltan '+item.cant;return;}
+    const macReg=/^[0-9A-Fa-f]{12}$/;
+    const inv=seriales.filter(s=>!macReg.test(s.replace(/[:\-]/g,'')));
+    if(inv.length){err.textContent='Seriales inválidos en '+item.mat.nombre+': '+inv[0];return;}
+    serialesPorMat[item.mat.id]=seriales;
+  }
+  err.textContent='Guardando...';
+  try{
+    // Asignar sin serial
+    for(const item of sinSerial||[]){
+      const sd=await sbGet('stock_deposito','?material_id=eq.'+item.mat.id)||[];
+      const dep=sd[0]?.cantidad||0;
+      const cant=Math.min(item.cant,dep);
+      if(!cant)continue;
+      if(sd.length) await sbPatch('stock_deposito','?material_id=eq.'+item.mat.id,{cantidad:dep-cant,updated_at:new Date().toISOString()});
+      const scr=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id)||[];
+      if(scr.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id,{cantidad:(scr[0].cantidad||0)+cant});
+      else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:item.mat.id,cantidad:cant});
+      await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:item.mat.id,cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs:'Autocompletado'});
+    }
+    // Asignar con serial
+    for(const item of conSerial||[]){
+      const seriales=serialesPorMat[item.mat.id]||[];
+      if(!seriales.length)continue;
+      const cant=seriales.length;
+      // Verificar que estén en depósito
+      const enDep=await sbGet('stock_seriales','?material_id=eq.'+item.mat.id+'&ubicacion=eq.DEPOSITO&serial=in.('+seriales.map(s=>`"${s}"`).join(',')+')')||[];
+      if(enDep.length!==cant){err.textContent='Algunos seriales de '+item.mat.nombre+' no están registrados en depósito';return;}
+      // Mover seriales a cuadrilla
+      for(const s of seriales){
+        await sbPatch('stock_seriales','?material_id=eq.'+item.mat.id+'&serial=eq.'+s,{ubicacion:'CUADRILLA_'+cuadId});
+      }
+      const sd=await sbGet('stock_deposito','?material_id=eq.'+item.mat.id)||[];
+      if(sd.length) await sbPatch('stock_deposito','?material_id=eq.'+item.mat.id,{cantidad:Math.max(0,(sd[0].cantidad||0)-cant),updated_at:new Date().toISOString()});
+      const scr=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id)||[];
+      if(scr.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id,{cantidad:(scr[0].cantidad||0)+cant});
+      else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:item.mat.id,cantidad:cant});
+      await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:item.mat.id,cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs:'Autocompletado con seriales'});
+    }
+    cerrarModal('autocomplete-modal');
+    AUTOCOMPLETE_PENDING=null;
+    renderStockCuadrillaSeleccionada();
+  }catch(e){err.textContent='Error: '+e.message;}
 }
 
 // ─── STOCK DEPOSITO ───
