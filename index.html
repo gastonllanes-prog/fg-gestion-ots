@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v74</title>
+<title>FG Gestión OTs v75</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V74</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V75</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v74</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v75</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -258,6 +258,9 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="ph">
     <div class="ph-icon blue">📍</div>
     <div><div class="ph-title">Asignar OTs</div><div class="ph-sub">Programá órdenes por cuadrilla</div></div>
+    <div style="margin-left:auto">
+      <button class="btn btn-sm" onclick="imprimirOrdenesProgramadas()" style="gap:6px">🖨️ Reporte del día</button>
+    </div>
   </div>
 
   <!-- PASO 1: Cuadrilla + Fecha (siempre visible) -->
@@ -1373,11 +1376,7 @@ async function renderOTs(){
         </tr>`;
       }).join('')}</tbody>
     </table></div>
-    <div id="ot-sel-bar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e3a5f;color:#fff;padding:12px 20px;border-radius:14px;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:200">
-      <span id="ot-sel-count" style="font-weight:700;font-size:14px"></span>
-      <button class="btn btn-sm" style="background:#2563eb;color:#fff;border:none" onclick="asignarSeleccionados()">📍 Asignar seleccionados</button>
-      <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none" onclick="limpiarSeleccion()">✕ Cancelar</button>
-    </div>`;
+    <div id="ot-sel-bar" style="display:none"></div>`;
     document.getElementById('ot-mas-btn').style.display=ots.length===PAGE_SIZE?'block':'none';
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
@@ -2000,6 +1999,113 @@ async function guardarEstado(){
 }
 
 // ASIGNAR
+// ═══ REPORTE ÓRDENES PROGRAMADAS POR FECHA ═══
+async function imprimirOrdenesProgramadas(){
+  // Pedir fecha
+  const fecha=prompt('Fecha del reporte (AAAA-MM-DD):',new Date().toISOString().slice(0,10));
+  if(!fecha)return;
+
+  // Traer todos los grupos asignados para esa fecha con sus OTs
+  const grupos=await sbGet('grupos_ot',
+    `?fecha_trabajo=eq.${fecha}&select=id,horario_visita,duracion_minutos,cuadrillas(nombre),ordenes_trabajo(numero_ot,tipo_tarea,tipo_item,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo)),observaciones&order=cuadrillas(nombre),horario_visita`
+  )||[];
+
+  if(!grupos.length){alert('No hay órdenes programadas para el '+new Date(fecha+'T12:00:00').toLocaleDateString('es-AR'));return;}
+
+  // Agrupar por cuadrilla
+  const porcuad={};
+  grupos.forEach(g=>{
+    const cuad=g.cuadrillas?.nombre||'Sin cuadrilla';
+    if(!porcuad[cuad])porcuad[cuad]=[];
+    porcuad[cuad].push(g);
+  });
+
+  const fechaDisplay=new Date(fecha+'T12:00:00').toLocaleDateString('es-AR');
+  const EMPRESA='FG Conexiones S.R.L.';
+  const CUIT='CUIT: 30-71636657-6';
+  const DIR='Bolivia 2356 - Posadas, Misiones';
+  const TEL='Tel: 0376 4 152286';
+
+  // Contar totales por tipo
+  const totTipo={};
+  grupos.forEach(g=>(g.ordenes_trabajo||[]).forEach(o=>{
+    const t=o.tipo_item||o.tipo_tarea||'Otro';
+    totTipo[t]=(totTipo[t]||0)+1;
+  }));
+
+  const css=`
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Arial,sans-serif;font-size:10px;padding:16px;color:#111}
+    .header{text-align:center;border-bottom:2px solid #1e3a5f;padding-bottom:8px;margin-bottom:12px}
+    .header h1{font-size:15px;font-weight:700;color:#1e3a5f}
+    .header p{font-size:10px;color:#555;margin-top:2px}
+    .filtro{font-size:10px;color:#555;margin-bottom:10px}
+    .cuad-titulo{background:#1e3a5f;color:#fff;font-weight:700;font-size:11px;padding:5px 10px;margin-top:12px;margin-bottom:0;border-radius:4px 4px 0 0}
+    table{width:100%;border-collapse:collapse;margin-bottom:4px}
+    thead tr{background:#e8edf3}
+    th{padding:4px 8px;text-align:left;font-size:9px;font-weight:700;color:#1e3a5f;border:1px solid #ccc}
+    td{padding:4px 8px;font-size:10px;border:1px solid #ddd;vertical-align:top}
+    .tot-table{margin-top:16px;width:auto}
+    .tot-table td{padding:3px 12px}
+    .refuerzo{font-size:9px;color:#ea580c;font-weight:700}
+    @media print{body{padding:8px}@page{size:A4;margin:10mm}}
+  `;
+
+  let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Programadas ${fechaDisplay}</title><style>${css}</style></head><body>`;
+  html+=`<div class="header">
+    <div style="font-size:9px;color:#777">${TEL} · ${CUIT} · ${DIR}</div>
+    <h1>${EMPRESA} — Órdenes Programadas por Fecha</h1>
+  </div>
+  <div class="filtro">Desde: ${fechaDisplay} &nbsp;&nbsp; Hasta: ${fechaDisplay}</div>`;
+
+  Object.entries(porcuad).sort(([a],[b])=>a.localeCompare(b)).forEach(([cuad,grps])=>{
+    html+=`<div class="cuad-titulo">${cuad}</div>`;
+    html+=`<table><thead><tr>
+      <th>N° Cliente</th><th>Nombre</th><th>N° OT</th><th>Tipo</th><th>Estado</th><th>Horario</th><th>Nodo</th>
+    </tr></thead><tbody>`;
+    grps.sort((a,b)=>(a.horario_visita||'').localeCompare(b.horario_visita||'')).forEach(g=>{
+      const ots=g.ordenes_trabajo||[];
+      const cl=ots[0]?.clientes;
+      const dom=cl?.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl?.domicilio||'—');
+      const hora12=g.horario_visita?formatHora12(g.horario_visita):'—';
+      ots.forEach((o,oi)=>{
+        html+=`<tr>
+          ${oi===0?`<td rowspan="${ots.length}">${cl?.codigo_gigared||'—'}</td><td rowspan="${ots.length}" style="font-size:10px">${(cl?.apellido||'')} ${cl?.nombre||''}<br/><span style="color:#777;font-size:9px">${dom}</span></td>`:''}
+          <td style="font-family:monospace">${o.numero_ot||'—'}</td>
+          <td>${(o.tipo_item||o.tipo_tarea||'').replace(/_/g,' ')}</td>
+          <td><span style="color:${o.estados_ot?.nombre==='ASIGNADA'?'#2563eb':o.estados_ot?.nombre==='FINALIZADA'?'#16a34a':'#f59e0b'}">${o.estados_ot?.nombre||'—'}</span></td>
+          ${oi===0?`<td rowspan="${ots.length}" style="font-weight:700;color:#1e3a5f;white-space:nowrap">${hora12}</td><td rowspan="${ots.length}">${cl?.nodo||'—'}</td>`:''}
+        </tr>`;
+      });
+    });
+    html+=`</tbody></table>`;
+  });
+
+  // Totales
+  html+=`<div style="margin-top:16px;border-top:2px solid #1e3a5f;padding-top:8px">
+    <div style="font-weight:700;font-size:11px;margin-bottom:6px">Tipo de OT — Totales</div>
+    <table class="tot-table"><tbody>`;
+  Object.entries(totTipo).sort().forEach(([t,c])=>{
+    html+=`<tr><td>${t.replace(/_/g,' ')}</td><td style="font-weight:700;text-align:right">${c}</td></tr>`;
+  });
+  const total=Object.values(totTipo).reduce((a,b)=>a+b,0);
+  html+=`<tr style="border-top:1px solid #ccc"><td style="font-weight:700">Total General</td><td style="font-weight:700;text-align:right">${total}</td></tr>`;
+  html+=`</tbody></table></div>`;
+  html+=`</body></html>`;
+
+  const win=window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>win.print(),500);
+}
+
+function formatHora12(hora24){
+  const [h,m]=hora24.split(':').map(Number);
+  const ampm=h>=12?'PM':'AM';
+  const h12=h%12||12;
+  return `${h12}.${m.toString().padStart(2,'0')} ${ampm}`;
+}
+
 // ═══ ASIGNAR OTs — sección dedicada ═══
 let ASGN_TODAS=[];    // todas las OTs pendientes cargadas
 let ASGN_SEL={};      // grupoId → {gid, label, dom, nodo, tipos, dur}
@@ -2214,38 +2320,68 @@ async function abrirResumenAsignacion(){
 
   // Renderizar tabla editable
   cont.innerHTML='<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
-    +'<th>Cliente</th><th style="text-align:center">Duración</th><th style="text-align:center">Horario asignado</th><th style="text-align:center">Cambiar</th>'
+    +'<th>Cliente</th><th style="text-align:center">Duración</th><th style="text-align:center">Horario asignado</th><th style="text-align:center">Cambiar horario</th>'
     +'</tr></thead><tbody>'
-    +items.map((g,i)=>`<tr>
-      <td style="font-size:12px;font-weight:600">${g.label}</td>
-      <td style="text-align:center;color:#64748b;font-size:12px">${g.dur} min</td>
-      <td style="text-align:center">
-        <input type="time" id="asgn-h-${i}" value="${g.hora||''}" step="300"
-          style="padding:6px 10px;border:2px solid ${g.hora?'#2563eb':'#f59e0b'};border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;width:100px"
-          onchange="items[${i}].hora=this.value"/>
-      </td>
-      <td style="text-align:center">
-        <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center">
-          ${calcSlotLibres(ocupBase,g.dur).map(s=>`<button type="button" onclick="cambiarSlotResumen(${i},'${s}',items)"
-            style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid ${s===g.hora?'#2563eb':'#cbd5e1'};background:${s===g.hora?'#2563eb':'transparent'};color:${s===g.hora?'#fff':'#475569'}"
-            >${s}</button>`).join('')}
-        </div>
-      </td>
-    </tr>`).join('')
+    +items.map((g,i)=>{
+      // Slots fijos cada 30 min de 07:30 a 17:00
+      const slotsDisplay=[];
+      for(let t=7*60+30;t<=17*60;t+=30){
+        const h=Math.floor(t/60).toString().padStart(2,'0');
+        const m=(t%60).toString().padStart(2,'0');
+        slotsDisplay.push(`${h}:${m}`);
+      }
+      return `<tr>
+        <td style="font-size:12px;font-weight:600">${g.label}</td>
+        <td style="text-align:center;color:#64748b;font-size:12px">${g.dur} min</td>
+        <td style="text-align:center">
+          <input type="time" id="asgn-h-${i}" value="${g.hora||''}" step="1800"
+            style="padding:6px 10px;border:2px solid ${g.hora?'#2563eb':'#f59e0b'};border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;width:105px"
+            onchange="window._ASGN_ITEMS[${i}].hora=this.value;actualizarBotonesSlot(${i})"/>
+        </td>
+        <td>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            ${slotsDisplay.map(s=>`<button type="button" id="slot-${i}-${s.replace(':','-')}"
+              onclick="elegirSlotResumen(${i},'${s}')"
+              style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;
+                border:1px solid ${s===g.hora?'#2563eb':'#cbd5e1'};
+                background:${s===g.hora?'#2563eb':'transparent'};
+                color:${s===g.hora?'#fff':'#475569'}"
+              >${s}</button>`).join('')}
+          </div>
+        </td>
+      </tr>`;
+    }).join('')
     +'</tbody></table></div>';
 
-  // Guardar referencia a items para los handlers
   window._ASGN_ITEMS=items;
   window._ASGN_CUAD={id:cuadId,nombre:cuadNombre};
   window._ASGN_FECHA=fecha;
 }
 
-function cambiarSlotResumen(idx, hora, items){
-  items[idx].hora=hora;
+function elegirSlotResumen(idx, hora){
+  window._ASGN_ITEMS[idx].hora=hora;
   const inp=document.getElementById('asgn-h-'+idx);
   if(inp){inp.value=hora;inp.style.borderColor='#2563eb';}
-  // Actualizar visual de slots
-  abrirResumenAsignacion();
+  actualizarBotonesSlot(idx);
+}
+
+function actualizarBotonesSlot(idx){
+  const hora=window._ASGN_ITEMS[idx]?.hora||'';
+  // Actualizar color de todos los botones de esta fila
+  const slotsDisplay=[];
+  for(let t=7*60+30;t<=17*60;t+=30){
+    const h=Math.floor(t/60).toString().padStart(2,'0');
+    const m=(t%60).toString().padStart(2,'0');
+    slotsDisplay.push(`${h}:${m}`);
+  }
+  slotsDisplay.forEach(s=>{
+    const btn=document.getElementById('slot-'+idx+'-'+s.replace(':','-'));
+    if(!btn)return;
+    const sel=s===hora;
+    btn.style.background=sel?'#2563eb':'transparent';
+    btn.style.color=sel?'#fff':'#475569';
+    btn.style.borderColor=sel?'#2563eb':'#cbd5e1';
+  });
 }
 
 function volverAsignar(){
