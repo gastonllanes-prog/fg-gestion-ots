@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v64</title>
+<title>FG Gestión OTs v65</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V64</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V65</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v64</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v65</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -3328,16 +3328,13 @@ async function renderConfig(tab){
       const d=await sbGet('catalogo_materiales','?order=activo.desc,orden_display')||[];
       const tipoLabel={NINGUNO:'—',CORRELATIVO:'📌 Correlativo',INDIVIDUAL:'🔢 Individual'};
       el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
-        +'<div style="font-size:12px;color:#64748b">'+d.length+' materiales. Usá ↑↓ para reordenar.</div>'
+        +'<div style="font-size:12px;color:#64748b">'+d.length+' materiales — <strong>arrastrá las filas</strong> para reordenar 🟰</div>'
         +'<button class="btn btn-sm btn-primary" onclick="abrirModalMaterial()">+ Nuevo material</button></div>'
-        +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
-        +'<th>Orden</th><th>Material</th><th>Unidad</th><th>Paquete</th><th>Serial</th><th>Estado</th><th></th>'
-        +'</tr></thead><tbody>'
-        +d.map((m,idx)=>'<tr style="'+(m.activo?'':'opacity:.5;background:#fafafa')+'">'
-          +'<td style="white-space:nowrap">'
-          +'<button class="btn btn-sm" style="font-size:11px;padding:3px 7px" onclick="moverMaterial('+m.id+','+(idx>0?d[idx-1].id:-1)+',-1)" '+(idx===0?'disabled':'')+'>↑</button> '
-          +'<button class="btn btn-sm" style="font-size:11px;padding:3px 7px" onclick="moverMaterial('+m.id+','+(idx<d.length-1?d[idx+1].id:-1)+',1)" '+(idx===d.length-1?'disabled':'')+'>↓</button>'
-          +'</td>'
+        +'<div class="ot-table-wrap"><table class="ot-table" id="mat-drag-table"><thead><tr>'
+        +'<th style="width:28px"></th><th>Material</th><th>Unidad</th><th>Paquete</th><th>Serial</th><th>Estado</th><th></th>'
+        +'</tr></thead><tbody id="mat-drag-body">'
+        +d.map((m,idx)=>'<tr draggable="true" data-id="'+m.id+'" data-orden="'+m.orden_display+'" style="cursor:grab;'+(m.activo?'':'opacity:.5;background:#fafafa')+'">'
+          +'<td style="color:#94a3b8;font-size:16px;text-align:center;cursor:grab" title="Arrastrá para reordenar">⠿</td>'
           +'<td style="font-weight:600;font-size:12px">'+m.nombre+'</td>'
           +'<td style="font-size:12px;color:#64748b">'+m.unidad+'</td>'
           +'<td style="font-size:12px;color:#64748b">'+((m.cant_por_paquete||1)>1?(m.cant_por_paquete+' '+m.nombre_paquete):'—')+'</td>'
@@ -3348,6 +3345,8 @@ async function renderConfig(tab){
           +'<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarMaterial('+m.id+',\''+m.nombre.replace(/'/g,'')+'\')" >🗑️</button>'
           +'</td></tr>').join('')
         +'</tbody></table></div>';
+      // Activar drag & drop
+      initDragMateriales();
     }
     else if(tab==='autocomplete'){
       const mats=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
@@ -3541,6 +3540,68 @@ function abrirModalMaterial(m){
   }
   abrirModal('mat-modal');
   setTimeout(()=>document.getElementById('mat-nombre').focus(),100);
+}
+
+function initDragMateriales(){
+  const tbody=document.getElementById('mat-drag-body');
+  if(!tbody)return;
+  let dragSrc=null;
+
+  tbody.querySelectorAll('tr').forEach(row=>{
+    row.addEventListener('dragstart',e=>{
+      dragSrc=row;
+      row.style.opacity='.4';
+      e.dataTransfer.effectAllowed='move';
+    });
+    row.addEventListener('dragend',e=>{
+      row.style.opacity='';
+      tbody.querySelectorAll('tr').forEach(r=>r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover',e=>{
+      e.preventDefault();
+      e.dataTransfer.dropEffect='move';
+      tbody.querySelectorAll('tr').forEach(r=>r.classList.remove('drag-over'));
+      if(row!==dragSrc) row.style.background='#dbeafe';
+    });
+    row.addEventListener('dragleave',e=>{
+      row.style.background='';
+    });
+    row.addEventListener('drop',e=>{
+      e.preventDefault();
+      if(!dragSrc||dragSrc===row)return;
+      row.style.background='';
+      // Reordenar en el DOM
+      const rows=[...tbody.querySelectorAll('tr')];
+      const srcIdx=rows.indexOf(dragSrc);
+      const dstIdx=rows.indexOf(row);
+      if(srcIdx<dstIdx) row.after(dragSrc);
+      else row.before(dragSrc);
+      // Guardar nuevo orden en BD
+      guardarOrdenMateriales();
+    });
+  });
+}
+
+async function guardarOrdenMateriales(){
+  const tbody=document.getElementById('mat-drag-body');
+  if(!tbody)return;
+  const rows=[...tbody.querySelectorAll('tr')];
+  // Asignar orden_display en múltiplos de 10
+  const updates=rows.map((r,i)=>({id:parseInt(r.dataset.id),orden:( i+1)*10}));
+  // Guardar en paralelo (máx 5 a la vez para no sobrecargar)
+  const label=document.querySelector('#cfg-materiales > div:first-child > div');
+  if(label){label.textContent='Guardando orden...';label.style.color='#f59e0b';}
+  try{
+    for(let i=0;i<updates.length;i+=5){
+      await Promise.all(updates.slice(i,i+5).map(u=>
+        sbPatch('catalogo_materiales','?id=eq.'+u.id,{orden_display:u.orden})
+      ));
+    }
+    if(label){label.textContent=updates.length+' materiales — orden guardado ✓';label.style.color='#16a34a';}
+    setTimeout(()=>{if(label){label.textContent=updates.length+' materiales — arrastrá las filas para reordenar 🟰';label.style.color='';}},2000);
+  }catch(e){
+    if(label){label.textContent='Error al guardar: '+e.message;label.style.color='#dc2626';}
+  }
 }
 
 async function moverMaterial(matId, otroId, dir){
