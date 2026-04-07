@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v77</title>
+<title>FG Gestión OTs v79</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V77</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V79</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v77</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v79</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -325,6 +325,34 @@ tr:hover td{background:rgba(37,99,235,.02)}
 </div>
 
 <!-- ═══ OTs ASIGNADAS ═══ -->
+<!-- ═══ WIZARD CIERRE DE OTs ═══ -->
+<div id="s-cierre-wizard" style="display:none">
+  <div class="ph">
+    <button class="btn btn-sm" onclick="cancelarWizardCierre()" style="margin-right:8px">← Cancelar</button>
+    <div class="ph-icon green">✓</div>
+    <div>
+      <div class="ph-title">Cerrar OTs</div>
+      <div class="ph-sub" id="wiz-sub">Completá cada orden antes de confirmar</div>
+    </div>
+  </div>
+
+  <!-- Indicador de pasos -->
+  <div id="wiz-pasos-bar" style="display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap"></div>
+
+  <!-- Contenido del paso actual -->
+  <div id="wiz-paso-contenido"></div>
+
+  <!-- Footer con botones de acción -->
+  <div style="display:flex;gap:8px;margin-top:1rem;align-items:center;flex-wrap:wrap" id="wiz-footer">
+    <button class="btn" id="wiz-btn-devuelta" style="color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="marcarDevueltaWiz()">✕ Devuelta a Gigared</button>
+    <div style="flex:1"></div>
+    <button class="btn" id="wiz-btn-ant" onclick="pasoWiz(-1)">← Anterior</button>
+    <button class="btn btn-primary" id="wiz-btn-sig" onclick="pasoWiz(1)">Siguiente →</button>
+    <button class="btn btn-green" id="wiz-btn-fin" style="display:none;font-weight:700;font-size:15px;padding:10px 28px" onclick="confirmarWizardCierre()">✓ Confirmar y cerrar todo</button>
+  </div>
+  <p class="err-msg" id="wiz-err" style="margin-top:.5rem"></p>
+</div>
+
 <div id="s-asignadas" style="display:none">
   <div class="ph">
     <div class="ph-icon blue">📋</div>
@@ -1179,6 +1207,12 @@ function fmtCli(c){
   return c.codigo_gigared||'—';
 }
 
+// Quita ceros a la izquierda del código de cliente (005-00089874 → 89874)
+function fmtCodigo(code){
+  if(!code)return'—';
+  return String(code).replace(/^0+/,'');
+}
+
 // AUTH
 async function doLogin(){
   const email=document.getElementById('l-email').value.trim();
@@ -1385,7 +1419,7 @@ async function renderOTs(){
         const cuadNombre=cOts[0]?.grupos_ot?.cuadrillas?.nombre;
         return `<tr class="${tieneRep?'rep-row':''}" data-grupo="${grupoId||''}" data-tipos='${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}' onclick="verOT('${cOts[0].numero_ot}')">
           <td onclick="event.stopPropagation()"><input type="checkbox" class="ot-sel-cb" data-grupo="${grupoId||''}" data-tipos='${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}' style="cursor:pointer"/></td>
-          <td style="font-size:12px;color:#2563eb;font-weight:700">${cl.codigo_gigared||'—'}</td>
+          <td style="font-size:12px;color:#2563eb;font-weight:700">${fmtCodigo(cl.codigo_gigared)}</td>
           <td class="ot-cli-cell">${fmtCli(cl)}</td>
           <td class="ot-dom-cell" title="${dom}" style="font-size:12px">${dom}</td>
           <td style="font-size:12px;font-weight:600">${cl.nodo||'—'}</td>
@@ -1443,7 +1477,7 @@ async function verOT(num){
     body.innerHTML=`
       <div class="ot-detail-header${esRep?' rep-header':''}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.5rem">
-          <div style="font-size:24px;font-weight:900;color:${esRep?'#ea580c':'#2563eb'}">${cl.codigo_gigared||'—'}</div>
+          <div style="font-size:24px;font-weight:900;color:${esRep?'#ea580c':'#2563eb'}">${fmtCodigo(cl.codigo_gigared)}</div>
           ${badgeE(ot.estados_ot?.nombre||'')}
         </div>
         <div style="font-size:15px;font-weight:700;margin-bottom:.25rem">${fmtCli(cl)}</div>
@@ -2102,7 +2136,7 @@ async function imprimirOrdenesProgramadas(){
       const hora12=g.horario_visita?formatHora12(g.horario_visita):'—';
       ots.forEach((o,oi)=>{
         html+=`<tr>
-          ${oi===0?`<td rowspan="${ots.length}">${cl?.codigo_gigared||'—'}</td><td rowspan="${ots.length}" style="font-size:10px">${(cl?.apellido||'')} ${cl?.nombre||''}<br/><span style="color:#777;font-size:9px">${dom}</span></td>`:''}
+          ${oi===0?`<td rowspan="${ots.length}">${fmtCodigo(cl?.codigo_gigared)}</td><td rowspan="${ots.length}" style="font-size:10px">${(cl?.apellido||'')} ${cl?.nombre||''}<br/><span style="color:#777;font-size:9px">${dom}</span></td>`:''}
           <td style="font-family:monospace">${o.numero_ot||'—'}</td>
           <td>${(o.tipo_item||o.tipo_tarea||'').replace(/_/g,' ')}</td>
           <td><span style="color:${o.estados_ot?.nombre==='ASIGNADA'?'#2563eb':o.estados_ot?.nombre==='FINALIZADA'?'#16a34a':'#f59e0b'}">${o.estados_ot?.nombre||'—'}</span></td>
@@ -2249,7 +2283,7 @@ function renderTablaAsignar(lista){
           +' data-dom="'+encodeURIComponent(dom)+'" data-nodo="'+(cl.nodo||'')+'"'
           +' data-tipos="'+encodeURIComponent(JSON.stringify(tipos))+'"'
           +(sel?' checked':'')+' style="cursor:pointer" onchange="toggleAsignarCB(this)"/></td>'
-        +'<td style="font-size:12px;font-weight:700;color:#2563eb">'+(cl.codigo_gigared||'—')+'</td>'
+        +'<td style="font-size:12px;font-weight:700;color:#2563eb">'+(fmtCodigo(cl.codigo_gigared))+'</td>'
         +'<td style="font-weight:600;font-size:12px">'+(cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')+'</td>'
         +'<td style="font-size:12px">'+(dom)+'<span style="color:#94a3b8;font-size:11px;margin-left:6px">'+( cl.nodo||'')+'</span></td>'
         +'<td style="font-size:11px">'
@@ -2556,7 +2590,7 @@ function renderTablaAsignadas(lista){
       return '<tr>'
         +'<td style="font-weight:700;color:#2563eb;white-space:nowrap">'+hora12+'</td>'
         +'<td style="font-size:12px;font-weight:600">'+(g.cuadrillas?.nombre||'—')+'</td>'
-        +'<td style="font-size:12px"><div style="font-weight:600">'+(cl.codigo_gigared||'—')+' — '+(cl.apellido||'')+' '+(cl.nombre||'')+'</div>'
+        +'<td style="font-size:12px"><div style="font-weight:600">'+(fmtCodigo(cl.codigo_gigared))+' — '+(cl.apellido||'')+' '+(cl.nombre||'')+'</div>'
           +'<div style="font-size:11px;color:#64748b">'+dom+' <span style="color:#94a3b8">'+(cl.nodo||'')+'</span></div></td>'
         +'<td style="font-size:11px">'
           +tipos.map(t=>'<span class="badge '+(t==='REPARACION'?'b-orange':'b-green')+'" style="font-size:10px">'+(t||'').replace(/_/g,' ')+'</span>').join(' ')
@@ -2566,7 +2600,7 @@ function renderTablaAsignadas(lista){
           
           +'<button class="btn btn-sm" style="font-size:10px" onclick="volverAPendiente('+g.id+')">↺ Volver a pendiente</button>'
           +'<button class="btn btn-sm btn-primary" style="font-size:10px" onclick="abrirReasignarDesdeAsignadas('+g.id+')">🔀 Reasignar</button>'
-          +(ots.length?'<button class="btn btn-sm" style="font-size:10px;background:#16a34a;color:#fff;border-color:#16a34a" onclick="abrirCierre('+ots[0].id+',\''+ots[0].numero_ot+'\',\''+( ots[0].tipo_tarea||'')+'\')" >✓ Cerrar</button>':'')
+          +'<button class="btn btn-sm" style="font-size:10px;background:#16a34a;color:#fff;border-color:#16a34a" onclick="abrirCierreGrupo('+g.id+')">✓ Cerrar OTs</button>'
         +'</div></td>'
         +'</tr>';
     }).join('')+'</tbody></table></div>';
@@ -2893,52 +2927,383 @@ async function guardarAsignacion(){
 }
 
 // CIERRE
-async function abrirCierre(otId,numot,tipoTarea){
-  document.getElementById('cierre-err').textContent='';
-  const esRep=tipoTarea==='REPARACION';
-  document.getElementById('cierre-titulo').innerHTML=`${esRep?'🔧 ':''}Cerrar OT ${numOT(numot)} <button class="modal-close" onclick="cerrarModal('cierre-modal')">✕</button>`;
-  const body=document.getElementById('cierre-body');
-  body.innerHTML='<div class="loading"><span class="spinner"></span></div>';
-  body.dataset.otId=otId;abrirModal('cierre-modal');
+// ═══ WIZARD DE CIERRE DE OTs ═══
+let WIZ = {
+  grupoId:null, cuadId:null, cuadNombre:'',
+  pasos:[], // [{ot, accion:'CERRAR'|'DEVUELTA', mats:{}, seriales:{}, corrCant:{}, servs:{}, obs:''}]
+  paso:0,
+  // Materiales y seriales de la cuadrilla
+  catalogoMats:[], catalogoServs:[],
+  scMap:{}, serialesMap:{}
+};
+
+async function abrirCierreGrupo(grupoId){
+  // Ir a la sección wizard
+  document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
+  document.getElementById('s-cierre-wizard').style.display='';
+  document.getElementById('wiz-err').textContent='';
+  document.getElementById('wiz-paso-contenido').innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  document.getElementById('wiz-pasos-bar').innerHTML='';
+
   try{
-    const [ot,mats,servs]=await Promise.all([
-      sbGet('ordenes_trabajo',`?id=eq.${otId}&select=*,clientes(*)`).then(d=>d[0]),
+    // Traer grupo con todas sus OTs no finalizadas
+    const g=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,cuadrilla_id,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_tarea,tipo_item,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo))`).then(d=>d?.[0]);
+    const cuadId=g?.cuadrilla_id;
+    const cuadNombre=g?.cuadrillas?.nombre||'—';
+
+    // Filtrar OTs no finalizadas ni devueltas, en orden cierre
+    const ots=(g?.ordenes_trabajo||[]).filter(o=>!['FINALIZADA','DEVUELTA_GIGARED','ELIMINADA_SISTEMA'].includes(o.estados_ot?.nombre));
+    if(!ots.length){alert('Todas las OTs de este grupo ya están cerradas.');cancelarWizardCierre();return;}
+
+    // Traer catálogos y stock cuadrilla
+    const [mats,servs,scuad]=await Promise.all([
       sbGet('catalogo_materiales','?activo=eq.true&order=orden_display'),
-      sbGet('catalogo_servicios','?activo=eq.true&order=categoria,orden_display')
+      sbGet('catalogo_servicios','?activo=eq.true&order=orden_display'),
+      cuadId?sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&select=material_id,cantidad`):Promise.resolve([])
     ]);
-    const cats={};
-    (servs||[]).forEach(s=>{if(!cats[s.categoria])cats[s.categoria]=[];cats[s.categoria].push(s);});
-    body.innerHTML=`
-      <div style="background:${esRep?'#fff7ed':'#f0fdf4'};border:1px solid ${esRep?'#fed7aa':'#bbf7d0'};border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px">
-        <strong>${ot.numero_ot}</strong> — ${fmtCli(ot.clientes)}
-        ${esRep?'<span style="color:#ea580c;font-weight:700;margin-left:8px">🔧 REPARACIÓN</span>':''}
-        ${ot.sintoma_reportado?`<div style="font-size:12px;color:#64748b;margin-top:3px">${ot.sintoma_reportado}</div>`:''}
-      </div>
-      <div class="card"><div class="card-title">Materiales usados</div>
-        ${(mats||[]).map(m=>`<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border2)"><span style="flex:1;font-size:13px">${m.nombre}</span><span style="font-size:11px;color:#94a3b8;width:36px">${m.unidad||''}</span><input type="number" min="0" value="0" style="width:52px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center" data-mid="${m.id}" class="mi"/></div>`).join('')}
-      </div>
-      <div class="card"><div class="card-title">Mano de obra</div>
-        ${Object.entries(cats).map(([cat,ss])=>`<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin:.6rem 0 .2rem">${cat}</div>${ss.map(s=>`<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border2)"><span style="flex:1;font-size:13px">${s.nombre}</span><input type="number" min="0" value="0" style="width:52px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center" data-sid="${s.id}" class="si"/></div>`).join('')}`).join('')}
-      </div>
-      <div class="fg"><label>Observaciones</label><input id="cierre-obs" placeholder="Opcional..."/></div>`;
-  }catch(e){body.innerHTML=`<p style="color:#dc2626">${e.message}</p>`;}
+
+    const scMap={};
+    (scuad||[]).forEach(s=>{scMap[s.material_id]=s.cantidad||0;});
+
+    // Traer seriales de cuadrilla
+    const matsSerial=(mats||[]).filter(m=>m.serial_tipo!=='NINGUNO'&&scMap[m.id]>0);
+    const serialesMap={};
+    if(matsSerial.length&&cuadId){
+      await Promise.all(matsSerial.map(async m=>{
+        const sers=await sbGet('stock_seriales',`?material_id=eq.${m.id}&ubicacion=eq.CUADRILLA_${cuadId}&order=serial`)||[];
+        serialesMap[m.id]=sers.map(s=>s.serial);
+      }));
+    }
+
+    // Inicializar wizard
+    WIZ={
+      grupoId, cuadId, cuadNombre,
+      pasos: ots.map(ot=>({ot, accion:'CERRAR', mats:{}, seriales:{}, corrCant:{}, servs:{}, obs:''})),
+      paso:0,
+      catalogoMats:mats||[], catalogoServs:servs||[],
+      scMap, serialesMap
+    };
+
+    document.getElementById('wiz-sub').textContent=cuadNombre+' — '+ots.length+' OT'+(ots.length!==1?'s':'')+' a cerrar';
+    renderWizPaso();
+
+  }catch(e){
+    document.getElementById('wiz-err').textContent='Error: '+e.message;
+    document.getElementById('wiz-paso-contenido').innerHTML='';
+  }
 }
-async function confirmarCierre(){
-  const body=document.getElementById('cierre-body');const otId=body.dataset.otId;
-  const err=document.getElementById('cierre-err');err.textContent='';
+
+// Compatibilidad — abrirCierre desde otros lugares
+async function abrirCierre(otId, numot, tipoTarea){
+  // Buscar el grupo de esta OT
+  const ot=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=grupo_id`).then(d=>d?.[0]);
+  if(ot?.grupo_id) await abrirCierreGrupo(ot.grupo_id);
+  else{
+    // Fallback: solo esta OT
+    WIZ={
+      grupoId:null, cuadId:null, cuadNombre:'',
+      pasos:[{ot:{id:otId,numero_ot:numot,tipo_tarea:tipoTarea,tipo_item:tipoTarea},accion:'CERRAR',mats:{},seriales:{},corrCant:{},servs:{},obs:''}],
+      paso:0,
+      catalogoMats:[], catalogoServs:[],
+      scMap:{}, serialesMap:{}
+    };
+    document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
+    document.getElementById('s-cierre-wizard').style.display='';
+    document.getElementById('wiz-err').textContent='';
+    // Cargar catálogos mínimos
+    const [mats,servs]=await Promise.all([
+      sbGet('catalogo_materiales','?activo=eq.true&order=orden_display'),
+      sbGet('catalogo_servicios','?activo=eq.true&order=orden_display')
+    ]);
+    WIZ.catalogoMats=mats||[];
+    WIZ.catalogoServs=servs||[];
+    renderWizPaso();
+  }
+}
+
+function cancelarWizardCierre(){
+  document.getElementById('s-cierre-wizard').style.display='none';
+  // Volver a donde estábamos
+  if(document.getElementById('s-asignadas').style.display!=='none'||true){
+    irAOTsAsignadas();
+  }
+}
+
+function renderWizPasoBar(){
+  const bar=document.getElementById('wiz-pasos-bar');
+  bar.innerHTML=WIZ.pasos.map((p,i)=>{
+    const tipo=(p.ot?.tipo_item||p.ot?.tipo_tarea||'OT').replace(/_/g,' ');
+    const actual=i===WIZ.paso;
+    const hecho=p.accion==='DEVUELTA'||i<WIZ.paso;
+    let bg=actual?'#2563eb':hecho?'#16a34a':'#e2e8f0';
+    let color=actual||hecho?'#fff':'#64748b';
+    if(p.accion==='DEVUELTA'){bg='#dc2626';}
+    return `<div onclick="if(${i}<${WIZ.paso}){WIZ.paso=${i};renderWizPaso();}" 
+      style="padding:5px 14px;border-radius:99px;font-size:12px;font-weight:700;background:${bg};color:${color};cursor:${i<=WIZ.paso?'pointer':'default'};white-space:nowrap">
+      ${i+1}. ${tipo}${p.accion==='DEVUELTA'?' ✕':''}
+    </div>`;
+  }).join('');
+}
+
+function renderWizPaso(){
+  renderWizPasoBar();
+  const p=WIZ.pasos[WIZ.paso];
+  const ot=p.ot;
+  const isLast=WIZ.paso===WIZ.pasos.length-1;
+  const cl=ot.clientes||{};
+  const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
+  const esEquipo=ot.tipo_tarea==='INSTALAR'&&['CM','ONU','BASICA'].some(t=>(ot.tipo_item||'').includes(t));
+  const tipoLabel=(ot.tipo_item||ot.tipo_tarea||'').replace(/_/g,' ');
+
+  // Determinar qué materiales mostrar según tipo de OT
+  // Para equipos (CM, ONU, Deco, Smartcard): solo equipos con serial de ese tipo
+  // Para básica y otros: todos los materiales
+
+  const esInstEquipo=['CABLEMODEM','CM','ONU','DECODIFICADOR','HD','SMARTCARD','TV_BOX','ROUTER','CAMARA']
+    .some(k=>(ot.tipo_item||'').toUpperCase().includes(k));
+
+  let matsHTML='';
+  if(esInstEquipo){
+    // Solo mostrar equipos con serial relevantes
+    const matsSeriales=WIZ.catalogoMats.filter(m=>m.serial_tipo==='INDIVIDUAL'&&(WIZ.serialesMap[m.id]||[]).length>0);
+    if(!matsSeriales.length){
+      matsHTML='<div style="color:#94a3b8;font-size:13px;padding:8px 0">No hay equipos con serial en esta cuadrilla.</div>';
+    }else{
+      matsHTML=matsSeriales.map(m=>{
+        const sers=WIZ.serialesMap[m.id]||[];
+        const selec=p.seriales[m.id]||[];
+        return `<div style="padding:8px 0;border-bottom:1px solid var(--border2)">
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px">${m.nombre} <span style="font-weight:400;color:#64748b;font-size:11px">${sers.length} en cuadrilla</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            ${sers.map(s=>{
+              const sel=selec.includes(s);
+              return `<label style="display:flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid ${sel?'#2563eb':'var(--border)'};border-radius:8px;cursor:pointer;font-family:monospace;font-size:12px;background:${sel?'#eff6ff':'transparent'}">
+                <input type="checkbox" data-mid="${m.id}" data-serial="${s}" class="wiz-serial-cb" ${sel?'checked':''} onchange="toggleWizSerial(this)" style="margin:0"/>
+                ${s}</label>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }else{
+    // Básica y otros: materiales sin serial + precintos
+    const matsNorm=WIZ.catalogoMats.filter(m=>m.serial_tipo==='NINGUNO');
+    const matsCorr=WIZ.catalogoMats.filter(m=>m.serial_tipo==='CORRELATIVO'&&(WIZ.serialesMap[m.id]||[]).length>0);
+
+    matsHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:0">'
+      +matsNorm.map(m=>{
+        const stock=WIZ.scMap[m.id]||0;
+        const val=p.mats[m.id]||0;
+        return `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--border2)">
+          <span style="flex:1;font-size:12px">${m.nombre}</span>
+          <span style="font-size:10px;color:${stock>0?'#16a34a':'#94a3b8'};min-width:30px;text-align:right">${stock||''}</span>
+          <input type="number" min="0" value="${val}" style="width:52px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"
+            onchange="WIZ.pasos[${WIZ.paso}].mats[${m.id}]=parseInt(this.value)||0" data-mid="${m.id}" class="wiz-mat"/>
+        </div>`;
+      }).join('')
+      +'</div>';
+
+    if(matsCorr.length){
+      matsHTML+=matsCorr.map(m=>{
+        const sers=WIZ.serialesMap[m.id]||[];
+        const val=p.corrCant[m.id]||0;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2)">
+          <span style="flex:1;font-size:12px;font-weight:600">${m.nombre} <span style="font-weight:400;color:#64748b">(${sers.length} disp. del ${sers[0]||'?'} al ${sers[sers.length-1]||'?'})</span></span>
+          <input type="number" min="0" max="${sers.length}" value="${val}" style="width:60px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"
+            onchange="WIZ.pasos[${WIZ.paso}].corrCant[${m.id}]=parseInt(this.value)||0" class="wiz-corr" data-mid="${m.id}" data-sers='${JSON.stringify(sers)}'/>
+          <span style="font-size:11px;color:#64748b">${m.unidad}</span>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Mano de obra
+  const servHTML=WIZ.catalogoServs.map(s=>{
+    const val=p.servs[s.id]||0;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border2)">
+      <span style="flex:1;font-size:12px">${s.nombre}</span>
+      <input type="number" min="0" value="${val}" style="width:52px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"
+        onchange="WIZ.pasos[${WIZ.paso}].servs[${s.id}]=parseInt(this.value)||0" class="wiz-serv"/>
+    </div>`;
+  }).join('');
+
+  const devuelta=p.accion==='DEVUELTA';
+
+  document.getElementById('wiz-paso-contenido').innerHTML=`
+    ${devuelta?`<div style="background:#fef2f2;border:2px solid #dc2626;border-radius:12px;padding:.875rem 1rem;margin-bottom:1rem;font-weight:700;color:#dc2626;font-size:14px">
+      ✕ Esta OT será marcada como DEVUELTA A GIGARED
+      <button onclick="WIZ.pasos[${WIZ.paso}].accion='CERRAR';renderWizPaso()" style="margin-left:12px;font-size:11px;font-weight:400;color:#2563eb;background:none;border:none;cursor:pointer;text-decoration:underline">Cancelar</button>
+    </div>`:''}
+
+    <!-- Header OT -->
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:.875rem 1rem;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:11px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.05em">OT ${WIZ.paso+1} de ${WIZ.pasos.length}</div>
+          <div style="font-weight:700;font-size:16px;margin-top:2px">${numOT(ot.numero_ot)} — ${tipoLabel}</div>
+          <div style="font-size:13px;margin-top:3px">${fmtCodigo(cl.codigo_gigared)} — ${fmtCli(cl)}</div>
+          <div style="font-size:12px;color:#64748b">${dom} · ${cl.nodo||''}</div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:#64748b">🔧 ${WIZ.cuadNombre}</div>
+      </div>
+    </div>
+
+    ${!devuelta?`
+    <!-- Dos columnas: materiales / mano de obra -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">${esInstEquipo?'Equipo instalado':'Materiales usados'}</div>
+        ${matsHTML}
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">Mano de obra</div>
+        ${servHTML}
+      </div>
+    </div>`:''}
+
+    <!-- Observaciones siempre al final -->
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Observaciones ${devuelta?'(motivo devolución — obligatorio)':'del técnico'}</div>
+      <input id="wiz-obs-${WIZ.paso}" value="${p.obs||''}" 
+        placeholder="${devuelta?'Motivo de la devolución a Gigared...':'Ej: Instalación sin problemas, cliente conforme...'}"
+        style="width:100%;padding:10px 13px;border:${devuelta?'2px solid #dc2626':'1px solid var(--border)'};border-radius:10px;font-size:14px;font-family:inherit"
+        oninput="WIZ.pasos[${WIZ.paso}].obs=this.value"/>
+    </div>`;
+
+  // Botones footer
+  document.getElementById('wiz-btn-ant').style.display=WIZ.paso>0?'':'none';
+  document.getElementById('wiz-btn-sig').style.display=isLast?'none':'';
+  document.getElementById('wiz-btn-fin').style.display=isLast?'':'none';
+  document.getElementById('wiz-btn-devuelta').style.display=devuelta?'none':'';
+  document.getElementById('wiz-btn-fin').textContent='✓ Confirmar y cerrar '+(WIZ.pasos.length>1?'todas ':'')+'las OTs';
+}
+
+function toggleWizSerial(cb){
+  const mid=cb.dataset.mid;
+  const serial=cb.dataset.serial;
+  const p=WIZ.pasos[WIZ.paso];
+  if(!p.seriales[mid])p.seriales[mid]=[];
+  if(cb.checked){if(!p.seriales[mid].includes(serial))p.seriales[mid].push(serial);}
+  else{p.seriales[mid]=p.seriales[mid].filter(s=>s!==serial);}
+  // Actualizar estilo del label
+  const lbl=cb.closest('label');
+  if(lbl){lbl.style.borderColor=cb.checked?'#2563eb':'var(--border)';lbl.style.background=cb.checked?'#eff6ff':'transparent';}
+}
+
+function marcarDevueltaWiz(){
+  WIZ.pasos[WIZ.paso].accion='DEVUELTA';
+  renderWizPaso();
+}
+
+function pasoWiz(dir){
+  // Guardar obs antes de moverse
+  const obsInp=document.getElementById('wiz-obs-'+WIZ.paso);
+  if(obsInp)WIZ.pasos[WIZ.paso].obs=obsInp.value;
+
+  // Validar si es devuelta que tenga obs
+  const p=WIZ.pasos[WIZ.paso];
+  if(dir>0&&p.accion==='DEVUELTA'&&!p.obs.trim()){
+    document.getElementById('wiz-err').textContent='Ingresá el motivo de la devolución.';
+    return;
+  }
+  document.getElementById('wiz-err').textContent='';
+
+  WIZ.paso=Math.max(0,Math.min(WIZ.pasos.length-1,WIZ.paso+dir));
+  renderWizPaso();
+  window.scrollTo(0,0);
+}
+
+async function confirmarWizardCierre(){
+  // Guardar última obs
+  const obsInp=document.getElementById('wiz-obs-'+WIZ.paso);
+  if(obsInp)WIZ.pasos[WIZ.paso].obs=obsInp.value;
+
+  // Validar devueltas con obs
+  const sinObs=WIZ.pasos.filter(p=>p.accion==='DEVUELTA'&&!p.obs.trim());
+  if(sinObs.length){document.getElementById('wiz-err').textContent='Completá el motivo de devolución en todas las OTs marcadas.';return;}
+
+  document.getElementById('wiz-err').textContent='Guardando...';
   try{
     const eFin=ESTADOS.find(e=>e.nombre==='FINALIZADA');
-    const obs=document.getElementById('cierre-obs')?.value||'';
-    const mats=[...document.querySelectorAll('.mi')].filter(i=>parseInt(i.value)>0).map(i=>({ot_id:parseInt(otId),material_id:parseInt(i.dataset.mid),cantidad:parseInt(i.value)}));
-    const servs=[...document.querySelectorAll('.si')].filter(i=>parseInt(i.value)>0).map(i=>({ot_id:parseInt(otId),servicio_id:parseInt(i.dataset.sid),cantidad:parseInt(i.value),usuario_id:CU.id}));
-    if(mats.length)await sbPost('ot_materiales_usados',mats);
-    if(servs.length)await sbPost('ot_servicios_realizados',servs);
-    const ot=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id`)||[];
-    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eFin?.id,fecha_fin:new Date().toISOString(),observaciones:obs||null});
-    await sbPost('historial_estados_ot',{ot_id:parseInt(otId),estado_anterior_id:ot[0]?.estado_id,estado_nuevo_id:eFin?.id,usuario_id:CU.id,observacion:obs||null});
-    cerrarModal('cierre-modal');cerrarModal('ot-modal');renderOTs();
-  }catch(e){err.textContent='Error: '+e.message;}
+    const eDev=ESTADOS.find(e=>e.nombre==='DEVUELTA_GIGARED');
+    const cuadId=WIZ.cuadId;
+    const ts=new Date().toLocaleString('es-AR');
+    const histLines=[];
+
+    for(const p of WIZ.pasos){
+      const otId=p.ot.id;
+      const eNuevo=p.accion==='DEVUELTA'?eDev:eFin;
+
+      if(p.accion==='CERRAR'){
+        // --- Materiales sin serial ---
+        const matsArr=Object.entries(p.mats).filter(([,c])=>c>0).map(([mid,c])=>({ot_id:otId,material_id:parseInt(mid),cantidad:c}));
+        // --- Seriales INDIVIDUAL ---
+        const serArr=[];
+        for(const [mid,sers] of Object.entries(p.seriales)){
+          if(sers.length)serArr.push({ot_id:otId,material_id:parseInt(mid),cantidad:sers.length});
+        }
+        // --- Correlativos ---
+        const corrArr=Object.entries(p.corrCant).filter(([,c])=>c>0).map(([mid,c])=>({ot_id:otId,material_id:parseInt(mid),cantidad:c}));
+        // --- MO ---
+        const servArr=Object.entries(p.servs).filter(([,c])=>c>0).map(([sid,c])=>({ot_id:otId,servicio_id:parseInt(sid),cantidad:c,usuario_id:CU.id}));
+
+        const todosMats=[...matsArr,...serArr,...corrArr];
+        if(todosMats.length)await sbPost('ot_materiales_usados',todosMats);
+        if(servArr.length)await sbPost('ot_servicios_realizados',servArr);
+
+        // Descontar de cuadrilla
+        if(cuadId){
+          for(const m of matsArr){
+            const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${m.material_id}`)||[];
+            if(sc.length){
+              await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${m.material_id}`,{cantidad:Math.max(0,(sc[0].cantidad||0)-m.cantidad)});
+              await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:m.material_id,cuadrilla_id:parseInt(cuadId),cantidad:-m.cantidad,obs:'OT '+otId});
+            }
+          }
+          for(const [mid,sers] of Object.entries(p.seriales)){
+            if(!sers.length)continue;
+            for(const s of sers) await sbPatch('stock_seriales',`?material_id=eq.${mid}&serial=eq.${s}`,{ubicacion:'CLIENTE'});
+            const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${mid}`)||[];
+            if(sc.length) await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${mid}`,{cantidad:Math.max(0,(sc[0].cantidad||0)-sers.length)});
+            await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:parseInt(mid),cuadrilla_id:parseInt(cuadId),cantidad:-sers.length,obs:'OT '+otId+' seriales: '+sers.join(',')});
+          }
+          for(const [mid,cant] of Object.entries(p.corrCant)){
+            if(!cant)continue;
+            const inp=document.querySelector(`.wiz-corr[data-mid="${mid}"]`);
+            const sers=JSON.parse(inp?.dataset?.sers||'[]').slice(0,cant);
+            for(const s of sers) await sbPatch('stock_seriales',`?material_id=eq.${mid}&serial=eq.${s}`,{ubicacion:'CLIENTE'});
+            const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${mid}`)||[];
+            if(sc.length) await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${mid}`,{cantidad:Math.max(0,(sc[0].cantidad||0)-cant)});
+          }
+        }
+
+        histLines.push(`[${ts}] OT ${numOT(p.ot.numero_ot)} (${(p.ot.tipo_item||'').replace(/_/g,' ')}) CERRADA. ${p.obs?'Obs: '+p.obs:''}`);
+      }else{
+        histLines.push(`[${ts}] OT ${numOT(p.ot.numero_ot)} DEVUELTA A GIGARED. Motivo: ${p.obs}`);
+      }
+
+      // Cambiar estado de la OT
+      const otAntes=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=estado_id`).then(d=>d?.[0]);
+      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eNuevo?.id,fecha_fin:new Date().toISOString(),observaciones:p.obs||null});
+      try{await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:otAntes?.estado_id,estado_nuevo_id:eNuevo?.id,usuario_id:CU.id,observacion:p.obs||null});}catch(e){}
+    }
+
+    // Actualizar historial del grupo
+    if(WIZ.grupoId){
+      const gAct=await sbGet('grupos_ot',`?id=eq.${WIZ.grupoId}&select=observaciones`).then(d=>d?.[0]);
+      await sbPatch('grupos_ot',`?id=eq.${WIZ.grupoId}`,{observaciones:(gAct?.observaciones?gAct.observaciones+'\n':'')+histLines.join('\n')});
+    }
+
+    document.getElementById('wiz-err').textContent='';
+    document.getElementById('s-cierre-wizard').style.display='none';
+    alert('✅ OTs cerradas correctamente');
+    irAOTsAsignadas();
+
+  }catch(e){document.getElementById('wiz-err').textContent='Error: '+e.message;}
 }
+
+// Mantener confirmarCierre por si se usa desde el modal viejo
+async function confirmarCierre(){}
 
 // CLIENTES
 async function renderClientes(){
@@ -2992,7 +3357,7 @@ async function renderClientes(){
         const nombre=fmtCli(c);
         const sinNombre=!c.apellido&&!c.nombre;
         return `<tr style="cursor:pointer" onclick="abrirDetalleCli(${c.id})">
-          <td style="font-weight:700;color:#2563eb">${c.codigo_gigared||'—'}</td>
+          <td style="font-weight:700;color:#2563eb">${fmtCodigo(c.codigo_gigared)}</td>
           <td style="font-weight:600${sinNombre?';color:#94a3b8;font-style:italic':''}">${sinNombre?'(Sin nombre)':nombre}</td>
           <td style="font-size:12px;color:#64748b">${c.calle||c.domicilio||'—'}</td>
           <td style="font-size:12px">${c.numero_domicilio||'—'}</td>
