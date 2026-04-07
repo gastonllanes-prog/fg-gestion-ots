@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v63</title>
+<title>FG Gestión OTs v64</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V63</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V64</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v63</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v64</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2851,7 +2851,6 @@ async function confirmarImprimirCuadrilla(){
 }
 
 async function imprimirEntregaCuadrilla(cuadId, fecha){
-  // Si no se pasan params, usar el selector actual
   if(!cuadId){
     await abrirModalImprimirCuadrilla(
       document.getElementById('cuad-selector')?.value||'',
@@ -2863,87 +2862,112 @@ async function imprimirEntregaCuadrilla(cuadId, fecha){
   const desde=fecha+'T00:00:00';
   const hasta=fecha+'T23:59:59';
 
-  // Traer movimientos REPARTO_CUADRILLA de esa cuadrilla en esa fecha
+  // 1. Movimientos del día (lo entregado HOY)
   const movs=await sbGet('movimientos_stock',
-    `?tipo_movimiento=eq.REPARTO_CUADRILLA&cuadrilla_id=eq.${cuadId}&fecha=gte.${desde}&fecha=lte.${hasta}&select=cantidad,material_id,obs,catalogo_materiales(id,nombre,unidad,serial_tipo)&order=material_id`
+    `?tipo_movimiento=eq.REPARTO_CUADRILLA&cuadrilla_id=eq.${cuadId}&fecha=gte.${desde}&fecha=lte.${hasta}&select=cantidad,material_id,catalogo_materiales(id,nombre,unidad,serial_tipo)&order=material_id`
   )||[];
 
-  if(!movs.length){
-    alert('No hay entregas registradas para esa cuadrilla en esa fecha.');
-    return;
-  }
+  if(!movs.length){alert('No hay entregas registradas para esa cuadrilla en esa fecha.');return;}
 
-  // Consolidar por material
-  const byMat={};
+  // Consolidar entregado hoy por material
+  const entregadoHoy={};
   for(const m of movs){
     const id=m.catalogo_materiales?.id;
     if(!id)continue;
-    if(!byMat[id]){byMat[id]={mat:m.catalogo_materiales, cantidad:0};}
-    byMat[id].cantidad+=Math.abs(m.cantidad);
+    if(!entregadoHoy[id]){entregadoHoy[id]={mat:m.catalogo_materiales, cantidad:0};}
+    entregadoHoy[id].cantidad+=Math.abs(m.cantidad);
   }
-  const todos=Object.values(byMat);
 
-  // Traer nombre cuadrilla
+  // 2. Stock total actual de la cuadrilla (TODOS los materiales)
+  const mats=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
+  const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[];
+  const totalMap={};sc.forEach(s=>{totalMap[s.material_id]=s.cantidad||0;});
+
+  // 3. Todos los seriales que tiene la cuadrilla ahora
+  const matsConSerial=mats.filter(m=>m.serial_tipo!=='NINGUNO'&&totalMap[m.id]>0);
+  const serialesEnCuad={};
+  for(const m of matsConSerial){
+    const sers=await sbGet('stock_seriales',`?material_id=eq.${m.id}&ubicacion=eq.CUADRILLA_${cuadId}&order=serial`)||[];
+    if(sers.length) serialesEnCuad[m.id]=sers.map(s=>s.serial);
+  }
+
+  // 4. Datos de cuadrilla y técnicos
   const cuadData=await sbGet('cuadrillas',`?id=eq.${cuadId}&select=nombre`)||[];
   const cuadNombre=cuadData[0]?.nombre||'Cuadrilla';
-
-  // Traer técnicos
   const tecs=await sbGet('cuadrilla_tecnicos','?cuadrilla_id=eq.'+cuadId+'&activo=eq.true&select=tecnicos(nombre,dni)')||[];
   const tecNombres=tecs.map(t=>t.tecnicos?.nombre||'').filter(Boolean);
 
-  // Traer seriales INDIVIDUAL asignados ese día a esta cuadrilla
-  const conSerial=todos.filter(x=>x.mat?.serial_tipo==='INDIVIDUAL'||x.mat?.serial_tipo==='CORRELATIVO');
-  const serialData={};
-  for(const x of conSerial){
-    const id=x.mat?.id;
-    if(id){
-      // Los seriales que tienen ubicacion CUADRILLA_X y fecha de movimiento ese día
-      const sers=await sbGet('stock_seriales',
-        `?material_id=eq.${id}&ubicacion=eq.CUADRILLA_${cuadId}&order=serial`
-      )||[];
-      // Filtrar solo los que se movieron ese día buscando en movimientos
-      serialData[id]=sers.map(s=>s.serial);
-    }
-  }
-
   const firma_b64=(()=>{const m=document.querySelector('img[src^="data:image/jpeg;base64"]');return m?m.src:'';})();
-  const FIRMA_IMG=firma_b64?`<img src="${firma_b64}" style="height:55px;margin-bottom:3px"/>`:'';
+  const FIRMA_IMG=firma_b64?`<img src="${firma_b64}" style="height:50px;margin-bottom:3px"/>`:'';
   const EMPRESA='FG Conexiones S.R.L. | CUIT: 30-71636657-6 | Bolivia 2356, Posadas';
   const fechaDisplay=new Date(fecha+'T12:00:00').toLocaleDateString('es-AR');
 
-  const estilos='body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:20px;padding-bottom:140px}'
-    +'.header{border-bottom:2px solid #1e3a5f;margin-bottom:14px;padding-bottom:8px}'
-    +'h2{margin:0;font-size:14px;color:#1e3a5f}h3{margin:4px 0;font-size:11px;color:#555}'
-    +'table{width:100%;border-collapse:collapse;margin-top:10px}'
-    +'th{background:#1e3a5f;color:#fff;padding:6px 8px;text-align:left;font-size:10px}'
-    +'td{border-bottom:1px solid #ddd;padding:5px 8px;font-size:10px}'
-    +'.firma-fija{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:10px 20px;background:#fff;border-top:1px solid #ddd}'
-    +'.firma-box{text-align:center;}'
-    +'.firma-line{border-top:1px solid #000;margin-bottom:5px;margin-top:4px}'
+  // Estilos compactos para entrar en una hoja
+  const estilos='body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:14px;padding-bottom:120px}'
+    +'.header{border-bottom:2px solid #1e3a5f;margin-bottom:10px;padding-bottom:6px}'
+    +'h2{margin:0;font-size:13px;color:#1e3a5f}h3{margin:3px 0;font-size:10px;color:#555}'
+    +'table{width:100%;border-collapse:collapse;margin-top:8px;font-size:10px}'
+    +'th{background:#1e3a5f;color:#fff;padding:5px 7px;text-align:left;font-size:9px}'
+    +'td{border-bottom:1px solid #eee;padding:4px 7px}'
+    +'.sec{background:#e8edf3;font-weight:700;font-size:9px;padding:4px 7px;margin-top:10px;color:#1e3a5f;text-transform:uppercase;letter-spacing:.05em}'
+    +'.grid4{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:5px}'
+    +'.cell{border:1px solid #ccc;padding:3px 4px;font-family:monospace;font-size:9px}'
+    +'.firma-fija{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:8px 14px;background:#fff;border-top:1px solid #ccc}'
+    +'.firma-box{text-align:center}'
+    +'.firma-line{border-top:1px solid #000;margin:3px 0 3px}'
     +'@media print{body{-webkit-print-color-adjust:exact}.firma-fija{position:fixed;bottom:0}}';
 
   const firmaBloques=[];
-  firmaBloques.push(`<div class="firma-box" style="width:200px"><div style="text-align:center">${FIRMA_IMG}</div><div class="firma-line"></div><div style="font-size:10px;font-weight:700">Entregado por: FG Conexiones</div><div style="font-size:9px;color:#555">Llanes Gastón E. — Socio Gerente</div></div>`);
-  if(tecNombres[0]) firmaBloques.push(`<div class="firma-box" style="width:180px"><div style="height:55px"></div><div class="firma-line"></div><div style="font-size:10px;font-weight:700">${tecNombres[0]}</div><div style="font-size:9px;color:#555">Recibí conforme</div></div>`);
-  if(tecNombres[1]) firmaBloques.push(`<div class="firma-box" style="width:180px"><div style="height:55px"></div><div class="firma-line"></div><div style="font-size:10px;font-weight:700">${tecNombres[1]}</div><div style="font-size:9px;color:#555">Recibí conforme</div></div>`);
+  firmaBloques.push(`<div class="firma-box" style="min-width:160px"><div style="text-align:center">${FIRMA_IMG}</div><div class="firma-line"></div><div style="font-size:9px;font-weight:700">FG Conexiones S.R.L.</div><div style="font-size:8px;color:#555">Llanes Gastón E. — Socio Gerente</div></div>`);
+  if(tecNombres[0]) firmaBloques.push(`<div class="firma-box" style="min-width:150px"><div style="height:50px"></div><div class="firma-line"></div><div style="font-size:9px;font-weight:700">${tecNombres[0]}</div><div style="font-size:8px;color:#555">Recibí conforme</div></div>`);
+  if(tecNombres[1]) firmaBloques.push(`<div class="firma-box" style="min-width:150px"><div style="height:50px"></div><div class="firma-line"></div><div style="font-size:9px;font-weight:700">${tecNombres[1]}</div><div style="font-size:8px;color:#555">Recibí conforme</div></div>`);
 
   let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Entrega ${cuadNombre}</title><style>${estilos}</style></head><body>`;
-  html+=`<div class="header"><div style="font-size:9px;color:#555;margin-bottom:3px">${EMPRESA}</div>`
+  html+=`<div class="header"><div style="font-size:8px;color:#555;margin-bottom:2px">${EMPRESA}</div>`
     +`<h2>FG Conexiones S.R.L. — Entrega de Materiales a Cuadrilla</h2>`
-    +`<h3>Cuadrilla: <strong>${cuadNombre}</strong> &nbsp;&nbsp; Fecha: ${fechaDisplay}</h3></div>`;
+    +`<h3>Cuadrilla: <strong>${cuadNombre}</strong> &nbsp;|&nbsp; Fecha: ${fechaDisplay}</h3></div>`;
 
-  html+='<table><thead><tr><th>Material</th><th>Unidad</th><th>Cantidad entregada</th><th>Firma</th></tr></thead><tbody>';
-  html+=todos.map(x=>`<tr><td>${x.mat?.nombre}</td><td>${x.mat?.unidad}</td><td style="font-weight:700;text-align:center">${x.cantidad}</td><td></td></tr>`).join('');
+  // Tabla: materiales con entregado hoy + total
+  // Mostrar todos los materiales que o fueron entregados hoy O tienen stock en cuadrilla
+  const idsEntregados=Object.keys(entregadoHoy).map(Number);
+  const idsConStock=Object.keys(totalMap).map(Number).filter(id=>totalMap[id]>0);
+  const todosIds=[...new Set([...idsEntregados,...idsConStock])];
+  const matsOrdenadas=mats.filter(m=>todosIds.includes(m.id));
+
+  html+='<table><thead><tr>'
+    +'<th style="width:45%">Material</th>'
+    +'<th style="width:10%">Unidad</th>'
+    +'<th style="width:20%;text-align:center">Entregado hoy</th>'
+    +'<th style="width:25%;text-align:center">Total en cuadrilla</th>'
+    +'</tr></thead><tbody>';
+
+  for(const m of matsOrdenadas){
+    const hoy=entregadoHoy[m.id]?.cantidad||0;
+    const total=totalMap[m.id]||0;
+    const esNuevo=hoy>0&&!idsConStock.includes(m.id-1); // aproximación
+    const bgHoy=hoy>0?'background:#eff6ff;':''
+    html+=`<tr style="${bgHoy}">`
+      +`<td style="font-weight:${hoy>0?'700':'400'}">${m.nombre}</td>`
+      +`<td style="color:#64748b">${m.unidad}</td>`
+      +`<td style="text-align:center;font-weight:700;color:${hoy>0?'#2563eb':'#94a3b8'}">${hoy>0?'+'+hoy:'—'}</td>`
+      +`<td style="text-align:center;font-weight:700;color:${total>0?'#16a34a':'#94a3b8'}">${total||'—'}</td>`
+      +'</tr>';
+  }
   html+='</tbody></table>';
 
-  // Detalle de seriales
-  const conSerialConDatos=conSerial.filter(x=>serialData[x.mat?.id]?.length);
-  if(conSerialConDatos.length){
-    html+='<div style="background:#e8edf3;font-weight:700;font-size:10px;padding:5px 8px;margin-top:16px;color:#1e3a5f">DETALLE DE SERIALES ENTREGADOS</div>';
-    for(const x of conSerialConDatos){
-      const sers=serialData[x.mat?.id]||[];
-      html+=`<div style="margin-top:12px"><div style="font-weight:700;font-size:11px;margin-bottom:4px">${x.mat?.nombre} — ${x.cantidad} unidades entregadas</div>`;
-      html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">'+sers.map((s,i)=>`<div style="border:1px solid #ccc;padding:4px;font-family:monospace;font-size:10px"><span style="color:#999;font-size:9px">${i+1}.</span> ${s}</div>`).join('')+'</div></div>';
+  // Apartado de equipos en cuadrilla (todos los seriales actuales)
+  const conSers=Object.keys(serialesEnCuad);
+  if(conSers.length){
+    html+='<div class="sec" style="margin-top:12px">📱 Equipos en cuadrilla</div>';
+    for(const id of conSers){
+      const mat=mats.find(m=>m.id===parseInt(id));
+      const sers=serialesEnCuad[id];
+      const entregadosHoyIds=entregadoHoy[id]?.cantidad||0;
+      html+=`<div style="margin-top:6px">`
+        +`<div style="font-weight:700;font-size:10px;margin-bottom:3px">${mat?.nombre} — ${sers.length} en cuadrilla`
+        +(entregadosHoyIds>0?` <span style="color:#2563eb">(+${entregadosHoyIds} entregados hoy)</span>`:'')
+        +'</div>'
+        +'<div class="grid4">'+sers.map((s,i)=>`<div class="cell"><span style="color:#999;font-size:8px">${i+1}.</span> ${s}</div>`).join('')+'</div></div>';
     }
   }
 
