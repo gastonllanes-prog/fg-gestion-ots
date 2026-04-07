@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v79</title>
+<title>FG Gestión OTs v80</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V79</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V80</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v79</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v80</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1207,10 +1207,10 @@ function fmtCli(c){
   return c.codigo_gigared||'—';
 }
 
-// Quita ceros a la izquierda del código de cliente (005-00089874 → 89874)
+// Quita el prefijo 00500 del código de cliente: 00500093620 → 93620
 function fmtCodigo(code){
   if(!code)return'—';
-  return String(code).replace(/^0+/,'');
+  return String(code).replace(/^005/,'').replace(/^0+/,'')||String(code);
 }
 
 // AUTH
@@ -1258,7 +1258,7 @@ function construirMenu(){
   const nav=document.getElementById('sb-nav');
   const items=[
     {sec:'Principal'},{id:'dashboard',icon:'📊',label:'Dashboard'},{id:'ots',icon:'📋',label:'Órdenes de trabajo'},
-    {id:'asignar',icon:'📍',label:'Asignar OTs'},
+    {id:'asignar',icon:'📍',label:'Asignar OTs'},{id:'asignadas',icon:'✓',label:'Cerrar OTs'},
     {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},
     {id:'tecnicos',icon:'👷',label:'Técnicos'},
     {sec:'Stock'},{id:'stock-cuad',icon:'🔧',label:'Stock Cuadrillas'},{id:'stock',icon:'📦',label:'Stock Depósito'},
@@ -1277,7 +1277,7 @@ function irA(sec){
   const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
   document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
-  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
+  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
   closeSidebar();
   const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},asignar:renderAsignarOTs,clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
@@ -2978,7 +2978,11 @@ async function abrirCierreGrupo(grupoId){
     // Inicializar wizard
     WIZ={
       grupoId, cuadId, cuadNombre,
-      pasos: ots.map(ot=>({ot, accion:'CERRAR', mats:{}, seriales:{}, corrCant:{}, servs:{}, obs:''})),
+      pasos: [
+        ...ots.map(ot=>({ot, accion:'CERRAR', mats:{}, seriales:{}, corrCant:{}, servs:{}, obs:''})),
+        // Paso final: selección visual de seriales
+        {ot:null, accion:'SERIALES', mats:{}, seriales:{}, corrCant:{}, servs:{}, obs:''}
+      ],
       paso:0,
       catalogoMats:mats||[], catalogoServs:servs||[],
       scMap, serialesMap
@@ -3032,13 +3036,15 @@ function cancelarWizardCierre(){
 function renderWizPasoBar(){
   const bar=document.getElementById('wiz-pasos-bar');
   bar.innerHTML=WIZ.pasos.map((p,i)=>{
-    const tipo=(p.ot?.tipo_item||p.ot?.tipo_tarea||'OT').replace(/_/g,' ');
+    const esSeriales=p.accion==='SERIALES';
+    const tipo=esSeriales?'📋 Seriales':(p.ot?.tipo_item||p.ot?.tipo_tarea||'OT').replace(/_/g,' ');
     const actual=i===WIZ.paso;
-    const hecho=p.accion==='DEVUELTA'||i<WIZ.paso;
+    const hecho=p.accion==='DEVUELTA'||(i<WIZ.paso&&!esSeriales);
     let bg=actual?'#2563eb':hecho?'#16a34a':'#e2e8f0';
     let color=actual||hecho?'#fff':'#64748b';
     if(p.accion==='DEVUELTA'){bg='#dc2626';}
-    return `<div onclick="if(${i}<${WIZ.paso}){WIZ.paso=${i};renderWizPaso();}" 
+    if(esSeriales&&actual){bg='#7c3aed';}
+    return `<div onclick="if(${i}<=${WIZ.paso}){WIZ.paso=${i};renderWizPaso();}"
       style="padding:5px 14px;border-radius:99px;font-size:12px;font-weight:700;background:${bg};color:${color};cursor:${i<=WIZ.paso?'pointer':'default'};white-space:nowrap">
       ${i+1}. ${tipo}${p.accion==='DEVUELTA'?' ✕':''}
     </div>`;
@@ -3048,8 +3054,104 @@ function renderWizPasoBar(){
 function renderWizPaso(){
   renderWizPasoBar();
   const p=WIZ.pasos[WIZ.paso];
-  const ot=p.ot;
   const isLast=WIZ.paso===WIZ.pasos.length-1;
+
+  // ── PASO ESPECIAL: SERIALES ──────────────────────────────────────────────
+  if(p.accion==='SERIALES'){
+    document.getElementById('wiz-btn-ant').style.display='';
+    document.getElementById('wiz-btn-sig').style.display='none';
+    document.getElementById('wiz-btn-fin').style.display='';
+    document.getElementById('wiz-btn-fin').textContent='✓ Confirmar y cerrar todas las OTs';
+    document.getElementById('wiz-btn-devuelta').style.display='none';
+
+    // Recolectar todos los materiales con serial ingresados en pasos anteriores
+    // INDIVIDUAL (equipos con checkbox): ya están en p.seriales de cada paso
+    // CORRELATIVO (precintos): cantidades en p.corrCant de cada paso
+
+    // Recolectar correlativos pendientes de asignar serial específico
+    const corrPendientes=[];
+    WIZ.pasos.filter(pa=>pa.accion==='CERRAR'&&pa.ot).forEach(pa=>{
+      Object.entries(pa.corrCant).forEach(([mid,cant])=>{
+        if(!cant)return;
+        const mat=WIZ.catalogoMats.find(m=>m.id===parseInt(mid));
+        if(!mat)return;
+        const disponibles=WIZ.serialesMap[mid]||[];
+        // Quitar los ya seleccionados en otros pasos correlativos
+        const yaUsados=WIZ.pasos.flatMap(pp=>pp.corrSels?.[mid]||[]);
+        const libres=disponibles.filter(s=>!yaUsados.includes(s));
+        corrPendientes.push({mid:parseInt(mid),mat,cant,disponibles:libres,pasIdx:WIZ.pasos.indexOf(pa)});
+      });
+    });
+
+    // Recolectar equipos INDIVIDUAL pendientes (los que no tienen serial aún)
+    const indivPendientes=[];
+    WIZ.pasos.filter(pa=>pa.accion==='CERRAR'&&pa.ot).forEach(pa=>{
+      Object.entries(pa.mats).forEach(([mid,cant])=>{
+        if(!cant)return;
+        const mat=WIZ.catalogoMats.find(m=>m.id===parseInt(mid)&&m.serial_tipo==='INDIVIDUAL');
+        if(!mat)return;
+        const disponibles=WIZ.serialesMap[mid]||[];
+        if(!disponibles.length)return;
+        indivPendientes.push({mid:parseInt(mid),mat,cant,disponibles,pasIdx:WIZ.pasos.indexOf(pa)});
+      });
+    });
+
+    // Inicializar corrSels si no existe
+    WIZ.pasos.forEach(pa=>{if(!pa.corrSels)pa.corrSels={};});
+
+    const hayAlgo=corrPendientes.length||indivPendientes.length;
+
+    document.getElementById('wiz-paso-contenido').innerHTML=`
+      <div style="background:#f5f3ff;border:2px solid #c4b5fd;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+        <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Paso final — Asignación de seriales</div>
+        <div style="font-size:14px;font-weight:700;color:#1e3a5f">Seleccioná los precintos y equipos utilizados</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px">No escribas — hacé clic en el serial correcto</div>
+      </div>
+
+      ${!hayAlgo?`<div style="background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center;color:#64748b;font-size:14px">
+        No hay precintos ni equipos que requieran asignación de serial en este cierre.
+      </div>`:''}
+
+      ${corrPendientes.map(({mid,mat,cant,disponibles,pasIdx})=>`
+        <div class="card" style="margin-bottom:.75rem">
+          <div class="card-title">${mat.nombre} — elegí ${cant} de ${disponibles.length} disponibles</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px" id="corr-grid-${mid}">
+            ${disponibles.map(s=>{
+              const sel=(WIZ.pasos[pasIdx].corrSels?.[mid]||[]).includes(s);
+              return `<button type="button" onclick="toggleCorrSel(${pasIdx},${mid},'${s}',${cant})"
+                id="corrBtn-${mid}-${s.replace(/[^a-z0-9]/gi,'_')}"
+                style="padding:5px 14px;border-radius:8px;font-size:13px;font-family:monospace;font-weight:700;cursor:pointer;
+                  border:2px solid ${sel?'#7c3aed':'#e2e8f0'};
+                  background:${sel?'#f5f3ff':'transparent'};
+                  color:${sel?'#7c3aed':'#475569'}">
+                ${s}</button>`;
+            }).join('')}
+          </div>
+          <div style="margin-top:8px;font-size:12px;color:#7c3aed;font-weight:600">
+            Seleccionados: <span id="corr-count-${mid}">${(WIZ.pasos[pasIdx].corrSels?.[mid]||[]).length}</span> / ${cant}
+          </div>
+        </div>`).join('')}
+
+      ${indivPendientes.map(({mid,mat,cant,disponibles,pasIdx})=>`
+        <div class="card" style="margin-bottom:.75rem">
+          <div class="card-title">${mat.nombre} — elegí ${cant} equipo${cant!==1?'s':''}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${disponibles.map(s=>{
+              const sel=(WIZ.pasos[pasIdx].seriales[mid]||[]).includes(s);
+              return `<label style="display:flex;align-items:center;gap:6px;padding:6px 14px;border:2px solid ${sel?'#2563eb':'#e2e8f0'};border-radius:10px;cursor:pointer;font-family:monospace;font-size:13px;font-weight:700;background:${sel?'#eff6ff':'transparent'};color:${sel?'#2563eb':'#475569'}">
+                <input type="checkbox" data-mid="${mid}" data-serial="${s}" data-pasidx="${pasIdx}" class="wiz-serial-cb" ${sel?'checked':''} onchange="toggleWizSerial(this)" style="margin:0;width:16px;height:16px"/>
+                ${s}</label>`;
+            }).join('')}
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:#2563eb;font-weight:600">
+            Seleccionados: ${(WIZ.pasos[pasIdx].seriales[mid]||[]).length} / ${cant}
+          </div>
+        </div>`).join('')}`;
+    return;
+  }
+  // ── FIN PASO SERIALES ────────────────────────────────────────────────────
+
+  const ot=p.ot;
   const cl=ot.clientes||{};
   const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
   const esEquipo=ot.tipo_tarea==='INSTALAR'&&['CM','ONU','BASICA'].some(t=>(ot.tipo_item||'').includes(t));
@@ -3136,15 +3238,28 @@ function renderWizPaso(){
     </div>`:''}
 
     <!-- Header OT -->
-    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:.875rem 1rem;margin-bottom:1rem">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
-        <div>
-          <div style="font-size:11px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.05em">OT ${WIZ.paso+1} de ${WIZ.pasos.length}</div>
-          <div style="font-weight:700;font-size:16px;margin-top:2px">${numOT(ot.numero_ot)} — ${tipoLabel}</div>
-          <div style="font-size:13px;margin-top:3px">${fmtCodigo(cl.codigo_gigared)} — ${fmtCli(cl)}</div>
-          <div style="font-size:12px;color:#64748b">${dom} · ${cl.nodo||''}</div>
+    <div style="background:${devuelta?'#fef2f2':esInstEquipo?'#eff6ff':'#f0fdf4'};border:2px solid ${devuelta?'#fca5a5':esInstEquipo?'#bfdbfe':'#bbf7d0'};border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1">
+          <!-- Línea 1: contador -->
+          <div style="font-size:10px;font-weight:700;color:${devuelta?'#dc2626':esInstEquipo?'#2563eb':'#16a34a'};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">
+            OT ${WIZ.paso+1} DE ${WIZ.pasos.length}${WIZ.pasos.length>1?'  ·  '+WIZ.pasos.filter((_,i)=>i<WIZ.paso).length+' completadas':''}
+          </div>
+          <!-- Línea 2: N° cliente — NOMBRE -->
+          <div style="font-size:18px;font-weight:800;color:#1e3a5f;letter-spacing:-.3px;line-height:1.1">
+            Nº ${fmtCodigo(cl.codigo_gigared)} — ${fmtCli(cl)}
+          </div>
+          <!-- Línea 3: OT TIPO numeroot -->
+          <div style="font-size:14px;font-weight:700;color:${esInstEquipo?'#2563eb':'#16a34a'};margin-top:5px">
+            ${tipoLabel.toUpperCase()} ${numOT(ot.numero_ot)}
+          </div>
+          <!-- Línea 4: dirección · nodo -->
+          <div style="font-size:12px;color:#64748b;margin-top:3px">${dom} · ${cl.nodo||''}</div>
         </div>
-        <div style="text-align:right;font-size:12px;color:#64748b">🔧 ${WIZ.cuadNombre}</div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:11px;color:#64748b">Cuadrilla</div>
+          <div style="font-size:13px;font-weight:700;color:#2563eb">🔧 ${WIZ.cuadNombre}</div>
+        </div>
       </div>
     </div>
 
@@ -3181,13 +3296,40 @@ function renderWizPaso(){
 function toggleWizSerial(cb){
   const mid=cb.dataset.mid;
   const serial=cb.dataset.serial;
-  const p=WIZ.pasos[WIZ.paso];
+  // Soporte para pasidx (paso de seriales final)
+  const pasIdx=cb.dataset.pasidx!==undefined?parseInt(cb.dataset.pasidx):WIZ.paso;
+  const p=WIZ.pasos[pasIdx];
   if(!p.seriales[mid])p.seriales[mid]=[];
   if(cb.checked){if(!p.seriales[mid].includes(serial))p.seriales[mid].push(serial);}
   else{p.seriales[mid]=p.seriales[mid].filter(s=>s!==serial);}
   // Actualizar estilo del label
   const lbl=cb.closest('label');
-  if(lbl){lbl.style.borderColor=cb.checked?'#2563eb':'var(--border)';lbl.style.background=cb.checked?'#eff6ff':'transparent';}
+  if(lbl){lbl.style.borderColor=cb.checked?'#2563eb':'#e2e8f0';lbl.style.background=cb.checked?'#eff6ff':'transparent';lbl.style.color=cb.checked?'#2563eb':'#475569';}
+}
+
+function toggleCorrSel(pasIdx, mid, serial, maxCant){
+  const p=WIZ.pasos[pasIdx];
+  if(!p.corrSels)p.corrSels={};
+  if(!p.corrSels[mid])p.corrSels[mid]=[];
+  const arr=p.corrSels[mid];
+  const btnId='corrBtn-'+mid+'-'+serial.replace(/[^a-z0-9]/gi,'_');
+  const btn=document.getElementById(btnId);
+
+  if(arr.includes(serial)){
+    // Deseleccionar
+    p.corrSels[mid]=arr.filter(s=>s!==serial);
+    if(btn){btn.style.borderColor='#e2e8f0';btn.style.background='transparent';btn.style.color='#475569';}
+  }else{
+    // Seleccionar si no se llegó al máximo
+    if(arr.length>=maxCant){
+      alert('Ya seleccionaste '+maxCant+'. Deseleccioná uno para cambiar.');
+      return;
+    }
+    p.corrSels[mid].push(serial);
+    if(btn){btn.style.borderColor='#7c3aed';btn.style.background='#f5f3ff';btn.style.color='#7c3aed';}
+  }
+  const countEl=document.getElementById('corr-count-'+mid);
+  if(countEl)countEl.textContent=p.corrSels[mid].length;
 }
 
 function marcarDevueltaWiz(){
@@ -3230,7 +3372,9 @@ async function confirmarWizardCierre(){
     const ts=new Date().toLocaleString('es-AR');
     const histLines=[];
 
+    const pasoSeriales=WIZ.pasos.find(ps=>ps.accion==='SERIALES');
     for(const p of WIZ.pasos){
+      if(p.accion==='SERIALES')continue; // El paso final no tiene OT propia
       const otId=p.ot.id;
       const eNuevo=p.accion==='DEVUELTA'?eDev:eFin;
 
@@ -3242,7 +3386,7 @@ async function confirmarWizardCierre(){
         for(const [mid,sers] of Object.entries(p.seriales)){
           if(sers.length)serArr.push({ot_id:otId,material_id:parseInt(mid),cantidad:sers.length});
         }
-        // --- Correlativos ---
+        // --- Correlativos: usar corrSels del paso final de seriales ---
         const corrArr=Object.entries(p.corrCant).filter(([,c])=>c>0).map(([mid,c])=>({ot_id:otId,material_id:parseInt(mid),cantidad:c}));
         // --- MO ---
         const servArr=Object.entries(p.servs).filter(([,c])=>c>0).map(([sid,c])=>({ot_id:otId,servicio_id:parseInt(sid),cantidad:c,usuario_id:CU.id}));
@@ -3269,11 +3413,13 @@ async function confirmarWizardCierre(){
           }
           for(const [mid,cant] of Object.entries(p.corrCant)){
             if(!cant)continue;
-            const inp=document.querySelector(`.wiz-corr[data-mid="${mid}"]`);
-            const sers=JSON.parse(inp?.dataset?.sers||'[]').slice(0,cant);
-            for(const s of sers) await sbPatch('stock_seriales',`?material_id=eq.${mid}&serial=eq.${s}`,{ubicacion:'CLIENTE'});
+            // Usar los seriales seleccionados en el paso final (corrSels)
+            const sers=(pasoSeriales?.corrSels?.[mid])||[];
+            const sersAUsar=sers.length>=cant?sers.slice(0,cant):WIZ.serialesMap[mid]?.slice(0,cant)||[];
+            for(const s of sersAUsar) await sbPatch('stock_seriales',`?material_id=eq.${mid}&serial=eq.${s}`,{ubicacion:'CLIENTE'});
             const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${mid}`)||[];
             if(sc.length) await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${mid}`,{cantidad:Math.max(0,(sc[0].cantidad||0)-cant)});
+            if(sersAUsar.length) await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:parseInt(mid),cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs:'OT '+otId+' precintos: '+sersAUsar.join(',')});
           }
         }
 
