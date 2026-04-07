@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v76</title>
+<title>FG Gestión OTs v77</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V76</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V77</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v76</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v77</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -197,7 +197,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="stat" style="cursor:pointer" onclick="irAConFiltroEstado('PENDIENTE')"><div class="lbl">Total pendientes</div><div class="val amber" id="dash-pend">—</div></div>
     <div class="stat" style="cursor:pointer" onclick="irAOTsAsignadas()"><div class="lbl">Asignadas</div><div class="val blue" id="dash-asig">—</div></div>
     <div class="stat" style="cursor:pointer" onclick="irAConFiltroEstado('FINALIZADA')"><div class="lbl">Finalizadas hoy</div><div class="val green" id="dash-fin">—</div></div>
-    <div class="stat" style="cursor:pointer" onclick="irAConFiltroEstado('A_REPROGRAMAR')"><div class="lbl">A reprogramar</div><div class="val red" id="dash-repro">—</div></div>
+    <div class="stat"><div class="lbl">A reprogramar</div><div class="val red" id="dash-repro">—</div></div>
   </div>
   <div class="card-title" style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Pendientes por tipo — clic para ver</div>
   <div class="tipo-grid">
@@ -1479,6 +1479,10 @@ async function verOT(num){
         `:`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val" style="color:#94a3b8">Sin asignar</div></div>`}
       </div>
       ${ot.obs_gigared?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#92400e"><strong>${esRep?'Servicios contratados':'Obs Gigared'}:</strong> ${ot.obs_gigared}</div>`:''}
+      ${ot.grupos_ot?.observaciones?`<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem">
+        <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">📋 Historial de la OT</div>
+        ${ot.grupos_ot.observaciones.split('\n').filter(Boolean).map(l=>`<div style="font-size:12px;color:#1e3a5f;padding:3px 0;border-bottom:1px solid #e0f2fe">${l}</div>`).join('')}
+      </div>`:''}
       ${items.length?`<div class="card" style="margin-bottom:.75rem"><div class="card-title">${esRep?'Servicios (referencia)':'Items contratados'}</div>${items.map(i=>`<div class="row"><span>${i.descripcion}</span><span style="font-weight:700">x${i.cantidad}</span></div>`).join('')}</div>`:''}
       ${grupo.length>=1?`<div class="card"><div class="card-title">Grupo · ${grupo.length} OT${grupo.length>1?'s':''}</div>${grupo.map(g=>`<div class="ot-grupo-item" style="cursor:pointer" onclick="cerrarModal('ot-modal');setTimeout(()=>verOT('${g.numero_ot}'),200)"><div class="ot-grupo-num">${numOT(g.numero_ot)}</div><div class="ot-grupo-tipo">${g.tipo_item||'—'}</div>${badgeE(g.estados_ot?.nombre||'')}</div>`).join('')}</div>`:''}
     `;
@@ -2368,9 +2372,9 @@ async function abrirResumenAsignacion(){
     +'<th>Cliente</th><th style="text-align:center">Duración</th><th style="text-align:center">Horario asignado</th><th style="text-align:center">Cambiar horario</th>'
     +'</tr></thead><tbody>'
     +items.map((g,i)=>{
-      // Slots fijos cada 30 min de 07:30 a 17:00
+      // Slots fijos cada 30 min de 08:00 a 16:00
       const slotsDisplay=[];
-      for(let t=7*60+30;t<=17*60;t+=30){
+      for(let t=8*60;t<=16*60;t+=30){
         const h=Math.floor(t/60).toString().padStart(2,'0');
         const m=(t%60).toString().padStart(2,'0');
         slotsDisplay.push(`${h}:${m}`);
@@ -2414,7 +2418,7 @@ function actualizarBotonesSlot(idx){
   const hora=window._ASGN_ITEMS[idx]?.hora||'';
   // Actualizar color de todos los botones de esta fila
   const slotsDisplay=[];
-  for(let t=7*60+30;t<=17*60;t+=30){
+  for(let t=8*60;t<=16*60;t+=30){
     const h=Math.floor(t/60).toString().padStart(2,'0');
     const m=(t%60).toString().padStart(2,'0');
     slotsDisplay.push(`${h}:${m}`);
@@ -2455,13 +2459,20 @@ async function confirmarAsignacion(){
   err.textContent='Guardando...';err.style.color='#64748b';
   try{
     const eAsig=ESTADOS.find(e=>e.nombre==='ASIGNADA');
+    const ts=new Date().toLocaleString('es-AR');
+    const fechaDisplay=new Date(fecha+'T12:00:00').toLocaleDateString('es-AR');
     for(const g of items){
       const gid=typeof g.gid==='number'?g.gid:parseInt(g.gid);
       if(gid){
+        // Traer obs anteriores para acumular historial
+        const gAct=await sbGet('grupos_ot',`?id=eq.${gid}&select=observaciones`).then(d=>d?.[0]);
+        const entrada=`[${ts}] Asignada a ${window._ASGN_CUAD?.nombre} — ${fechaDisplay} ${g.hora?formatHora12(g.hora):''}`;
+        const obsAcum=(gAct?.observaciones?gAct.observaciones+'\n':'')+entrada;
         await sbPatch('grupos_ot',`?id=eq.${gid}`,{
           cuadrilla_id:parseInt(cuadId),fecha_trabajo:fecha,
           horario_visita:g.hora,duracion_minutos:g.dur,
-          estado_id:eAsig?.id,fecha_asignacion:new Date().toISOString()
+          estado_id:eAsig?.id,fecha_asignacion:new Date().toISOString(),
+          observaciones:obsAcum
         });
         await sbPatch('ordenes_trabajo',`?grupo_id=eq.${gid}`,{estado_id:eAsig?.id,fecha_trabajo:fecha});
       }
@@ -2552,13 +2563,51 @@ function renderTablaAsignadas(lista){
           +(ots.length>1?'<div style="font-size:10px;color:#94a3b8">'+ots.length+' OTs</div>':'')
         +'</td>'
         +'<td><div style="display:flex;gap:4px;flex-wrap:wrap">'
-          +'<button class="btn btn-sm" style="font-size:10px;color:#f59e0b;border-color:rgba(245,158,11,.3)" onclick="cambiarEstadoGrupo('+g.id+',\'A_REPROGRAMAR\')">↩ Reprogram.</button>'
-          +'<button class="btn btn-sm" style="font-size:10px" onclick="cambiarEstadoGrupo('+g.id+',\'PENDIENTE\')">↺ Pendiente</button>'
+          
+          +'<button class="btn btn-sm" style="font-size:10px" onclick="volverAPendiente('+g.id+')">↺ Volver a pendiente</button>'
           +'<button class="btn btn-sm btn-primary" style="font-size:10px" onclick="abrirReasignarDesdeAsignadas('+g.id+')">🔀 Reasignar</button>'
           +(ots.length?'<button class="btn btn-sm" style="font-size:10px;background:#16a34a;color:#fff;border-color:#16a34a" onclick="abrirCierre('+ots[0].id+',\''+ots[0].numero_ot+'\',\''+( ots[0].tipo_tarea||'')+'\')" >✓ Cerrar</button>':'')
         +'</div></td>'
         +'</tr>';
     }).join('')+'</tbody></table></div>';
+}
+
+async function volverAPendiente(grupoId){
+  // Pedir observación obligatoria
+  const obs=prompt('⚠️ ¿Por qué no se realizó? (obligatorio)\n\nEjemplo: Cliente ausente / No atiende / Problema de acceso...');
+  if(!obs||!obs.trim()){alert('Debe ingresar una observación para registrar el motivo.');return;}
+
+  const est=ESTADOS.find(e=>e.nombre==='PENDIENTE');
+  if(!est){alert('Estado PENDIENTE no encontrado');return;}
+
+  try{
+    // Traer datos del grupo para el historial
+    const g=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=fecha_trabajo,horario_visita,cuadrillas(nombre),ordenes_trabajo(id,numero_ot)`).then(d=>d?.[0]);
+    const cuadNombre=g?.cuadrillas?.nombre||'—';
+    const fechaProg=g?.fecha_trabajo||'—';
+    const horaProg=g?.horario_visita||'—';
+
+    // Guardar historial en observaciones del grupo (acumulativo)
+    const timestamp=new Date().toLocaleString('es-AR');
+    const entrada=`[${timestamp}] Devuelta a PENDIENTE desde ${cuadNombre} (${fechaProg} ${horaProg}). Motivo: ${obs.trim()}`;
+
+    // Obtener observaciones anteriores
+    const gActual=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=observaciones`).then(d=>d?.[0]);
+    const obsAcum=(gActual?.observaciones?gActual.observaciones+'\n':'')+entrada;
+
+    // Actualizar grupo
+    await sbPatch('grupos_ot',`?id=eq.${grupoId}`,{
+      estado_id:est.id,
+      cuadrilla_id:null,
+      fecha_trabajo:null,
+      horario_visita:null,
+      observaciones:obsAcum
+    });
+    // Actualizar OTs
+    await sbPatch('ordenes_trabajo',`?grupo_id=eq.${grupoId}`,{estado_id:est.id,fecha_trabajo:null});
+
+    renderAsignadas();
+  }catch(e){alert('Error: '+e.message);}
 }
 
 async function cambiarEstadoGrupo(grupoId, nuevoEstado){
@@ -2643,7 +2692,7 @@ async function generarSlots(cuadId, fecha, durMin){
   const asig=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadId}&fecha_trabajo=eq.${fecha}&estado_id=not.is.null&select=horario_visita,duracion_minutos`)||[];
 
   // Ocupar slots de 07:30 a 18:00
-  const INICIO=7*60+30; // 07:30
+  const INICIO=8*60; // 08:00
   const FIN=18*60;      // 18:00
   const ocup=new Set();
   asig.forEach(a=>{
@@ -2758,7 +2807,7 @@ async function recalcularSlots(){
 }
 
 function calcSlotLibres(ocupado, durMin){
-  const INICIO=7*60+30, FIN=18*60;
+  const INICIO=8*60, FIN=16*60;
   const slots=[];
   for(let t=INICIO;t+durMin<=FIN;t+=5){
     let libre=true;
