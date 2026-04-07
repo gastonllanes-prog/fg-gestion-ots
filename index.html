@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v67</title>
+<title>FG Gestión OTs v68</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V67</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V68</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v67</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v68</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2114,7 +2114,7 @@ async function renderCuadrillas(){
         <td style="font-weight:700">${c.nombre}</td>
         <td style="font-size:12px;color:#64748b">${(tecsPorCuad[c.id]||[]).join(' · ')||'<span style="color:#cbd5e1">Sin técnicos asignados</span>'}</td>
         <td><span class="badge ${c.activo?'b-green':'b-gray'}">${c.activo?'Activa':'Inactiva'}</span></td>
-        <td><button class="btn btn-sm" onclick="editarCuadrilla(${c.id})">✏️ Editar</button></td>
+        <td style="display:flex;gap:4px"><button class="btn btn-sm" onclick="editarCuadrilla(${c.id})">✏️ Editar</button><button class="btn btn-sm" style="color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarCuadrilla(${c.id},'${c.nombre.replace(/'/g,'')}')">🗑️</button></td>
       </tr>`).join('')}</tbody></table></div>
       <div style="font-size:12px;color:#94a3b8;margin-top:.5rem">${d.length} cuadrilla${d.length!==1?'s':''}</div>`;
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
@@ -2210,7 +2210,7 @@ async function renderTecnicos(){
         <td style="font-size:12px">${t.telefono||'—'}</td>
         <td style="font-size:12px;color:#64748b">${cuadPorTec[t.id]||'<span style="color:#cbd5e1">Sin cuadrilla</span>'}</td>
         <td><span class="badge ${t.activo?'b-green':'b-gray'}">${t.activo?'Activo':'Inactivo'}</span></td>
-        <td><button class="btn btn-sm" onclick="editarTecnico(${t.id})">✏️ Editar</button></td>
+        <td style="display:flex;gap:4px"><button class="btn btn-sm" onclick="editarTecnico(${t.id})">✏️ Editar</button><button class="btn btn-sm" style="color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarTecnico(${t.id},'${t.nombre.replace(/'/g,'')}')">🗑️</button></td>
       </tr>`).join('')}</tbody></table></div>
       <div style="font-size:12px;color:#94a3b8;margin-top:.5rem">${d.length} técnico${d.length!==1?'s':''}</div>`;
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
@@ -3390,7 +3390,7 @@ async function renderConfig(tab){
           +'<td style="font-weight:600">'+e.nombre.replace(/_/g,' ')+'</td>'
           +'<td style="font-size:12px;color:#64748b">'+( e.descripcion||'—')+'</td>'
           +'<td><span class="badge '+(e.activo?'b-green':'b-gray')+'">'+(e.activo?'Activo':'Inactivo')+'</span></td>'
-          +'<td><button class="btn btn-sm" onclick="abrirModalEstado('+JSON.stringify(e).replace(/"/g,"'").replace(/'/g,"&#39;")+')" >✏️</button></td>'
+          +'<td style="display:flex;gap:4px"><button class="btn btn-sm" onclick="abrirModalEstado('+JSON.stringify(e).replace(/"/g,"'").replace(/'/g,"&#39;")+')" >✏️</button>'+'<button class="btn btn-sm" style="color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarEstado('+e.id+',\''+e.nombre+'\')" >🗑️</button></td>'
           +'</tr>').join('')
         +'</tbody></table></div>';
     }
@@ -3457,7 +3457,7 @@ async function renderConfig(tab){
           +'<td style="color:#94a3b8;font-size:16px;text-align:center;cursor:grab">⠿</td>'
           +'<td style="font-weight:600;font-size:12px">'+s.nombre+'</td>'
           +'<td><span class="badge '+(s.activo?'b-green':'b-gray')+'">'+(s.activo?'Activo':'Inactivo')+'</span></td>'
-          +'<td><button class="btn btn-sm" style="font-size:11px" onclick="abrirModalServicio('+JSON.stringify(s).replace(/"/g,"'").replace(/'/g,"&#39;")+')" >✏️</button></td>'
+          +'<td style="display:flex;gap:4px"><button class="btn btn-sm" style="font-size:11px" onclick="abrirModalServicio('+JSON.stringify(s).replace(/"/g,"'").replace(/'/g,"&#39;")+')" >✏️</button>'+'<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarServicio('+s.id+',\''+s.nombre.replace(/'/g,'')+'\')">🗑️</button></td>'
           +'</tr>').join('')
         +'</tbody></table></div>';
       initDragServicios();
@@ -3474,7 +3474,7 @@ async function renderConfig(tab){
           +'<td style="font-weight:600;font-size:12px">'+m.descripcion+'</td>'
           +'<td><span class="badge b-blue" style="font-size:10px">'+( m.estados_ot?.nombre||'').replace(/_/g,' ')+'</span></td>'
           +'<td><span class="badge '+(m.activo?'b-green':'b-gray')+'">'+(m.activo?'Activo':'Inactivo')+'</span></td>'
-          +'<td><button class="btn btn-sm" style="font-size:11px" onclick="abrirModalMotivo('+JSON.stringify(m).replace(/"/g,"'").replace(/'/g,"&#39;")+')" >✏️</button></td>'
+          +'<td style="display:flex;gap:4px"><button class="btn btn-sm" style="font-size:11px" onclick="abrirModalMotivo('+JSON.stringify(m).replace(/"/g,"'").replace(/'/g,"&#39;")+')" >✏️</button>'+'<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarMotivo('+m.id+',\''+m.descripcion.replace(/'/g,'')+'\')">🗑️</button></td>'
           +'</tr>').join('')
         +'</tbody></table></div>';
     }
@@ -3482,7 +3482,7 @@ async function renderConfig(tab){
       const d=await sbGet('usuarios','?order=nombre')||[];
       el.innerHTML='<div style="margin-bottom:.75rem;text-align:right"><button class="btn btn-sm btn-primary" onclick="abrirModalUsuario()">+ Nuevo usuario</button></div>'
         +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>'
-        +d.map(u=>'<tr><td style="font-weight:600">'+u.nombre+'</td><td style="font-size:12px">'+u.email+'</td><td><span class="badge b-blue">'+u.rol+'</span></td><td><span class="badge '+(u.activo?'b-green':'b-gray')+'">'+(u.activo?'Activo':'Inactivo')+'</span></td><td><button class="btn btn-sm" onclick="abrirModalUsuario('+u.id+')">✏️</button></td></tr>').join('')
+        +d.map(u=>'<tr><td style="font-weight:600">'+u.nombre+'</td><td style="font-size:12px">'+u.email+'</td><td><span class="badge b-blue">'+u.rol+'</span></td><td><span class="badge '+(u.activo?'b-green':'b-gray')+'">'+(u.activo?'Activo':'Inactivo')+'</span></td><td style="display:flex;gap:4px"><button class="btn btn-sm" onclick="abrirModalUsuario('+u.id+')">✏️</button><button class="btn btn-sm" style="color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarUsuario('+u.id+',' + "'" + '"+u.nombre.replace(/\'/g,"")+"' + "'" + ')">🗑️</button></td></tr>').join('')
         +'</tbody></table></div>';
     }
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
@@ -3858,6 +3858,56 @@ async function guardarMaterial(){
     ES_MATERIALES=[];
     renderConfig('materiales');
   }catch(e){err.textContent='Error: '+e.message;}
+}
+
+// ─── ELIMINAR ───
+async function eliminarEstado(id, nombre){
+  if(!confirm('¿Eliminar el estado "'+nombre.replace(/_/g,' ')+'"?\n⚠️ Solo eliminá si no tiene OTs ni motivos asociados.'))return;
+  try{
+    await sbFetch('estados_ot','DELETE',null,'?id=eq.'+id);
+    renderConfig('estados');
+  }catch(e){alert('No se puede eliminar: '+e.message+'\n(Puede tener OTs o motivos asociados. Desactivalo en su lugar.)');}
+}
+
+async function eliminarMotivo(id, descripcion){
+  if(!confirm('¿Eliminar el motivo "'+descripcion+'"?'))return;
+  try{
+    await sbFetch('motivos_estado','DELETE',null,'?id=eq.'+id);
+    renderConfig('motivos');
+  }catch(e){alert('No se puede eliminar: '+e.message);}
+}
+
+async function eliminarServicio(id, nombre){
+  if(!confirm('¿Eliminar el servicio "'+nombre+'"?\n⚠️ Solo eliminá si no tiene OTs cerradas asociadas.'))return;
+  try{
+    await sbFetch('catalogo_servicios','DELETE',null,'?id=eq.'+id);
+    renderConfig('servicios');
+  }catch(e){alert('No se puede eliminar: '+e.message+'\n(Puede tener OTs asociadas. Desactivalo en su lugar.)');}
+}
+
+async function eliminarUsuario(id, nombre){
+  if(id===CU?.id){alert('No podés eliminar tu propio usuario.');return;}
+  if(!confirm('¿Eliminar el usuario "'+nombre+'"?\nEsta acción no se puede deshacer.'))return;
+  try{
+    await sbFetch('usuarios','DELETE',null,'?id=eq.'+id);
+    renderConfig('usuarios');
+  }catch(e){alert('No se puede eliminar: '+e.message);}
+}
+
+async function eliminarTecnico(id, nombre){
+  if(!confirm('¿Eliminar el técnico "'+nombre+'"?\n⚠️ Solo eliminá si no tiene asignaciones.'))return;
+  try{
+    await sbFetch('tecnicos','DELETE',null,'?id=eq.'+id);
+    renderGestion('tecnicos');
+  }catch(e){alert('No se puede eliminar: '+e.message+'\n(Puede tener asignaciones. Desactivalo en su lugar.)');}
+}
+
+async function eliminarCuadrilla(id, nombre){
+  if(!confirm('¿Eliminar la cuadrilla "'+nombre+'"?\n⚠️ Solo eliminá si no tiene stock ni movimientos.'))return;
+  try{
+    await sbFetch('cuadrillas','DELETE',null,'?id=eq.'+id);
+    renderGestion('cuadrillas');
+  }catch(e){alert('No se puede eliminar: '+e.message+'\n(Puede tener stock o movimientos. Desactivala en su lugar.)');}
 }
 
 async function eliminarMaterial(id,nombre){
