@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v65</title>
+<title>FG Gestión OTs v66</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V65</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V66</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v65</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v66</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -786,6 +786,63 @@ tr:hover td{background:rgba(37,99,235,.02)}
 </div>
 
 <!-- MODAL ABM MATERIAL -->
+<!-- MODAL ABM ESTADO -->
+<div class="modal-overlay hidden" id="estado-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title" id="estado-modal-title">Estado <button class="modal-close" onclick="cerrarModal('estado-modal')">✕</button></div>
+    <input type="hidden" id="estado-id"/>
+    <div class="fg"><label>Nombre (sin espacios, ej: EN_PROCESO)</label><input id="estado-nombre" placeholder="EN_PROCESO"/></div>
+    <div class="fg"><label>Descripción</label><input id="estado-desc" placeholder="Descripción del estado"/></div>
+    <div class="fg"><label>Activo</label>
+      <select id="estado-activo"><option value="true">Sí</option><option value="false">No</option></select>
+    </div>
+    <p class="err-msg" id="estado-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="guardarEstado()">Guardar</button>
+      <button class="btn" onclick="cerrarModal('estado-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ABM MOTIVO -->
+<div class="modal-overlay hidden" id="motivo-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title" id="motivo-modal-title">Motivo <button class="modal-close" onclick="cerrarModal('motivo-modal')">✕</button></div>
+    <input type="hidden" id="motivo-id"/>
+    <div class="fg"><label>Descripción del motivo</label><input id="motivo-desc" placeholder="Ej: Cliente ausente"/></div>
+    <div class="fg"><label>Estado asociado</label>
+      <select id="motivo-estado-id" style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit">
+        <option value="">Seleccioná un estado...</option>
+      </select>
+    </div>
+    <div class="fg"><label>Activo</label>
+      <select id="motivo-activo"><option value="true">Sí</option><option value="false">No</option></select>
+    </div>
+    <p class="err-msg" id="motivo-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="guardarMotivo()">Guardar</button>
+      <button class="btn" onclick="cerrarModal('motivo-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ABM SERVICIO -->
+<div class="modal-overlay hidden" id="servicio-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title" id="servicio-modal-title">Servicio <button class="modal-close" onclick="cerrarModal('servicio-modal')">✕</button></div>
+    <input type="hidden" id="servicio-id"/>
+    <div class="fg"><label>Nombre del servicio</label><input id="servicio-nombre" placeholder="Ej: Instalación domiciliaria principal"/></div>
+    <div class="fg"><label>Activo</label>
+      <select id="servicio-activo"><option value="true">Sí</option><option value="false">No</option></select>
+    </div>
+    <p class="err-msg" id="servicio-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="guardarServicio()">Guardar</button>
+      <button class="btn" onclick="cerrarModal('servicio-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="mat-modal">
   <div class="modal" style="max-width:520px">
     <div class="modal-title" id="mat-modal-titulo">Nuevo material <button class="modal-close" onclick="cerrarModal('mat-modal')">✕</button></div>
@@ -3323,7 +3380,20 @@ async function renderConfig(tab){
   const el=document.getElementById('cfg-'+tab);el.style.display='';
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
-    if(tab==='estados'){const d=await sbGet('estados_ot','?order=orden_display')||[];el.innerHTML=`<div class="card">${d.map(e=>`<div class="row"><div><div style="font-weight:600">${e.nombre.replace(/_/g,' ')}</div><div style="font-size:12px;color:#64748b">${e.descripcion||''}</div></div><span class="badge ${e.activo?'b-green':'b-gray'}">${e.activo?'Activo':'Inactivo'}</span></div>`).join('')}</div>`;}
+    if(tab==='estados'){
+      const d=await sbGet('estados_ot','?order=orden_display')||[];
+      el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
+        +'<div style="font-size:12px;color:#64748b">'+d.length+' estados configurados</div>'
+        +'<button class="btn btn-sm btn-primary" onclick="abrirModalEstado()">+ Nuevo estado</button></div>'
+        +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr><th>Estado</th><th>Descripción</th><th>Estado</th><th></th></tr></thead><tbody>'
+        +d.map(e=>'<tr>'
+          +'<td style="font-weight:600">'+e.nombre.replace(/_/g,' ')+'</td>'
+          +'<td style="font-size:12px;color:#64748b">'+( e.descripcion||'—')+'</td>'
+          +'<td><span class="badge '+(e.activo?'b-green':'b-gray')+'">'+(e.activo?'Activo':'Inactivo')+'</span></td>'
+          +'<td><button class="btn btn-sm" onclick="abrirModalEstado('+JSON.stringify(e).replace(/"/g,"'").replace(/'/g,"&#39;")+')" >✏️</button></td>'
+          +'</tr>').join('')
+        +'</tbody></table></div>';
+    }
     else if(tab==='materiales'){
       const d=await sbGet('catalogo_materiales','?order=activo.desc,orden_display')||[];
       const tipoLabel={NINGUNO:'—',CORRELATIVO:'📌 Correlativo',INDIVIDUAL:'🔢 Individual'};
@@ -3376,7 +3446,38 @@ async function renderConfig(tab){
         }).join('')
         +'</tbody></table></div>';
     }
-    else if(tab==='servicios'){const d=await sbGet('catalogo_servicios','?order=categoria,orden_display')||[];el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Servicio</th><th>Categoría</th></tr></thead><tbody>${d.map(s=>`<tr><td>${s.nombre}</td><td><span class="badge b-gray">${s.categoria||''}</span></td></tr>`).join('')}</tbody></table></div>`;}    else if(tab==='motivos'){const d=await sbGet('motivos_estado','?select=*,estados_ot(nombre)&order=estado_ot_id')||[];el.innerHTML=`<div class="card">${d.map(m=>`<div class="row"><div><div style="font-weight:600">${m.descripcion}</div><div style="font-size:12px;color:#64748b">${m.estados_ot?.nombre||''}</div></div><span class="badge ${m.activo?'b-green':'b-gray'}">${m.activo?'Activo':'Inactivo'}</span></div>`).join('')}</div>`;}
+    else if(tab==='servicios'){
+      const d=await sbGet('catalogo_servicios','?activo=eq.true&order=orden_display')||[];
+      el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
+        +'<div style="font-size:12px;color:#64748b">'+d.length+' servicios — <strong>arrastrá</strong> para reordenar 🟰</div>'
+        +'<button class="btn btn-sm btn-primary" onclick="abrirModalServicio()">+ Nuevo servicio</button></div>'
+        +'<div class="ot-table-wrap"><table class="ot-table" id="svc-drag-table"><thead><tr>'
+        +'<th style="width:28px"></th><th>Servicio / Mano de obra</th><th>Estado</th><th></th></tr></thead><tbody id="svc-drag-body">'
+        +d.map(s=>'<tr draggable="true" data-id="'+s.id+'" style="cursor:grab;'+(s.activo?'':'opacity:.5')+'">'
+          +'<td style="color:#94a3b8;font-size:16px;text-align:center;cursor:grab">⠿</td>'
+          +'<td style="font-weight:600;font-size:12px">'+s.nombre+'</td>'
+          +'<td><span class="badge '+(s.activo?'b-green':'b-gray')+'">'+(s.activo?'Activo':'Inactivo')+'</span></td>'
+          +'<td><button class="btn btn-sm" style="font-size:11px" onclick="abrirModalServicio('+JSON.stringify(s).replace(/"/g,"'").replace(/'/g,"&#39;")+')" >✏️</button></td>'
+          +'</tr>').join('')
+        +'</tbody></table></div>';
+      initDragServicios();
+    }
+    else if(tab==='motivos'){
+      const estados=await sbGet('estados_ot','?order=orden_display')||[];
+      const d=await sbGet('motivos_estado','?select=*,estados_ot(nombre)&order=estado_ot_id,descripcion')||[];
+      el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
+        +'<div style="font-size:12px;color:#64748b">'+d.length+' motivos</div>'
+        +'<button class="btn btn-sm btn-primary" onclick="abrirModalMotivo()">+ Nuevo motivo</button></div>'
+        +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+        +'<th>Motivo</th><th>Estado asociado</th><th>Estado</th><th></th></tr></thead><tbody>'
+        +d.map(m=>'<tr>'
+          +'<td style="font-weight:600;font-size:12px">'+m.descripcion+'</td>'
+          +'<td><span class="badge b-blue" style="font-size:10px">'+( m.estados_ot?.nombre||'').replace(/_/g,' ')+'</span></td>'
+          +'<td><span class="badge '+(m.activo?'b-green':'b-gray')+'">'+(m.activo?'Activo':'Inactivo')+'</span></td>'
+          +'<td><button class="btn btn-sm" style="font-size:11px" onclick="abrirModalMotivo('+JSON.stringify(m).replace(/"/g,"'").replace(/'/g,"&#39;")+')" >✏️</button></td>'
+          +'</tr>').join('')
+        +'</tbody></table></div>';
+    }
     else if(tab==='usuarios'&&CU.rol==='superadmin'){
       const d=await sbGet('usuarios','?order=nombre')||[];
       el.innerHTML='<div style="margin-bottom:.75rem;text-align:right"><button class="btn btn-sm btn-primary" onclick="abrirModalUsuario()">+ Nuevo usuario</button></div>'
@@ -3540,6 +3641,126 @@ function abrirModalMaterial(m){
   }
   abrirModal('mat-modal');
   setTimeout(()=>document.getElementById('mat-nombre').focus(),100);
+}
+
+// ─── ABM ESTADOS ───
+function abrirModalEstado(e){
+  document.getElementById('estado-id').value=e?.id||'';
+  document.getElementById('estado-nombre').value=e?.nombre||'';
+  document.getElementById('estado-desc').value=e?.descripcion||'';
+  document.getElementById('estado-activo').value=e?.activo===false?'false':'true';
+  document.getElementById('estado-err').textContent='';
+  document.getElementById('estado-modal-title').textContent=(e?'Editar':'Nuevo')+' Estado';
+  abrirModal('estado-modal');
+  setTimeout(()=>document.getElementById('estado-nombre').focus(),100);
+}
+async function guardarEstado(){
+  const id=document.getElementById('estado-id').value;
+  const nombre=document.getElementById('estado-nombre').value.trim().toUpperCase().replace(/\s+/g,'_');
+  const err=document.getElementById('estado-err');
+  if(!nombre){err.textContent='El nombre es obligatorio';return;}
+  const data={nombre,descripcion:document.getElementById('estado-desc').value.trim(),activo:document.getElementById('estado-activo').value==='true'};
+  try{
+    if(id)await sbPatch('estados_ot','?id=eq.'+id,data);
+    else await sbPost('estados_ot',data);
+    cerrarModal('estado-modal');renderConfig('estados');
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+// ─── ABM MOTIVOS ───
+async function abrirModalMotivo(m){
+  // Cargar estados en el select
+  const sel=document.getElementById('motivo-estado-id');
+  sel.innerHTML='<option value="">Seleccioná un estado...</option>';
+  const estados=await sbGet('estados_ot','?activo=eq.true&order=orden_display')||[];
+  estados.forEach(e=>{const o=document.createElement('option');o.value=e.id;o.textContent=e.nombre.replace(/_/g,' ');sel.appendChild(o);});
+  document.getElementById('motivo-id').value=m?.id||'';
+  document.getElementById('motivo-desc').value=m?.descripcion||'';
+  document.getElementById('motivo-estado-id').value=m?.estado_ot_id||'';
+  document.getElementById('motivo-activo').value=m?.activo===false?'false':'true';
+  document.getElementById('motivo-err').textContent='';
+  document.getElementById('motivo-modal-title').textContent=(m?'Editar':'Nuevo')+' Motivo';
+  abrirModal('motivo-modal');
+  setTimeout(()=>document.getElementById('motivo-desc').focus(),100);
+}
+async function guardarMotivo(){
+  const id=document.getElementById('motivo-id').value;
+  const descripcion=document.getElementById('motivo-desc').value.trim();
+  const estado_ot_id=document.getElementById('motivo-estado-id').value;
+  const err=document.getElementById('motivo-err');
+  if(!descripcion){err.textContent='La descripción es obligatoria';return;}
+  if(!estado_ot_id){err.textContent='Seleccioná un estado';return;}
+  const data={descripcion,estado_ot_id:parseInt(estado_ot_id),activo:document.getElementById('motivo-activo').value==='true'};
+  try{
+    if(id)await sbPatch('motivos_estado','?id=eq.'+id,data);
+    else await sbPost('motivos_estado',data);
+    cerrarModal('motivo-modal');renderConfig('motivos');
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+// ─── ABM SERVICIOS + DRAG & DROP ───
+function abrirModalServicio(s){
+  document.getElementById('servicio-id').value=s?.id||'';
+  document.getElementById('servicio-nombre').value=s?.nombre||'';
+  document.getElementById('servicio-activo').value=s?.activo===false?'false':'true';
+  document.getElementById('servicio-err').textContent='';
+  document.getElementById('servicio-modal-title').textContent=(s?'Editar':'Nuevo')+' Servicio';
+  abrirModal('servicio-modal');
+  setTimeout(()=>document.getElementById('servicio-nombre').focus(),100);
+}
+async function guardarServicio(){
+  const id=document.getElementById('servicio-id').value;
+  const nombre=document.getElementById('servicio-nombre').value.trim();
+  const err=document.getElementById('servicio-err');
+  if(!nombre){err.textContent='El nombre es obligatorio';return;}
+  const data={nombre,activo:document.getElementById('servicio-activo').value==='true'};
+  if(!id){
+    // Calcular orden_display para el nuevo (al final)
+    const todos=await sbGet('catalogo_servicios','?select=orden_display&order=orden_display.desc&limit=1')||[];
+    data.orden_display=((todos[0]?.orden_display)||0)+10;
+  }
+  try{
+    if(id)await sbPatch('catalogo_servicios','?id=eq.'+id,data);
+    else await sbPost('catalogo_servicios',data);
+    cerrarModal('servicio-modal');renderConfig('servicios');
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+function initDragServicios(){
+  const tbody=document.getElementById('svc-drag-body');
+  if(!tbody)return;
+  let dragSrc=null;
+  tbody.querySelectorAll('tr').forEach(row=>{
+    row.addEventListener('dragstart',e=>{dragSrc=row;row.style.opacity='.4';e.dataTransfer.effectAllowed='move';});
+    row.addEventListener('dragend',()=>{row.style.opacity='';tbody.querySelectorAll('tr').forEach(r=>r.style.background='');});
+    row.addEventListener('dragover',e=>{e.preventDefault();tbody.querySelectorAll('tr').forEach(r=>r.style.background='');if(row!==dragSrc)row.style.background='#dbeafe';});
+    row.addEventListener('dragleave',()=>{row.style.background='';});
+    row.addEventListener('drop',e=>{
+      e.preventDefault();if(!dragSrc||dragSrc===row)return;
+      row.style.background='';
+      const rows=[...tbody.querySelectorAll('tr')];
+      const si=rows.indexOf(dragSrc),di=rows.indexOf(row);
+      if(si<di)row.after(dragSrc);else row.before(dragSrc);
+      guardarOrdenServicios();
+    });
+  });
+}
+
+async function guardarOrdenServicios(){
+  const tbody=document.getElementById('svc-drag-body');
+  if(!tbody)return;
+  const rows=[...tbody.querySelectorAll('tr')];
+  const label=document.querySelector('#cfg-servicios > div:first-child > div');
+  if(label){label.textContent='Guardando orden...';label.style.color='#f59e0b';}
+  try{
+    for(let i=0;i<rows.length;i+=5){
+      await Promise.all(rows.slice(i,i+5).map((r,j)=>
+        sbPatch('catalogo_servicios','?id=eq.'+r.dataset.id,{orden_display:(i+j+1)*10})
+      ));
+    }
+    if(label){label.textContent=rows.length+' servicios — orden guardado ✓';label.style.color='#16a34a';}
+    setTimeout(()=>{if(label){label.textContent=rows.length+' servicios — arrastrá para reordenar 🟰';label.style.color='';}},2000);
+  }catch(e){if(label){label.textContent='Error: '+e.message;label.style.color='#dc2626';}}
 }
 
 function initDragMateriales(){
