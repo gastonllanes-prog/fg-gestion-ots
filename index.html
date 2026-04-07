@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v72</title>
+<title>FG Gestión OTs v73</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V72</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V73</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v72</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v73</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -616,27 +616,27 @@ tr:hover td{background:rgba(37,99,235,.02)}
 
 <!-- MODAL ASIGNAR -->
 <div class="modal-overlay hidden" id="asignar-modal">
-  <div class="modal" style="max-width:500px">
+  <div class="modal" style="max-width:580px;max-height:90vh;overflow-y:auto">
     <div class="modal-title">📍 Asignar cuadrilla <button class="modal-close" onclick="cerrarModal('asignar-modal')">✕</button></div>
     <input type="hidden" id="asig-grupo-ids" value="[]"/>
     <input type="hidden" id="asig-dur" value="60"/>
-    <div id="asig-info" style="margin-bottom:1rem"></div>
-    <div class="form-2col">
-      <div class="fg"><label>Cuadrilla</label>
-        <select id="asig-cuad" onchange="actualizarSlotsModal()" style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"></select>
+
+    <!-- Cuadrilla y fecha — siempre visible arriba -->
+    <div class="form-2col" style="margin-bottom:1rem">
+      <div class="fg" style="margin-bottom:0">
+        <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Cuadrilla</label>
+        <select id="asig-cuad" onchange="recalcularSlots()" style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"></select>
       </div>
-      <div class="fg"><label>Fecha</label>
-        <input type="date" id="asig-fecha" onchange="actualizarSlotsModal()"/>
+      <div class="fg" style="margin-bottom:0">
+        <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Fecha</label>
+        <input type="date" id="asig-fecha" onchange="recalcularSlots()" style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"/>
       </div>
     </div>
-    <!-- Slots de horario disponibles -->
-    <div id="asig-slots" style="margin-bottom:1rem"></div>
-    <!-- Horario seleccionado (o manual) -->
-    <div class="fg">
-      <label>Horario seleccionado</label>
-      <input type="time" id="asig-hora" placeholder="HH:MM" step="300" style="font-weight:700;font-size:16px"/>
-    </div>
-    <div class="fg"><label>Observaciones</label><input id="asig-obs" placeholder="Opcional..."/></div>
+
+    <!-- Lista de clientes con horario individual -->
+    <div id="asig-clientes-list" style="margin-bottom:1rem"></div>
+
+    <div class="fg"><label>Observaciones (para todos)</label><input id="asig-obs" placeholder="Opcional..."/></div>
     <div class="modal-footer">
       <button class="btn btn-primary" style="flex:2" onclick="guardarAsignacion()">✓ Confirmar asignación</button>
       <button class="btn" onclick="cerrarModal('asignar-modal')">Cancelar</button>
@@ -2011,25 +2011,139 @@ async function generarSlots(cuadId, fecha, durMin){
 }
 
 async function abrirAsignarGrupo(grupoIds, tipos){
-  // Calcular duración según tipos
-  const dur=duracionMinutos(tipos||[]);
+  // Buscar datos de cada grupo para mostrarlos
   document.getElementById('asig-grupo-ids').value=JSON.stringify(grupoIds);
-  document.getElementById('asig-dur').value=dur;
   document.getElementById('asig-fecha').value=new Date().toISOString().slice(0,10);
-  document.getElementById('asig-hora').value='';
   document.getElementById('asig-obs').value='';
   document.getElementById('asig-err').textContent='';
   document.getElementById('asig-ok-msg').textContent='';
-
-  // Info del grupo
-  const n=grupoIds.length;
-  document.getElementById('asig-info').innerHTML=`
-    <div style="background:#eff6ff;border-radius:10px;padding:.6rem 1rem;font-size:13px;color:#1e40af;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-      <span><strong>${n}</strong> cliente${n!==1?'s':''} a asignar</span>
-      <span>⏱ <strong>${dur} min</strong> por visita (${dur===60?'instalación':'servicio rápido'})</span>
-    </div>`;
+  document.getElementById('asig-clientes-list').innerHTML='<div class="loading"><span class="spinner"></span></div>';
   abrirModal('asignar-modal');
-  await actualizarSlotsModal();
+
+  // Traer datos de los grupos
+  const grupos=await Promise.all(
+    grupoIds.map(gid=>sbGet('grupos_ot',`?id=eq.${gid}&select=id,clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,nodo),ordenes_trabajo(tipo_tarea,tipo_item)`).then(d=>d?.[0]))
+  );
+
+  // Guardar en memoria para usar al asignar
+  window._ASIG_GRUPOS=grupos.filter(Boolean).map(g=>({
+    gid:g.id,
+    label:g.clientes?`${g.clientes.codigo_gigared||''} — ${(g.clientes.apellido||'')+' '+(g.clientes.nombre||'')} · ${g.clientes.calle||g.clientes.domicilio||''} (${g.clientes.nodo||''})`:'Grupo '+g.id,
+    tipos:[...new Set((g.ordenes_trabajo||[]).map(o=>o.tipo_tarea))],
+    dur:duracionMinutos([...new Set((g.ordenes_trabajo||[]).map(o=>o.tipo_tarea))]),
+    hora:null
+  }));
+
+  renderClientesList();
+  await recalcularSlots();
+}
+
+function renderClientesList(){
+  const lista=document.getElementById('asig-clientes-list');
+  if(!window._ASIG_GRUPOS?.length){lista.innerHTML='';return;}
+  lista.innerHTML=window._ASIG_GRUPOS.map((g,i)=>`
+    <div id="asig-cli-${i}" style="background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:.75rem 1rem;margin-bottom:.5rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:#1e3a5f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.label}</div>
+          <div style="font-size:11px;color:#64748b;margin-top:2px">⏱ ${g.dur} min por visita</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <div id="slots-${i}" style="display:flex;flex-wrap:wrap;gap:4px;max-width:300px"></div>
+          <input type="time" id="hora-${i}" step="300"
+            style="width:90px;padding:6px 8px;border:2px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;font-family:inherit"
+            onchange="window._ASIG_GRUPOS[${i}].hora=this.value;marcarSlotSeleccionado(${i})"/>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function recalcularSlots(){
+  const cuadId=document.getElementById('asig-cuad')?.value;
+  const fecha=document.getElementById('asig-fecha')?.value;
+  if(!cuadId||!fecha||!window._ASIG_GRUPOS?.length)return;
+
+  // Traer grupos ya asignados ese día a esa cuadrilla
+  const asigExist=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadId}&fecha_trabajo=eq.${fecha}&select=horario_visita,duracion_minutos`)||[];
+
+  // Calcular ocupación base (sin contar los que estamos asignando ahora)
+  const ocupBase=new Set();
+  asigExist.forEach(a=>{
+    if(!a.horario_visita)return;
+    const [h,m]=a.horario_visita.split(':').map(Number);
+    const ini=h*60+m;
+    const dur=a.duracion_minutos||60;
+    for(let t=ini;t<ini+dur;t++) ocupBase.add(t);
+  });
+
+  // Para cada cliente: calcular slots libres teniendo en cuenta los anteriores
+  const ocupAcum=new Set([...ocupBase]);
+  for(let i=0;i<window._ASIG_GRUPOS.length;i++){
+    const g=window._ASIG_GRUPOS[i];
+    const slots=calcSlotLibres(ocupAcum,g.dur);
+    mostrarSlots(i, slots, g.hora);
+    // Sugerir el primer slot libre si no tiene horario
+    if(!g.hora&&slots.length){
+      g.hora=slots[0];
+      const inp=document.getElementById('hora-'+i);
+      if(inp)inp.value=slots[0];
+      marcarSlotSeleccionado(i);
+    }
+    // Marcar como ocupado el slot de este cliente para el siguiente
+    if(g.hora){
+      const [h,m]=g.hora.split(':').map(Number);
+      const ini=h*60+m;
+      for(let t=ini;t<ini+g.dur;t++) ocupAcum.add(t);
+    }
+  }
+}
+
+function calcSlotLibres(ocupado, durMin){
+  const INICIO=7*60+30, FIN=18*60;
+  const slots=[];
+  for(let t=INICIO;t+durMin<=FIN;t+=5){
+    let libre=true;
+    for(let d=0;d<durMin;d++) if(ocupado.has(t+d)){libre=false;break;}
+    if(libre){
+      const h=Math.floor(t/60).toString().padStart(2,'0');
+      const m=(t%60).toString().padStart(2,'0');
+      slots.push(`${h}:${m}`);
+    }
+  }
+  // Mostrar solo 1 cada 30 min (cada 6 slots de 5 min)
+  return slots.filter((_,i)=>i%6===0);
+}
+
+function mostrarSlots(idx, slots, horaActual){
+  const cont=document.getElementById('slots-'+idx);
+  if(!cont)return;
+  cont.innerHTML=slots.map(s=>{
+    const sel=s===horaActual;
+    return `<button type="button" onclick="elegirSlot(${idx},'${s}')"
+      style="padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ${sel?'#2563eb':'#cbd5e1'};background:${sel?'#2563eb':'transparent'};color:${sel?'#fff':'#475569'}"
+      >${s}</button>`;
+  }).join('');
+}
+
+function elegirSlot(idx, hora){
+  window._ASIG_GRUPOS[idx].hora=hora;
+  const inp=document.getElementById('hora-'+idx);
+  if(inp)inp.value=hora;
+  marcarSlotSeleccionado(idx);
+  // Recalcular slots de los clientes siguientes
+  recalcularSlots();
+}
+
+function marcarSlotSeleccionado(idx){
+  const hora=window._ASIG_GRUPOS[idx]?.hora;
+  const cont=document.getElementById('slots-'+idx);
+  if(!cont)return;
+  cont.querySelectorAll('button').forEach(b=>{
+    const sel=b.textContent.trim()===hora;
+    b.style.background=sel?'#2563eb':'transparent';
+    b.style.color=sel?'#fff':'#475569';
+    b.style.borderColor=sel?'#2563eb':'#cbd5e1';
+  });
 }
 
 // Compatibilidad con llamadas viejas desde verOT
@@ -2037,53 +2151,37 @@ function abrirAsignar(grupoId){
   abrirAsignarGrupo([grupoId],[]);
 }
 
-async function actualizarSlotsModal(){
-  const cuadId=document.getElementById('asig-cuad').value;
-  const fecha=document.getElementById('asig-fecha').value;
-  const dur=parseInt(document.getElementById('asig-dur').value)||60;
-  const cont=document.getElementById('asig-slots');
-  if(!cont)return;
-  if(!cuadId||!fecha){cont.innerHTML='';return;}
-  cont.innerHTML='<div style="font-size:11px;color:#64748b">Calculando disponibilidad...</div>';
-  const slots=await generarSlots(parseInt(cuadId),fecha,dur);
-  if(!slots.length){
-    cont.innerHTML='<div style="font-size:11px;color:#ea580c">Sin slots disponibles ese día para esta cuadrilla</div>';
-    return;
-  }
-  cont.innerHTML='<div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">HORARIOS DISPONIBLES</div>'
-    +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
-    +slots.map(s=>`<button type="button" class="btn btn-sm slot-btn" onclick="selSlot('${s}')" style="font-size:12px;font-weight:700;padding:5px 12px">${s}</button>`).join('')
-    +'</div>';
-}
-
-function selSlot(hora){
-  document.getElementById('asig-hora').value=hora;
-  document.querySelectorAll('.slot-btn').forEach(b=>b.style.background=b.textContent.trim()===hora?'#2563eb':'');
-  document.querySelectorAll('.slot-btn').forEach(b=>b.style.color=b.textContent.trim()===hora?'#fff':'');
-}
+async function actualizarSlotsModal(){recalcularSlots();}
 
 async function guardarAsignacion(){
   const cuadId=document.getElementById('asig-cuad').value;
-  const grupoIds=JSON.parse(document.getElementById('asig-grupo-ids')?.value||'[]');
   const fecha=document.getElementById('asig-fecha').value;
-  const hora=document.getElementById('asig-hora').value;
   const obs=document.getElementById('asig-obs').value;
-  const dur=parseInt(document.getElementById('asig-dur').value)||60;
   const err=document.getElementById('asig-err');
   if(!cuadId){err.textContent='Seleccioná una cuadrilla';return;}
   if(!fecha){err.textContent='Seleccioná una fecha';return;}
-  if(!hora){err.textContent='Seleccioná un horario';return;}
-  err.textContent='Guardando...';
+
+  const grupos=window._ASIG_GRUPOS||[];
+  const sinHora=grupos.filter(g=>!g.hora);
+  if(sinHora.length){err.textContent='Falta horario para: '+sinHora.map(g=>g.label.split('—')[0]).join(', ');return;}
+
+  err.textContent='Guardando...';err.style.color='#64748b';
   try{
     const eAsig=ESTADOS.find(e=>e.nombre==='ASIGNADA');
-    for(const gid of grupoIds){
-      await sbPatch('grupos_ot',`?id=eq.${gid}`,{cuadrilla_id:parseInt(cuadId),fecha_trabajo:fecha,horario_visita:hora,duracion_minutos:dur,observaciones:obs||null,estado_id:eAsig?.id,fecha_asignacion:new Date().toISOString()});
-      await sbPatch('ordenes_trabajo',`?grupo_id=eq.${gid}`,{estado_id:eAsig?.id,fecha_trabajo:fecha});
+    for(const g of grupos){
+      await sbPatch('grupos_ot',`?id=eq.${g.gid}`,{
+        cuadrilla_id:parseInt(cuadId),fecha_trabajo:fecha,
+        horario_visita:g.hora,duracion_minutos:g.dur,
+        observaciones:obs||null,estado_id:eAsig?.id,
+        fecha_asignacion:new Date().toISOString()
+      });
+      await sbPatch('ordenes_trabajo',`?grupo_id=eq.${g.gid}`,{estado_id:eAsig?.id,fecha_trabajo:fecha});
     }
-    document.getElementById('asig-ok-msg').textContent='✓ Asignado correctamente';
+    document.getElementById('asig-ok-msg').textContent='✓ '+grupos.length+' cliente'+(grupos.length!==1?'s':'')+' asignado'+(grupos.length!==1?'s':'');
+    err.textContent='';
     limpiarSeleccion();
-    setTimeout(()=>{cerrarModal('asignar-modal');cerrarModal('ot-modal');renderOTs();},1000);
-  }catch(e){err.textContent='Error: '+e.message;}
+    setTimeout(()=>{cerrarModal('asignar-modal');cerrarModal('ot-modal');renderOTs();},1200);
+  }catch(e){err.textContent='Error: '+e.message;err.style.color='';}
 }
 
 // CIERRE
