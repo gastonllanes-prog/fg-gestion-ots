@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v69</title>
+<title>FG Gestión OTs v70</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V69</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V70</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v69</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v70</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -335,10 +335,16 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div class="ph-icon blue">🔧</div>
       <div><div class="ph-title" id="cuad-form-titulo">Nueva cuadrilla</div></div>
     </div>
-    <div class="card" style="max-width:500px">
+    <div class="card" style="max-width:560px">
       <div class="fg"><label>Nombre de la cuadrilla</label><input id="cuad-nombre" placeholder="Ej: Enzo - Fernando"/></div>
-      <div class="fg"><label>Técnico 1</label><select id="cuad-tec1"><option value="">Seleccionar técnico...</option></select></div>
-      <div class="fg"><label>Técnico 2</label><select id="cuad-tec2"><option value="">Seleccionar técnico...</option></select></div>
+      
+      <!-- Técnicos dinámicos -->
+      <div style="margin-bottom:.75rem">
+        <label style="font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:.4rem">Técnicos asignados</label>
+        <div id="cuad-tecs-list" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.5rem"></div>
+        <button class="btn btn-sm" onclick="agregarSelectorTecnico()" style="font-size:12px">+ Agregar técnico</button>
+      </div>
+
       <div class="fg"><label>Estado</label><select id="cuad-activo"><option value="true">Activa</option><option value="false">Inactiva</option></select></div>
       <p class="err-msg" id="cuad-err"></p>
       <div style="display:flex;gap:8px;margin-top:1rem">
@@ -2120,37 +2126,105 @@ async function renderCuadrillas(){
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
 
+// Cache de técnicos y sus cuadrillas actuales para validación
+let TODOS_TECS=[];
+let CUAD_TECS_MAPA={}; // tecnico_id → {cuadrilla_id, cuadrilla_nombre}
+
 async function abrirFormCuadrilla(id=null){
   CUAD_EDIT_ID=id;
   document.getElementById('cuad-list-view').style.display='none';
   document.getElementById('cuad-form-view').style.display='';
   document.getElementById('cuad-form-titulo').textContent=id?'Editar cuadrilla':'Nueva cuadrilla';
   document.getElementById('cuad-err').textContent='';
-  // Llenar selects de técnicos
-  const tecs=await sbGet('tecnicos','?activo=eq.true&order=nombre')||[];
-  ['cuad-tec1','cuad-tec2'].forEach(sid=>{
-    const sel=document.getElementById(sid);
-    sel.innerHTML='<option value="">Sin asignar</option>';
-    tecs.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.nombre;sel.appendChild(o);});
+
+  // Traer todos los técnicos activos y sus asignaciones actuales
+  const [tecs, asigsTodas]=await Promise.all([
+    sbGet('tecnicos','?activo=eq.true&order=nombre')||[],
+    sbGet('cuadrilla_tecnicos','?activo=eq.true&select=tecnico_id,cuadrilla_id,cuadrillas(nombre)')||[]
+  ]);
+  TODOS_TECS=tecs||[];
+
+  // Mapa: tecnico_id → cuadrilla actual (ignorar la cuadrilla que estamos editando)
+  CUAD_TECS_MAPA={};
+  (asigsTodas||[]).forEach(a=>{
+    if(id && a.cuadrilla_id===id) return; // ignorar la cuadrilla que editamos
+    CUAD_TECS_MAPA[a.tecnico_id]={cuadrilla_id:a.cuadrilla_id, nombre:a.cuadrillas?.nombre||'otra cuadrilla'};
   });
+
   if(id){
     const [c,asigs]=await Promise.all([
       sbGet('cuadrillas',`?id=eq.${id}`),
-      sbGet('cuadrilla_tecnicos',`?cuadrilla_id=eq.${id}&activo=eq.true&select=tecnico_id&order=id`)
+      sbGet('cuadrilla_tecnicos',`?cuadrilla_id=eq.${id}&activo=eq.true&select=tecnico_id,tecnicos(nombre)&order=id`)
     ]);
     if(c&&c[0]){
       document.getElementById('cuad-nombre').value=c[0].nombre||'';
       document.getElementById('cuad-activo').value=String(c[0].activo);
     }
-    const ids=(asigs||[]).map(a=>a.tecnico_id);
-    if(ids[0])document.getElementById('cuad-tec1').value=ids[0];
-    if(ids[1])document.getElementById('cuad-tec2').value=ids[1];
+    // Cargar técnicos actuales de esta cuadrilla
+    const tecIds=(asigs||[]).map(a=>a.tecnico_id);
+    renderSelectorTecnicos(tecIds);
   }else{
     document.getElementById('cuad-nombre').value='';
     document.getElementById('cuad-activo').value='true';
-    document.getElementById('cuad-tec1').value='';
-    document.getElementById('cuad-tec2').value='';
+    renderSelectorTecnicos([]);
+    agregarSelectorTecnico(); // empezar con 1 selector vacío
   }
+}
+
+function renderSelectorTecnicos(tecIds){
+  const lista=document.getElementById('cuad-tecs-list');
+  lista.innerHTML='';
+  if(tecIds.length===0) return;
+  tecIds.forEach(tid=>agregarSelectorTecnico(tid));
+}
+
+let CUAD_TEC_CTR=0;
+function agregarSelectorTecnico(tecId=null){
+  const lista=document.getElementById('cuad-tecs-list');
+  const idx=++CUAD_TEC_CTR;
+  const div=document.createElement('div');
+  div.id='cuad-tec-row-'+idx;
+  div.style.cssText='display:flex;gap:8px;align-items:center';
+
+  const sel=document.createElement('select');
+  sel.id='cuad-tec-sel-'+idx;
+  sel.style.cssText='flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit';
+  sel.innerHTML='<option value="">Sin asignar</option>';
+
+  TODOS_TECS.forEach(t=>{
+    const o=document.createElement('option');
+    o.value=t.id;
+    const enOtra=CUAD_TECS_MAPA[t.id];
+    o.textContent=t.nombre+(enOtra?' ('+enOtra.nombre+')':'');
+    if(enOtra) o.style.color='#f59e0b';
+    sel.appendChild(o);
+  });
+
+  if(tecId) sel.value=tecId;
+
+  // Al cambiar, advertir si ya está en otra cuadrilla
+  sel.addEventListener('change',()=>{
+    const tid=parseInt(sel.value);
+    const enOtra=CUAD_TECS_MAPA[tid];
+    const err=document.getElementById('cuad-err');
+    if(enOtra){
+      err.textContent='⚠️ '+TODOS_TECS.find(t=>t.id===tid)?.nombre+' está en "'+enOtra.nombre+'". Al guardar se lo moverá a esta cuadrilla.';
+      err.style.color='#f59e0b';
+    }else{
+      err.textContent='';
+    }
+  });
+
+  const btnQ=document.createElement('button');
+  btnQ.className='btn btn-sm';
+  btnQ.style.cssText='color:#dc2626;border-color:rgba(220,38,38,.3);padding:6px 10px';
+  btnQ.textContent='✕';
+  btnQ.onclick=()=>div.remove();
+
+  div.appendChild(sel);
+  div.appendChild(btnQ);
+  lista.appendChild(div);
+  setTimeout(()=>sel.focus(),50);
 }
 
 async function editarCuadrilla(id){await abrirFormCuadrilla(id);}
@@ -2164,11 +2238,29 @@ async function guardarCuadrilla(){
   const err=document.getElementById('cuad-err');
   const nombre=document.getElementById('cuad-nombre').value.trim();
   const activo=document.getElementById('cuad-activo').value==='true';
-  const t1=document.getElementById('cuad-tec1').value;
-  const t2=document.getElementById('cuad-tec2').value;
-  if(!nombre){err.textContent='El nombre es obligatorio';return;}
-  if(t1&&t2&&t1===t2){err.textContent='Los dos técnicos no pueden ser el mismo';return;}
-  err.textContent='';
+  if(!nombre){err.textContent='El nombre es obligatorio';err.style.color='';return;}
+
+  // Recolectar técnicos seleccionados
+  const sels=[...document.querySelectorAll('#cuad-tecs-list select')];
+  const tecIds=sels.map(s=>s.value).filter(Boolean).map(Number);
+
+  // Verificar duplicados
+  if(new Set(tecIds).size!==tecIds.length){
+    err.textContent='No podés asignar el mismo técnico dos veces';err.style.color='';return;
+  }
+
+  // Verificar técnicos en otras cuadrillas y pedir confirmación
+  const aReubicar=tecIds
+    .filter(tid=>CUAD_TECS_MAPA[tid])
+    .map(tid=>({tid, nombre:TODOS_TECS.find(t=>t.id===tid)?.nombre, cuadAnterior:CUAD_TECS_MAPA[tid]}));
+
+  if(aReubicar.length){
+    const lista=aReubicar.map(x=>`• ${x.nombre} (actualmente en "${x.cuadAnterior.nombre}")`).join('\n');
+    const ok=confirm(`Los siguientes técnicos están en otras cuadrillas:\n\n${lista}\n\n¿Confirmar moverlos a "${nombre}"?\nQuedarán sin ese técnico sus cuadrillas anteriores.`);
+    if(!ok){err.textContent='';return;}
+  }
+
+  err.textContent='Guardando...';err.style.color='#64748b';
   try{
     let cuadId=CUAD_EDIT_ID;
     if(cuadId){
@@ -2177,17 +2269,31 @@ async function guardarCuadrilla(){
       const r=await sbPost('cuadrillas',{nombre,activo});
       cuadId=(Array.isArray(r)?r[0]:r)?.id;
     }
-    // Desactivar asignaciones anteriores y crear nuevas
-    await sbPatch('cuadrilla_tecnicos',`?cuadrilla_id=eq.${cuadId}&activo=eq.true`,{activo:false,fecha_hasta:new Date().toISOString().slice(0,10)});
-    const nuevos=[t1,t2].filter(Boolean);
-    for(const tid of nuevos){
-      await sbPost('cuadrilla_tecnicos',{cuadrilla_id:cuadId,tecnico_id:parseInt(tid),fecha_desde:new Date().toISOString().slice(0,10),activo:true});
+
+    // Sacar a los técnicos reasignados de sus cuadrillas anteriores
+    for(const x of aReubicar){
+      await sbPatch('cuadrilla_tecnicos',
+        `?cuadrilla_id=eq.${x.cuadAnterior.cuadrilla_id}&tecnico_id=eq.${x.tid}&activo=eq.true`,
+        {activo:false,fecha_hasta:new Date().toISOString().slice(0,10)}
+      );
     }
+
+    // Desactivar asignaciones anteriores de esta cuadrilla
+    await sbPatch('cuadrilla_tecnicos',`?cuadrilla_id=eq.${cuadId}&activo=eq.true`,
+      {activo:false,fecha_hasta:new Date().toISOString().slice(0,10)});
+
+    // Crear nuevas asignaciones
+    for(const tid of tecIds){
+      await sbPost('cuadrilla_tecnicos',{
+        cuadrilla_id:cuadId,tecnico_id:tid,
+        fecha_desde:new Date().toISOString().slice(0,10),activo:true
+      });
+    }
+
     cerrarFormCuadrilla();
     renderCuadrillas();
-    // Refrescar el select global de cuadrillas
     cargarCuadrillas();
-  }catch(e){err.textContent='Error: '+e.message;}
+  }catch(e){err.textContent='Error: '+e.message;err.style.color='';}
 }
 
 // TÉCNICOS
