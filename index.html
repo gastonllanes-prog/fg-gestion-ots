@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v55</title>
+<title>FG Gestión OTs v58</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V55</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V58</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v55</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v58</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2226,7 +2226,8 @@ async function autocompletarCuadrilla(){
       const color=x.mat.serial_tipo==='CORRELATIVO'?'#7c3aed':'#2563eb';
       const esPaq=x.esPaq;
       const cantPaq=x.mat.cant_por_paquete||1;
-      const paqLabel=esPaq?' ('+Math.round(x.cant/cantPaq)+' '+x.mat.nombre_paquete+')'  :'';
+      const paqCount=esPaq?Math.round(x.cant/cantPaq):0;
+      const paqLabel=esPaq&&paqCount>0?' ('+paqCount+' '+x.mat.nombre_paquete+')'  :'';
       const llegara=x.actual+x.cant;
       return `<div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .875rem;background:#f8fafc;border-radius:10px;margin-bottom:.4rem">
         <div style="font-weight:600;font-size:13px">${x.mat.nombre}</div>
@@ -2267,21 +2268,24 @@ async function confirmarAutocompletado(){
   for(const item of conSerial||[]){
     const txt=(document.getElementById('ac-serial-'+item.mat.id)?.value||'').trim();
     const seriales=txt.split('\n').map(s=>s.trim().toUpperCase()).filter(Boolean);
-    if(seriales.length!==item.cant){err.textContent=''+item.mat.nombre+': ingresaste '+seriales.length+' seriales pero faltan '+item.cant;return;}
+    if(seriales.length!==item.cant){err.textContent=item.mat.nombre+': ingresaste '+seriales.length+' seriales pero faltan '+item.cant;return;}
     const macReg=/^[0-9A-Fa-f]{12}$/;
     const inv=seriales.filter(s=>!macReg.test(s.replace(/[:\-]/g,'')));
     if(inv.length){err.textContent='Seriales inválidos en '+item.mat.nombre+': '+inv[0];return;}
     serialesPorMat[item.mat.id]=seriales;
   }
   err.textContent='Guardando...';
+  const sinStock=[];
   try{
     // Asignar sin serial
     for(const item of sinSerial||[]){
       const sd=await sbGet('stock_deposito','?material_id=eq.'+item.mat.id)||[];
       const dep=sd[0]?.cantidad||0;
       const cant=Math.min(item.cant,dep);
-      if(!cant)continue;
+      if(!cant){sinStock.push(item.mat.nombre+' (sin stock en depósito)');continue;}
+      if(cant<item.cant) sinStock.push(item.mat.nombre+': solo había '+dep+' en depósito, se asignaron '+cant);
       if(sd.length) await sbPatch('stock_deposito','?material_id=eq.'+item.mat.id,{cantidad:dep-cant,updated_at:new Date().toISOString()});
+      else await sbPost('stock_deposito',{material_id:item.mat.id,cantidad:0});
       const scr=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id)||[];
       if(scr.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id,{cantidad:(scr[0].cantidad||0)+cant});
       else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:item.mat.id,cantidad:cant});
@@ -2292,10 +2296,8 @@ async function confirmarAutocompletado(){
       const seriales=serialesPorMat[item.mat.id]||[];
       if(!seriales.length)continue;
       const cant=seriales.length;
-      // Verificar que estén en depósito
       const enDep=await sbGet('stock_seriales','?material_id=eq.'+item.mat.id+'&ubicacion=eq.DEPOSITO&serial=in.('+seriales.map(s=>`"${s}"`).join(',')+')')||[];
-      if(enDep.length!==cant){err.textContent='Algunos seriales de '+item.mat.nombre+' no están registrados en depósito';return;}
-      // Mover seriales a cuadrilla
+      if(enDep.length!==cant){err.textContent='Algunos seriales de '+item.mat.nombre+' no están en depósito. Verificá los números.';return;}
       for(const s of seriales){
         await sbPatch('stock_seriales','?material_id=eq.'+item.mat.id+'&serial=eq.'+s,{ubicacion:'CUADRILLA_'+cuadId});
       }
@@ -2309,12 +2311,16 @@ async function confirmarAutocompletado(){
     cerrarModal('autocomplete-modal');
     AUTOCOMPLETE_PENDING=null;
     renderStockCuadrillaSeleccionada();
+    // Mostrar advertencias de stock insuficiente
+    if(sinStock.length){
+      alert('⚠️ Se completó con advertencias:\n\n'+sinStock.join('\n')+'\n\nVerificá el stock del depósito para estos materiales.');
+    }
   }catch(e){err.textContent='Error: '+e.message;}
 }
 
 // ─── STOCK DEPOSITO ───
 async function renderStock(tab){
-  document.querySelectorAll('#stock-deposito,#stock-cuadrillas,#stock-movimientos').forEach(d=>d.style.display='none');
+  document.querySelectorAll('#stock-deposito,#stock-movimientos').forEach(d=>d.style.display='none');
   const btnE=document.getElementById('stock-entrada-btn');
   if(btnE)btnE.style.display=tab==='deposito'?'':'none';
   const el=document.getElementById('stock-'+tab);el.style.display='';
@@ -2456,6 +2462,73 @@ async function confirmarAsignarCuadrilla(){
   }catch(e){err.textContent='Error: '+e.message;}
 }
 
+async function imprimirEntregaCuadrilla(){
+  const cuadId=document.getElementById('cuad-selector').value;
+  const cuadNombre=document.getElementById('cuad-selector').selectedOptions[0]?.text||'';
+  if(!cuadId){alert('Seleccioná una cuadrilla primero');return;}
+  const mats=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
+  const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[];
+  const scMap={};sc.forEach(s=>{scMap[s.material_id]=s.cantidad||0;});
+  const conStock=mats.filter(m=>(scMap[m.id]||0)>0);
+  if(!conStock.length){alert('La cuadrilla no tiene stock asignado.');return;}
+
+  // Traer técnicos de la cuadrilla
+  const tecs=await sbGet('cuadrilla_tecnicos','?cuadrilla_id=eq.'+cuadId+'&activo=eq.true&select=tecnicos(nombre,dni)')||[];
+  const tecNombres=tecs.map(t=>t.tecnicos?.nombre||'').filter(Boolean);
+
+  const firma_b64=(()=>{
+    // Buscar la firma embebida ya en el HTML
+    const m=document.querySelector('img[src^="data:image/jpeg;base64"]');
+    return m?m.src:'';
+  })();
+  const FIRMA_IMG=firma_b64?`<img src="${firma_b64}" style="height:55px;margin-bottom:3px"/>`:'';
+  const EMPRESA='FG Conexiones S.R.L. | CUIT: 30-71636657-6 | Bolivia 2356, Posadas';
+  const fecha=new Date().toLocaleDateString('es-AR');
+
+  const estilos='body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:20px;padding-bottom:140px}'
+    +'.header{border-bottom:2px solid #1e3a5f;margin-bottom:14px;padding-bottom:8px}'
+    +'h2{margin:0;font-size:14px;color:#1e3a5f}h3{margin:4px 0;font-size:11px;color:#555}'
+    +'table{width:100%;border-collapse:collapse;margin-top:10px}'
+    +'th{background:#1e3a5f;color:#fff;padding:6px 8px;text-align:left;font-size:10px}'
+    +'td{border-bottom:1px solid #ddd;padding:5px 8px;font-size:10px}'
+    +'.firma-fija{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:10px 20px;background:#fff;border-top:1px solid #ddd}'
+    +'.firma-box{text-align:center;}'
+    +'.firma-line{border-top:1px solid #000;margin-bottom:5px;margin-top:4px}'
+    +'@media print{body{-webkit-print-color-adjust:exact}.firma-fija{position:fixed;bottom:0}}';
+
+  // Armar firmas: yo a la izquierda, técnico 1 al medio (si hay), técnico 2 a la derecha (si hay)
+  const firmaBloques=[];
+  firmaBloques.push(`<div class="firma-box" style="width:200px"><div style="text-align:center">${FIRMA_IMG}</div><div class="firma-line"></div><div style="font-size:10px;font-weight:700">Entregado por: FG Conexiones</div><div style="font-size:9px;color:#555">Llanes Gastón E. — Socio Gerente</div></div>`);
+  if(tecNombres[0]) firmaBloques.push(`<div class="firma-box" style="width:180px"><div style="height:55px"></div><div class="firma-line"></div><div style="font-size:10px;font-weight:700">${tecNombres[0]}</div><div style="font-size:9px;color:#555">Técnico — Recibí conforme</div></div>`);
+  if(tecNombres[1]) firmaBloques.push(`<div class="firma-box" style="width:180px"><div style="height:55px"></div><div class="firma-line"></div><div style="font-size:10px;font-weight:700">${tecNombres[1]}</div><div style="font-size:9px;color:#555">Técnico — Recibí conforme</div></div>`);
+
+  let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Entrega ${cuadNombre}</title><style>${estilos}</style></head><body>`;
+  html+=`<div class="header"><div style="font-size:9px;color:#555;margin-bottom:3px">${EMPRESA}</div><h2>FG Conexiones S.R.L. — Entrega de Materiales a Cuadrilla</h2><h3>Cuadrilla: ${cuadNombre} &nbsp;&nbsp; Fecha: ${fecha}</h3></div>`;
+  html+='<table><thead><tr><th>Material</th><th>Unidad</th><th>Cantidad</th><th>Firma recepción</th></tr></thead><tbody>';
+  html+=conStock.map(m=>`<tr><td>${m.nombre}</td><td>${m.unidad}</td><td style="font-weight:700;text-align:center">${scMap[m.id]||0}</td><td></td></tr>`).join('');
+  html+='</tbody></table>';
+
+  // Seriales de equipos INDIVIDUAL en cuadrilla
+  const conSerial=conStock.filter(m=>m.serial_tipo==='INDIVIDUAL'&&(scMap[m.id]||0)>0);
+  if(conSerial.length){
+    html+='<div style="background:#e8edf3;font-weight:700;font-size:10px;padding:5px 8px;margin-top:16px;color:#1e3a5f">DETALLE DE SERIALES</div>';
+    for(const m of conSerial){
+      const sers=await sbGet('stock_seriales',`?material_id=eq.${m.id}&ubicacion=eq.CUADRILLA_${cuadId}&order=serial`)||[];
+      if(!sers.length)continue;
+      html+=`<div style="margin-top:12px"><div style="font-weight:700;font-size:11px;margin-bottom:4px">${m.nombre} — ${sers.length} unidades</div>`;
+      html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">'+sers.map((s,i)=>`<div style="border:1px solid #ccc;padding:4px;font-family:monospace;font-size:10px"><span style="color:#999;font-size:9px">${i+1}.</span> ${s.serial}</div>`).join('')+'</div></div>';
+    }
+  }
+
+  html+=`<div class="firma-fija">${firmaBloques.join('')}</div>`;
+  html+='</body></html>';
+
+  const win=window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>win.print(),500);
+}
+
 async function repartirACuadrilla(cuadId, nombre){
   document.getElementById('reparto-cuad-id').value=cuadId;
   document.getElementById('reparto-titulo').textContent='Asignar a: '+nombre;
@@ -2504,7 +2577,7 @@ async function confirmarReparto(){
     else{await sbPost('stock_cuadrillas',{cuadrilla_id:cuadId,material_id:matId,cantidad:cant});}
     await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs:obs||'Asignación a cuadrilla'});
     cerrarModal('reparto-modal');
-    renderStock('cuadrillas');
+    renderStockCuadrillaSeleccionada();
   }catch(e){err.textContent='Error: '+e.message;}
 }
 
@@ -2710,12 +2783,23 @@ async function confirmarEntradaStock(){
       await sbPost('stock_deposito',{material_id:matId,cantidad:cant});
     }
 
-    // Registrar seriales
+    // Registrar seriales — batch insert para máximo rendimiento
     if(seriales.length){
-      for(const s of seriales){
+      const BATCH=200; // Supabase acepta hasta ~500 por request
+      for(let i=0;i<seriales.length;i+=BATCH){
+        const lote=seriales.slice(i,i+BATCH).map(s=>({
+          material_id:matId,serial:s,ubicacion:'DEPOSITO',movimiento_id:movId||null
+        }));
         try{
-          await sbPost('stock_seriales',{material_id:matId,serial:s,ubicacion:'DEPOSITO',movimiento_id:movId||null});
-        }catch(e2){if(!e2.message.includes('unique')&&!e2.message.includes('duplica'))throw e2;}
+          await sbPost('stock_seriales',lote);
+        }catch(e2){
+          // Si alguno ya existe, intentar uno por uno solo en ese lote
+          if(e2.message.includes('unique')||e2.message.includes('duplica')){
+            for(const item of lote){
+              try{await sbPost('stock_seriales',item);}catch(e3){}
+            }
+          }else throw e2;
+        }
       }
     }
 
