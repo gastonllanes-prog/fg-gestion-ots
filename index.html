@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v73</title>
+<title>FG Gestión OTs v74</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V73</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V74</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v73</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v74</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -251,6 +251,74 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div><div class="card"><div class="card-title">Pendientes de asignar</div><div id="dash-lista-pend"><div class="loading"><span class="spinner"></span></div></div></div></div>
     <div><div class="card"><div class="card-title">OTs de hoy</div><div id="dash-lista-hoy"><div class="loading"><span class="spinner"></span></div></div></div></div>
   </div>
+</div>
+
+<!-- ═══ ASIGNAR OTs ═══ -->
+<div id="s-asignar" style="display:none">
+  <div class="ph">
+    <div class="ph-icon blue">📍</div>
+    <div><div class="ph-title">Asignar OTs</div><div class="ph-sub">Programá órdenes por cuadrilla</div></div>
+  </div>
+
+  <!-- PASO 1: Cuadrilla + Fecha (siempre visible) -->
+  <div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:1rem 1.25rem;margin-bottom:1rem;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+    <div style="flex:1;min-width:160px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Cuadrilla</label>
+      <select id="asgn-cuad" onchange="renderAsignarOTs()" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;font-family:inherit">
+        <option value="">Todas las cuadrillas</option>
+      </select>
+    </div>
+    <div style="flex:1;min-width:140px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Fecha de trabajo</label>
+      <input type="date" id="asgn-fecha" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"/>
+    </div>
+    <div style="flex:2;min-width:200px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Buscar cliente / nodo / dirección</label>
+      <input id="asgn-buscar" placeholder="Escribí para filtrar..." oninput="filtrarAsignarOTs()"
+        style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"/>
+    </div>
+    <div style="flex:1;min-width:140px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Tipo</label>
+      <select id="asgn-tipo" onchange="filtrarAsignarOTs()" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit">
+        <option value="">Todos los tipos</option>
+        <option value="BASICA">Instalación</option>
+        <option value="REPARACION">Reparación</option>
+        <option value="CAMBIO_TECNOLOGIA">Cambio tecnología</option>
+        <option value="BOCA_ADICIONAL">Boca adicional</option>
+        <option value="DESCONECTAR">Desconexión</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Carrito de asignación — barra si hay seleccionados -->
+  <div id="asgn-carrito-bar" style="display:none;background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:12px;padding:.875rem 1.25rem;margin-bottom:1rem;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div>
+      <div style="font-weight:700;font-size:15px">🛒 <span id="asgn-carrito-count">0</span> OTs seleccionadas</div>
+      <div id="asgn-carrito-cuad-info" style="font-size:12px;opacity:.8;margin-top:2px"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="limpiarAsignarSeleccion()">✕ Limpiar</button>
+      <button class="btn btn-sm" style="background:#16a34a;color:#fff;border-color:#16a34a;font-size:14px;font-weight:700;padding:8px 20px" onclick="abrirResumenAsignacion()">✓ Programar seleccionadas</button>
+    </div>
+  </div>
+
+  <!-- Tabla de OTs pendientes -->
+  <div id="asgn-tabla"><div class="loading"><span class="spinner"></span></div></div>
+</div>
+
+<!-- ═══ RESUMEN / CONFIRMACIÓN DE ASIGNACIÓN ═══ -->
+<div id="s-asgn-resumen" style="display:none">
+  <div class="ph">
+    <button class="btn btn-sm" onclick="volverAsignar()" style="margin-right:8px">← Volver</button>
+    <div class="ph-icon blue">📍</div>
+    <div><div class="ph-title">Confirmar asignación</div><div class="ph-sub" id="asgn-res-sub"></div></div>
+  </div>
+  <div id="asgn-res-lista"></div>
+  <div style="display:flex;gap:8px;margin-top:1rem">
+    <button class="btn btn-primary" style="flex:2;font-size:15px;font-weight:700" onclick="confirmarAsignacion()">✓ Confirmar y programar</button>
+    <button class="btn" onclick="volverAsignar()">Cancelar</button>
+  </div>
+  <p class="err-msg" id="asgn-res-err" style="margin-top:.5rem"></p>
 </div>
 
 <div id="s-ots" style="display:none">
@@ -1126,6 +1194,7 @@ function construirMenu(){
   const nav=document.getElementById('sb-nav');
   const items=[
     {sec:'Principal'},{id:'dashboard',icon:'📊',label:'Dashboard'},{id:'ots',icon:'📋',label:'Órdenes de trabajo'},
+    {id:'asignar',icon:'📍',label:'Asignar OTs'},
     {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},
     {id:'tecnicos',icon:'👷',label:'Técnicos'},
     {sec:'Stock'},{id:'stock-cuad',icon:'🔧',label:'Stock Cuadrillas'},{id:'stock',icon:'📦',label:'Stock Depósito'},
@@ -1144,9 +1213,9 @@ function irA(sec){
   const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
   document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
-  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
+  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
   closeSidebar();
-  const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
+  const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},asignar:renderAsignarOTs,clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
 }
 
@@ -1931,7 +2000,301 @@ async function guardarEstado(){
 }
 
 // ASIGNAR
-// ─── SELECCIÓN MÚLTIPLE OTs ───
+// ═══ ASIGNAR OTs — sección dedicada ═══
+let ASGN_TODAS=[];    // todas las OTs pendientes cargadas
+let ASGN_SEL={};      // grupoId → {gid, label, dom, nodo, tipos, dur}
+
+async function renderAsignarOTs(){
+  // Mostrar sección correcta
+  document.getElementById('s-asignar').style.display='';
+  document.getElementById('s-asgn-resumen').style.display='none';
+
+  // Cargar cuadrillas si no están
+  const sel=document.getElementById('asgn-cuad');
+  if(sel.options.length<=1){
+    const cuads=await sbGet('cuadrillas','?activo=eq.true&order=nombre')||[];
+    sel.innerHTML='<option value="">Seleccioná una cuadrilla</option>';
+    cuads.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;sel.appendChild(o);});
+  }
+  // Fecha por defecto hoy
+  if(!document.getElementById('asgn-fecha').value)
+    document.getElementById('asgn-fecha').value=new Date().toISOString().slice(0,10);
+
+  await cargarOTsPendientes();
+}
+
+async function cargarOTsPendientes(){
+  const el=document.getElementById('asgn-tabla');
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    // Traer OTs pendientes (PENDIENTE o A_REPROGRAMAR)
+    const estadosPend=ESTADOS.filter(e=>['PENDIENTE','A_REPROGRAMAR'].includes(e.nombre)).map(e=>e.id);
+    let q='?select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,nodo,telefono1),estados_ot(nombre),grupos_ot(id,cuadrilla_id,cuadrillas(nombre))&order=fecha_impresion.asc.nullslast&limit=300';
+    if(estadosPend.length) q+='&estado_id=in.('+estadosPend.join(',')+')';
+    const ots=await sbGet('ordenes_trabajo',q)||[];
+
+    // Agrupar por grupo_id (cliente)
+    const grupos={};
+    ots.forEach(o=>{
+      const gid=o.grupo_id||('sg_'+o.id);
+      if(!grupos[gid]){
+        grupos[gid]={
+          gid:o.grupo_id, id_fallback:o.id,
+          cl:o.clientes, ots:[], estado:o.estados_ot?.nombre,
+          cuadActual:o.grupos_ot?.cuadrillas?.nombre||null
+        };
+      }
+      grupos[gid].ots.push(o);
+    });
+    ASGN_TODAS=Object.values(grupos);
+    filtrarAsignarOTs();
+  }catch(e){el.innerHTML='<div class="card"><p style="color:#dc2626">'+e.message+'</p></div>';}
+}
+
+function filtrarAsignarOTs(){
+  const busq=(document.getElementById('asgn-buscar')?.value||'').toLowerCase();
+  const tipo=document.getElementById('asgn-tipo')?.value||'';
+
+  let lista=ASGN_TODAS;
+  if(busq) lista=lista.filter(g=>{
+    const cl=g.cl||{};
+    return (cl.codigo_gigared||'').toLowerCase().includes(busq)
+      ||(cl.apellido||'').toLowerCase().includes(busq)
+      ||(cl.nombre||'').toLowerCase().includes(busq)
+      ||(cl.nodo||'').toLowerCase().includes(busq)
+      ||(cl.calle||cl.domicilio||'').toLowerCase().includes(busq);
+  });
+  if(tipo) lista=lista.filter(g=>g.ots.some(o=>o.tipo_item===tipo||o.tipo_tarea===tipo));
+
+  renderTablaAsignar(lista);
+}
+
+function renderTablaAsignar(lista){
+  const el=document.getElementById('asgn-tabla');
+  if(!lista.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">✅</div><div>No hay OTs pendientes con esos filtros</div></div>';
+    return;
+  }
+
+  el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.5rem">'+lista.length+' cliente'+(lista.length!==1?'s':'')+' con OTs pendientes</div>'
+    +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+    +'<th style="width:36px"><input type="checkbox" id="asgn-sel-all" onchange="toggleAsignarSelAll(this)" style="cursor:pointer"/></th>'
+    +'<th>N° Cliente</th><th>Nombre</th><th>Dirección / Nodo</th><th>OTs</th><th>Cuadrilla actual</th>'
+    +'</tr></thead><tbody>'
+    +lista.map(g=>{
+      const cl=g.cl||{};
+      const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
+      const tipos=[...new Set(g.ots.map(o=>o.tipo_item||o.tipo_tarea))];
+      const sel=ASGN_SEL[g.gid||g.id_fallback];
+      const dur=duracionMinutos([...new Set(g.ots.map(o=>o.tipo_tarea))]);
+      return '<tr style="'+(sel?'background:#eff6ff;':'')+'">'
+        +'<td onclick="event.stopPropagation()"><input type="checkbox" class="asgn-cb" data-gid="'+(g.gid||g.id_fallback)+'"'
+          +' data-dur="'+dur+'"'
+          +' data-label="'+encodeURIComponent((cl.codigo_gigared||'')+'  '+( cl.apellido||'')+' '+(cl.nombre||'')+' · '+(dom))+'"'
+          +' data-dom="'+encodeURIComponent(dom)+'" data-nodo="'+(cl.nodo||'')+'"'
+          +' data-tipos="'+encodeURIComponent(JSON.stringify(tipos))+'"'
+          +(sel?' checked':'')+' style="cursor:pointer" onchange="toggleAsignarCB(this)"/></td>'
+        +'<td style="font-size:12px;font-weight:700;color:#2563eb">'+(cl.codigo_gigared||'—')+'</td>'
+        +'<td style="font-weight:600;font-size:12px">'+(cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')+'</td>'
+        +'<td style="font-size:12px">'+(dom)+'<span style="color:#94a3b8;font-size:11px;margin-left:6px">'+( cl.nodo||'')+'</span></td>'
+        +'<td style="font-size:11px">'
+          +tipos.map(t=>`<span class="badge ${t==='REPARACION'?'b-orange':t==='BASICA'||t==='INSTALAR'?'b-green':'b-blue'}" style="font-size:10px">${(t||'').replace(/_/g,' ')}</span>`).join(' ')
+          +(g.ots.length>1?'<div style="color:#94a3b8;font-size:10px">'+g.ots.length+' OTs</div>':'')
+        +'</td>'
+        +'<td style="font-size:11px;color:'+(g.cuadActual?'#2563eb':'#94a3b8')+'">'+(g.cuadActual||'Sin asignar')+'</td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div>';
+
+  actualizarCarritoBar();
+}
+
+function toggleAsignarSelAll(cb){
+  document.querySelectorAll('.asgn-cb').forEach(c=>{
+    c.checked=cb.checked;
+    const gid=c.dataset.gid;
+    if(cb.checked){
+      ASGN_SEL[gid]={
+        gid:parseInt(gid)||gid,
+        dur:parseInt(c.dataset.dur)||60,
+        label:decodeURIComponent(c.dataset.label),
+        tipos:JSON.parse(decodeURIComponent(c.dataset.tipos||'[]')),
+        hora:null
+      };
+    }else{
+      delete ASGN_SEL[gid];
+    }
+  });
+  actualizarCarritoBar();
+  filtrarAsignarOTs();
+}
+
+function toggleAsignarCB(cb){
+  const gid=cb.dataset.gid;
+  if(cb.checked){
+    ASGN_SEL[gid]={
+      gid:parseInt(gid)||gid,
+      dur:parseInt(cb.dataset.dur)||60,
+      label:decodeURIComponent(cb.dataset.label),
+      tipos:JSON.parse(decodeURIComponent(cb.dataset.tipos||'[]')),
+      hora:null
+    };
+  }else{
+    delete ASGN_SEL[gid];
+  }
+  actualizarCarritoBar();
+  // Marcar/desmarcar fila
+  const tr=cb.closest('tr');
+  if(tr) tr.style.background=cb.checked?'#eff6ff':'';
+}
+
+function actualizarCarritoBar(){
+  const items=Object.values(ASGN_SEL);
+  const bar=document.getElementById('asgn-carrito-bar');
+  if(!bar)return;
+  if(items.length){
+    bar.style.display='flex';
+    document.getElementById('asgn-carrito-count').textContent=items.length;
+    const cuadNombre=document.getElementById('asgn-cuad')?.selectedOptions[0]?.text||'';
+    const fecha=document.getElementById('asgn-fecha')?.value||'';
+    document.getElementById('asgn-carrito-cuad-info').textContent=
+      (cuadNombre&&cuadNombre!='Seleccioná una cuadrilla'?'Cuadrilla: '+cuadNombre+' · ':'')+(fecha?'Fecha: '+new Date(fecha+'T12:00:00').toLocaleDateString('es-AR'):'');
+  }else{
+    bar.style.display='none';
+  }
+}
+
+function limpiarAsignarSeleccion(){
+  ASGN_SEL={};
+  document.querySelectorAll('.asgn-cb').forEach(c=>c.checked=false);
+  const all=document.getElementById('asgn-sel-all');
+  if(all)all.checked=false;
+  actualizarCarritoBar();
+  filtrarAsignarOTs();
+}
+
+async function abrirResumenAsignacion(){
+  const cuadId=document.getElementById('asgn-cuad')?.value;
+  const cuadNombre=document.getElementById('asgn-cuad')?.selectedOptions[0]?.text||'';
+  const fecha=document.getElementById('asgn-fecha')?.value;
+  const items=Object.values(ASGN_SEL);
+
+  if(!cuadId){alert('Seleccioná una cuadrilla primero');return;}
+  if(!fecha){alert('Seleccioná una fecha de trabajo');return;}
+  if(!items.length){alert('Seleccioná al menos una OT');return;}
+
+  // Ocultar lista, mostrar resumen
+  document.getElementById('s-asignar').style.display='none';
+  document.getElementById('s-asgn-resumen').style.display='';
+  document.getElementById('asgn-res-sub').textContent=cuadNombre+' · '+new Date(fecha+'T12:00:00').toLocaleDateString('es-AR');
+  document.getElementById('asgn-res-err').textContent='';
+
+  const cont=document.getElementById('asgn-res-lista');
+  cont.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+
+  // Calcular slots en cascada
+  const asigExist=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadId}&fecha_trabajo=eq.${fecha}&select=horario_visita,duracion_minutos`)||[];
+  const ocupBase=new Set();
+  asigExist.forEach(a=>{
+    if(!a.horario_visita)return;
+    const [h,m]=a.horario_visita.split(':').map(Number);
+    const ini=h*60+m;
+    for(let t=ini;t<ini+(a.duracion_minutos||60);t++) ocupBase.add(t);
+  });
+
+  const ocupAcum=new Set([...ocupBase]);
+  items.forEach(g=>{
+    const slots=calcSlotLibres(ocupAcum,g.dur);
+    g.hora=slots[0]||null;
+    if(g.hora){
+      const [h,m]=g.hora.split(':').map(Number);
+      for(let t=h*60+m;t<h*60+m+g.dur;t++) ocupAcum.add(t);
+    }
+  });
+
+  // Renderizar tabla editable
+  cont.innerHTML='<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+    +'<th>Cliente</th><th style="text-align:center">Duración</th><th style="text-align:center">Horario asignado</th><th style="text-align:center">Cambiar</th>'
+    +'</tr></thead><tbody>'
+    +items.map((g,i)=>`<tr>
+      <td style="font-size:12px;font-weight:600">${g.label}</td>
+      <td style="text-align:center;color:#64748b;font-size:12px">${g.dur} min</td>
+      <td style="text-align:center">
+        <input type="time" id="asgn-h-${i}" value="${g.hora||''}" step="300"
+          style="padding:6px 10px;border:2px solid ${g.hora?'#2563eb':'#f59e0b'};border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;width:100px"
+          onchange="items[${i}].hora=this.value"/>
+      </td>
+      <td style="text-align:center">
+        <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center">
+          ${calcSlotLibres(ocupBase,g.dur).map(s=>`<button type="button" onclick="cambiarSlotResumen(${i},'${s}',items)"
+            style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid ${s===g.hora?'#2563eb':'#cbd5e1'};background:${s===g.hora?'#2563eb':'transparent'};color:${s===g.hora?'#fff':'#475569'}"
+            >${s}</button>`).join('')}
+        </div>
+      </td>
+    </tr>`).join('')
+    +'</tbody></table></div>';
+
+  // Guardar referencia a items para los handlers
+  window._ASGN_ITEMS=items;
+  window._ASGN_CUAD={id:cuadId,nombre:cuadNombre};
+  window._ASGN_FECHA=fecha;
+}
+
+function cambiarSlotResumen(idx, hora, items){
+  items[idx].hora=hora;
+  const inp=document.getElementById('asgn-h-'+idx);
+  if(inp){inp.value=hora;inp.style.borderColor='#2563eb';}
+  // Actualizar visual de slots
+  abrirResumenAsignacion();
+}
+
+function volverAsignar(){
+  document.getElementById('s-asgn-resumen').style.display='none';
+  document.getElementById('s-asignar').style.display='';
+}
+
+async function confirmarAsignacion(){
+  const items=window._ASGN_ITEMS||[];
+  const {id:cuadId}=window._ASGN_CUAD||{};
+  const fecha=window._ASGN_FECHA;
+  const err=document.getElementById('asgn-res-err');
+
+  // Leer horarios actuales del DOM (pueden haber cambiado manualmente)
+  items.forEach((g,i)=>{
+    const inp=document.getElementById('asgn-h-'+i);
+    if(inp&&inp.value) g.hora=inp.value;
+  });
+
+  const sinHora=items.filter(g=>!g.hora);
+  if(sinHora.length){
+    err.textContent='Faltan horarios para: '+sinHora.map(g=>g.label.split('·')[0]).join(', ');
+    return;
+  }
+
+  err.textContent='Guardando...';err.style.color='#64748b';
+  try{
+    const eAsig=ESTADOS.find(e=>e.nombre==='ASIGNADA');
+    for(const g of items){
+      const gid=typeof g.gid==='number'?g.gid:parseInt(g.gid);
+      if(gid){
+        await sbPatch('grupos_ot',`?id=eq.${gid}`,{
+          cuadrilla_id:parseInt(cuadId),fecha_trabajo:fecha,
+          horario_visita:g.hora,duracion_minutos:g.dur,
+          estado_id:eAsig?.id,fecha_asignacion:new Date().toISOString()
+        });
+        await sbPatch('ordenes_trabajo',`?grupo_id=eq.${gid}`,{estado_id:eAsig?.id,fecha_trabajo:fecha});
+      }
+    }
+    // Limpiar y volver
+    ASGN_SEL={};
+    ASGN_TODAS=[];
+    err.textContent='';
+    document.getElementById('s-asgn-resumen').style.display='none';
+    document.getElementById('s-asignar').style.display='';
+    alert('✅ '+items.length+' OT'+(items.length!==1?'s':'')+' asignada'+(items.length!==1?'s':'')+' a '+window._ASGN_CUAD?.nombre);
+    await renderAsignarOTs();
+  }catch(e){err.textContent='Error: '+e.message;err.style.color='';}
+}
 function toggleSelAll(cb){
   document.querySelectorAll('.ot-sel-cb').forEach(c=>c.checked=cb.checked);
   actualizarBarraSeleccion();
