@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v70</title>
+<title>FG Gestión OTs v72</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -168,7 +168,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V70</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V72</div>
   </div>
 </div>
 
@@ -178,7 +178,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v70</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v72</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -443,6 +443,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="nav" id="cfg-nav">
     <div class="ntab active" onclick="cfgTab('estados',this)">Estados</div>
     <div class="ntab" onclick="cfgTab('motivos',this)">Motivos</div>
+    <div class="ntab" onclick="cfgTab('tipos-ot',this)">Tipos de OT</div>
     <div class="ntab" onclick="cfgTab('materiales',this)">Materiales</div>
     <div class="ntab" onclick="cfgTab('autocomplete',this)">Autocompletado</div>
     <div class="ntab" onclick="cfgTab('servicios',this)">Servicios</div>
@@ -450,6 +451,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
   <div id="cfg-estados"><div class="loading"><span class="spinner"></span></div></div>
   <div id="cfg-motivos" style="display:none"></div>
+  <div id="cfg-tipos-ot" style="display:none"></div>
   <div id="cfg-materiales" style="display:none"></div>
   <div id="cfg-autocomplete" style="display:none"></div>
   <div id="cfg-mat-config" style="display:none"></div>
@@ -554,6 +556,48 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
 </div>
 
+<!-- MODAL ABM TIPO DE OT -->
+<div class="modal-overlay hidden" id="tipo-ot-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title" id="tipo-ot-modal-title">Tipo de OT <button class="modal-close" onclick="cerrarModal('tipo-ot-modal')">✕</button></div>
+    <input type="hidden" id="tot-id"/>
+    <div class="fg"><label>Nombre del tipo</label>
+      <input id="tot-nombre" placeholder="Ej: Instalación domiciliaria principal"/>
+    </div>
+    <div class="form-2col">
+      <div class="fg">
+        <label>Duración estimada (minutos)</label>
+        <input type="number" id="tot-duracion" min="5" step="5" placeholder="60"/>
+      </div>
+      <div class="fg">
+        <label>Equivalencia instalación</label>
+        <input type="number" id="tot-equiv" min="0" step="0.01" placeholder="1.00"/>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px">
+          Ej: 1.0 = instalación completa · 0.33 = 1/3 (reparación) · 0.17 = 1/6 (desconexión)
+        </div>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Categoría</label>
+      <select id="tot-categoria" style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit">
+        <option value="INSTALACION">Instalación / Cambio tecnología</option>
+        <option value="REPARACION">Reparación / Service</option>
+        <option value="ADICIONAL">Boca adicional / Modificación</option>
+        <option value="DESCONEXION">Desconexión</option>
+        <option value="OTRO">Otro</option>
+      </select>
+    </div>
+    <div class="fg"><label>Activo</label>
+      <select id="tot-activo"><option value="true">Sí</option><option value="false">No</option></select>
+    </div>
+    <p class="err-msg" id="tot-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="guardarTipoOT_cfg()">Guardar</button>
+      <button class="btn" onclick="cerrarModal('tipo-ot-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ESTADO -->
 <div class="modal-overlay hidden" id="estado-modal">
   <div class="modal">
@@ -572,15 +616,29 @@ tr:hover td{background:rgba(37,99,235,.02)}
 
 <!-- MODAL ASIGNAR -->
 <div class="modal-overlay hidden" id="asignar-modal">
-  <div class="modal">
-    <div class="modal-title">Asignar cuadrilla <button class="modal-close" onclick="cerrarModal('asignar-modal')">✕</button></div>
+  <div class="modal" style="max-width:500px">
+    <div class="modal-title">📍 Asignar cuadrilla <button class="modal-close" onclick="cerrarModal('asignar-modal')">✕</button></div>
+    <input type="hidden" id="asig-grupo-ids" value="[]"/>
+    <input type="hidden" id="asig-dur" value="60"/>
     <div id="asig-info" style="margin-bottom:1rem"></div>
-    <div class="fg"><label>Cuadrilla</label><select id="asig-cuad"></select></div>
-    <div class="fg"><label>Fecha</label><input type="date" id="asig-fecha"/></div>
-    <div class="fg"><label>Horario (opcional)</label><input type="time" id="asig-hora"/></div>
+    <div class="form-2col">
+      <div class="fg"><label>Cuadrilla</label>
+        <select id="asig-cuad" onchange="actualizarSlotsModal()" style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"></select>
+      </div>
+      <div class="fg"><label>Fecha</label>
+        <input type="date" id="asig-fecha" onchange="actualizarSlotsModal()"/>
+      </div>
+    </div>
+    <!-- Slots de horario disponibles -->
+    <div id="asig-slots" style="margin-bottom:1rem"></div>
+    <!-- Horario seleccionado (o manual) -->
+    <div class="fg">
+      <label>Horario seleccionado</label>
+      <input type="time" id="asig-hora" placeholder="HH:MM" step="300" style="font-weight:700;font-size:16px"/>
+    </div>
     <div class="fg"><label>Observaciones</label><input id="asig-obs" placeholder="Opcional..."/></div>
     <div class="modal-footer">
-      <button class="btn btn-primary" style="flex:2" onclick="guardarAsignacion()">Asignar</button>
+      <button class="btn btn-primary" style="flex:2" onclick="guardarAsignacion()">✓ Confirmar asignación</button>
       <button class="btn" onclick="cerrarModal('asignar-modal')">Cancelar</button>
     </div>
     <p class="err-msg" id="asig-err"></p><p class="ok-msg" id="asig-ok-msg"></p>
@@ -1206,39 +1264,51 @@ async function renderOTs(){
     });
     el.innerHTML=`<div class="ot-table-wrap"><table class="ot-table">
       <thead><tr>
+        <th style="width:32px"><input type="checkbox" id="ot-sel-all" onchange="toggleSelAll(this)" style="cursor:pointer"/></th>
         <th>N° Cliente</th>
         <th onclick="sortOTs('clientes.apellido')" class="${OT_SORT==='clientes.apellido'?'sorted':''}">Nombre ${sortIcon('clientes.apellido')}</th>
         <th>Dirección</th>
-        <th>Localidad</th>
         <th>Nodo</th>
         <th>Teléfono</th>
         <th>OTs</th>
         <th onclick="sortOTs('fecha_impresion')" class="${OT_SORT==='fecha_impresion'?'sorted':''}">F. Impresión ${sortIcon('fecha_impresion')}</th>
+        <th></th>
       </tr></thead>
       <tbody>${Object.values(cliMap).map(({cl,ots:cOts,primerFecha})=>{
         const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
         const tieneRep=cOts.some(o=>o.tipo_tarea==='REPARACION');
-        // Contar por estado
+        const pendientes=cOts.filter(o=>!['FINALIZADA','DEVUELTA_GIGARED','NO_REALIZADA','ELIMINADA_SISTEMA'].includes(o.estados_ot?.nombre));
+        const yaAsignada=cOts.some(o=>o.grupos_ot?.cuadrillas);
+        const grupoId=cOts[0]?.grupo_id;
         const conteo={};cOts.forEach(o=>{const n=o.estados_ot?.nombre||'PENDIENTE';conteo[n]=(conteo[n]||0)+1;});
         const badges=Object.entries(conteo).map(([n,c])=>`<span class="badge ${{'PENDIENTE':'b-amber','ASIGNADA':'b-blue','EN_PROCESO':'b-blue','FINALIZADA':'b-green','A_REPROGRAMAR':'b-amber','DEVUELTA_GIGARED':'b-red'}[n]||'b-gray'}" style="font-size:10px">${c} ${n.replace(/_/g,' ')}</span>`).join(' ');
-        // Pill de tipos de OT
         const tipos=[...new Set(cOts.map(o=>o.tipo_item||o.tipo_tarea))].map(ti=>badgeItem(ti,cOts.find(o=>o.tipo_item===ti)?.tipo_tarea)).join(' ');
-        return `<tr class="${tieneRep?'rep-row':''}" onclick="verOT('${cOts[0].numero_ot}')">
+        const cuadNombre=cOts[0]?.grupos_ot?.cuadrillas?.nombre;
+        return `<tr class="${tieneRep?'rep-row':''}" data-grupo="${grupoId||''}" data-tipos='${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}' onclick="verOT('${cOts[0].numero_ot}')">
+          <td onclick="event.stopPropagation()"><input type="checkbox" class="ot-sel-cb" data-grupo="${grupoId||''}" data-tipos='${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}' style="cursor:pointer"/></td>
           <td style="font-size:12px;color:#2563eb;font-weight:700">${cl.codigo_gigared||'—'}</td>
           <td class="ot-cli-cell">${fmtCli(cl)}</td>
-          <td class="ot-dom-cell" title="${dom}">${dom}</td>
-          <td style="font-size:12px">${cl.localidad||'—'}</td>
+          <td class="ot-dom-cell" title="${dom}" style="font-size:12px">${dom}</td>
           <td style="font-size:12px;font-weight:600">${cl.nodo||'—'}</td>
           <td style="font-size:12px"><a href="tel:${(cl.telefono1||'').replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#2563eb">${cl.telefono1||'—'}</a></td>
           <td style="font-size:11px">
             <div>${tipos}</div>
             <div style="margin-top:3px">${badges}</div>
+            ${cuadNombre?`<div style="font-size:10px;color:#2563eb;margin-top:2px">🔧 ${cuadNombre}</div>`:''}
             ${cOts.length>1?`<div style="font-size:10px;color:#94a3b8;margin-top:2px">${cOts.length} OTs · ${cOts.map(o=>`<span style="cursor:pointer;color:#2563eb" onclick="event.stopPropagation();verOT('${o.numero_ot}')">${numOT(o.numero_ot)}</span>`).join(', ')}</div>`:''}
           </td>
           <td style="font-size:11px;color:#64748b;white-space:nowrap">${fmtDT(primerFecha)}</td>
+          <td onclick="event.stopPropagation()">
+            ${grupoId&&pendientes.length?`<button class="btn btn-sm btn-primary" style="white-space:nowrap;font-size:11px" onclick="abrirAsignarGrupo([${grupoId}],[${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}])">📍 Asignar</button>`:''}
+          </td>
         </tr>`;
       }).join('')}</tbody>
-    </table></div>`;
+    </table></div>
+    <div id="ot-sel-bar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e3a5f;color:#fff;padding:12px 20px;border-radius:14px;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:200">
+      <span id="ot-sel-count" style="font-weight:700;font-size:14px"></span>
+      <button class="btn btn-sm" style="background:#2563eb;color:#fff;border:none" onclick="asignarSeleccionados()">📍 Asignar seleccionados</button>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none" onclick="limpiarSeleccion()">✕ Cancelar</button>
+    </div>`;
     document.getElementById('ot-mas-btn').style.display=ots.length===PAGE_SIZE?'block':'none';
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
@@ -1861,24 +1931,158 @@ async function guardarEstado(){
 }
 
 // ASIGNAR
-function abrirAsignar(grupoId){
-  document.getElementById('asig-fecha').value=new Date().toISOString().slice(0,10);
-  document.getElementById('asig-hora').value='';document.getElementById('asig-obs').value='';
-  document.getElementById('asig-err').textContent='';document.getElementById('asig-ok-msg').textContent='';
-  document.getElementById('asig-info').innerHTML=`<div style="background:#eff6ff;border-radius:10px;padding:.6rem 1rem;font-size:13px;color:#1e40af">Grupo ID: ${grupoId}</div>`;
-  document.getElementById('asig-cuad').dataset.gid=grupoId;
-  abrirModal('asignar-modal');
+// ─── SELECCIÓN MÚLTIPLE OTs ───
+function toggleSelAll(cb){
+  document.querySelectorAll('.ot-sel-cb').forEach(c=>c.checked=cb.checked);
+  actualizarBarraSeleccion();
 }
+function actualizarBarraSeleccion(){
+  const sels=[...document.querySelectorAll('.ot-sel-cb:checked')];
+  const bar=document.getElementById('ot-sel-bar');
+  if(!bar)return;
+  if(sels.length){
+    bar.style.display='flex';
+    document.getElementById('ot-sel-count').textContent=sels.length+' cliente'+(sels.length!==1?'s':'')+' seleccionado'+(sels.length!==1?'s':'');
+  }else{
+    bar.style.display='none';
+  }
+}
+// Detectar cambios en checkboxes (delegado)
+document.addEventListener('change',e=>{
+  if(e.target.classList.contains('ot-sel-cb')) actualizarBarraSeleccion();
+});
+function limpiarSeleccion(){
+  document.querySelectorAll('.ot-sel-cb').forEach(c=>c.checked=false);
+  const cb=document.getElementById('ot-sel-all');
+  if(cb)cb.checked=false;
+  const bar=document.getElementById('ot-sel-bar');
+  if(bar)bar.style.display='none';
+}
+function asignarSeleccionados(){
+  const sels=[...document.querySelectorAll('.ot-sel-cb:checked')];
+  if(!sels.length)return;
+  const grupoIds=sels.map(c=>parseInt(c.dataset.grupo)).filter(Boolean);
+  const tipos=sels.flatMap(c=>{try{return JSON.parse(c.dataset.tipos);}catch{return [];}});
+  abrirAsignarGrupo(grupoIds, tipos);
+}
+
+// ─── MODAL ASIGNACIÓN CON SLOTS ───
+// Duración en minutos según tipo de tarea
+function duracionMinutos(tipos){
+  const tipoArr=Array.isArray(tipos)?tipos:[tipos];
+  // Si tiene alguna instalación o cambio de tecnología → 60 min
+  if(tipoArr.some(t=>['INSTALAR','CAMBIO_TECNOLOGIA','CAMBIO_DOMICILIO'].includes(t))) return 60;
+  // Reparaciones, bocas adicionales, HD, cambio CM → 25 min
+  return 25;
+}
+
+// Generar slots disponibles para una cuadrilla en una fecha
+async function generarSlots(cuadId, fecha, durMin){
+  const desde=fecha+'T00:00:00';
+  const hasta=fecha+'T23:59:59';
+  // Traer grupos ya asignados ese día
+  const asig=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadId}&fecha_trabajo=eq.${fecha}&estado_id=not.is.null&select=horario_visita,duracion_minutos`)||[];
+
+  // Ocupar slots de 07:30 a 18:00
+  const INICIO=7*60+30; // 07:30
+  const FIN=18*60;      // 18:00
+  const ocup=new Set();
+  asig.forEach(a=>{
+    if(!a.horario_visita)return;
+    const [h,m]=a.horario_visita.split(':').map(Number);
+    const ini=h*60+m;
+    const dur=a.duracion_minutos||60;
+    for(let t=ini;t<ini+dur;t++) ocup.add(t);
+  });
+
+  // Generar slots libres
+  const slots=[];
+  for(let t=INICIO;t+durMin<=FIN;t+=5){
+    let libre=true;
+    for(let d=0;d<durMin;d++) if(ocup.has(t+d)){libre=false;break;}
+    if(libre){
+      const h=Math.floor(t/60).toString().padStart(2,'0');
+      const m=(t%60).toString().padStart(2,'0');
+      slots.push(`${h}:${m}`);
+    }
+  }
+  // Devolver solo slots cada 30 min para no saturar
+  return slots.filter((_,i)=>i%6===0);
+}
+
+async function abrirAsignarGrupo(grupoIds, tipos){
+  // Calcular duración según tipos
+  const dur=duracionMinutos(tipos||[]);
+  document.getElementById('asig-grupo-ids').value=JSON.stringify(grupoIds);
+  document.getElementById('asig-dur').value=dur;
+  document.getElementById('asig-fecha').value=new Date().toISOString().slice(0,10);
+  document.getElementById('asig-hora').value='';
+  document.getElementById('asig-obs').value='';
+  document.getElementById('asig-err').textContent='';
+  document.getElementById('asig-ok-msg').textContent='';
+
+  // Info del grupo
+  const n=grupoIds.length;
+  document.getElementById('asig-info').innerHTML=`
+    <div style="background:#eff6ff;border-radius:10px;padding:.6rem 1rem;font-size:13px;color:#1e40af;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <span><strong>${n}</strong> cliente${n!==1?'s':''} a asignar</span>
+      <span>⏱ <strong>${dur} min</strong> por visita (${dur===60?'instalación':'servicio rápido'})</span>
+    </div>`;
+  abrirModal('asignar-modal');
+  await actualizarSlotsModal();
+}
+
+// Compatibilidad con llamadas viejas desde verOT
+function abrirAsignar(grupoId){
+  abrirAsignarGrupo([grupoId],[]);
+}
+
+async function actualizarSlotsModal(){
+  const cuadId=document.getElementById('asig-cuad').value;
+  const fecha=document.getElementById('asig-fecha').value;
+  const dur=parseInt(document.getElementById('asig-dur').value)||60;
+  const cont=document.getElementById('asig-slots');
+  if(!cont)return;
+  if(!cuadId||!fecha){cont.innerHTML='';return;}
+  cont.innerHTML='<div style="font-size:11px;color:#64748b">Calculando disponibilidad...</div>';
+  const slots=await generarSlots(parseInt(cuadId),fecha,dur);
+  if(!slots.length){
+    cont.innerHTML='<div style="font-size:11px;color:#ea580c">Sin slots disponibles ese día para esta cuadrilla</div>';
+    return;
+  }
+  cont.innerHTML='<div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px">HORARIOS DISPONIBLES</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+    +slots.map(s=>`<button type="button" class="btn btn-sm slot-btn" onclick="selSlot('${s}')" style="font-size:12px;font-weight:700;padding:5px 12px">${s}</button>`).join('')
+    +'</div>';
+}
+
+function selSlot(hora){
+  document.getElementById('asig-hora').value=hora;
+  document.querySelectorAll('.slot-btn').forEach(b=>b.style.background=b.textContent.trim()===hora?'#2563eb':'');
+  document.querySelectorAll('.slot-btn').forEach(b=>b.style.color=b.textContent.trim()===hora?'#fff':'');
+}
+
 async function guardarAsignacion(){
-  const cuadId=document.getElementById('asig-cuad').value;const gid=document.getElementById('asig-cuad').dataset.gid;
-  const fecha=document.getElementById('asig-fecha').value;const err=document.getElementById('asig-err');
+  const cuadId=document.getElementById('asig-cuad').value;
+  const grupoIds=JSON.parse(document.getElementById('asig-grupo-ids')?.value||'[]');
+  const fecha=document.getElementById('asig-fecha').value;
+  const hora=document.getElementById('asig-hora').value;
+  const obs=document.getElementById('asig-obs').value;
+  const dur=parseInt(document.getElementById('asig-dur').value)||60;
+  const err=document.getElementById('asig-err');
   if(!cuadId){err.textContent='Seleccioná una cuadrilla';return;}
+  if(!fecha){err.textContent='Seleccioná una fecha';return;}
+  if(!hora){err.textContent='Seleccioná un horario';return;}
+  err.textContent='Guardando...';
   try{
     const eAsig=ESTADOS.find(e=>e.nombre==='ASIGNADA');
-    await sbPatch('grupos_ot',`?id=eq.${gid}`,{cuadrilla_id:parseInt(cuadId),fecha_trabajo:fecha||null,horario_visita:document.getElementById('asig-hora').value||null,observaciones:document.getElementById('asig-obs').value||null,estado_id:eAsig?.id,fecha_asignacion:new Date().toISOString()});
-    await sbPatch('ordenes_trabajo',`?grupo_id=eq.${gid}`,{estado_id:eAsig?.id,fecha_trabajo:fecha||null});
-    document.getElementById('asig-ok-msg').textContent='✓ Asignado';
-    setTimeout(()=>{cerrarModal('asignar-modal');cerrarModal('ot-modal');renderOTs();},1200);
+    for(const gid of grupoIds){
+      await sbPatch('grupos_ot',`?id=eq.${gid}`,{cuadrilla_id:parseInt(cuadId),fecha_trabajo:fecha,horario_visita:hora,duracion_minutos:dur,observaciones:obs||null,estado_id:eAsig?.id,fecha_asignacion:new Date().toISOString()});
+      await sbPatch('ordenes_trabajo',`?grupo_id=eq.${gid}`,{estado_id:eAsig?.id,fecha_trabajo:fecha});
+    }
+    document.getElementById('asig-ok-msg').textContent='✓ Asignado correctamente';
+    limpiarSeleccion();
+    setTimeout(()=>{cerrarModal('asignar-modal');cerrarModal('ot-modal');renderOTs();},1000);
   }catch(e){err.textContent='Error: '+e.message;}
 }
 
@@ -3574,7 +3778,39 @@ async function renderConfig(tab){
   const el=document.getElementById('cfg-'+tab);el.style.display='';
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
-    if(tab==='estados'){
+    if(tab==='tipos-ot'){
+      const d=await sbGet('tipos_ot','?order=categoria,duracion_minutos')||[];
+      const catColors={INSTALACION:'b-green',REPARACION:'b-orange',ADICIONAL:'b-blue',DESCONEXION:'b-red',OTRO:'b-gray'};
+      const catLabels={INSTALACION:'Instalación',REPARACION:'Reparación',ADICIONAL:'Adicional',DESCONEXION:'Desconexión',OTRO:'Otro'};
+      el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
+        +'<div style="font-size:12px;color:#64748b">'+d.length+' tipos configurados — duración y equivalencia de instalación</div>'
+        +'<button class="btn btn-sm btn-primary" onclick="abrirModalTipoOT()">+ Nuevo tipo</button></div>'
+        +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;color:#1e40af">'
+        +'<strong>Equivalencias:</strong> 1 instalación = 1.0 · 3 reparaciones = 1.0 · 6 desconexiones = 1.0 · 3 desconexiones con recupero = 1.0'
+        +'</div>'
+        +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+        +'<th>Tipo de OT</th><th>Categoría</th><th style="text-align:center">Duración</th><th style="text-align:center">Equiv. instalación</th><th>Estado</th><th></th>'
+        +'</tr></thead><tbody>'
+        +d.map(t=>{
+          const equiv=parseFloat(t.equivalencia_instalacion||0);
+          const equivFrac=equiv===1?'1 completa':equiv>=0.5?'1/2':equiv>=0.33?'1/3':equiv>=0.25?'1/4':equiv>=0.17?'1/6':equiv.toFixed(2);
+          return '<tr style="'+(t.activo?'':'opacity:.5')+'">'
+            +'<td style="font-weight:600;font-size:12px">'+t.nombre+'</td>'
+            +'<td><span class="badge '+(catColors[t.categoria]||'b-gray')+'" style="font-size:10px">'+(catLabels[t.categoria]||t.categoria||'—')+'</span></td>'
+            +'<td style="text-align:center;font-weight:700;font-size:13px;color:#2563eb">'+(t.duracion_minutos||'—')+' min</td>'
+            +'<td style="text-align:center">'
+              +'<span style="font-weight:700;color:'+(equiv>=1?'#16a34a':equiv>=0.33?'#f59e0b':'#94a3b8')+'">'+equivFrac+'</span>'
+              +'<span style="font-size:10px;color:#94a3b8;margin-left:4px">instal.</span>'
+            +'</td>'
+            +'<td><span class="badge '+(t.activo?'b-green':'b-gray')+'">'+(t.activo?'Activo':'Inactivo')+'</span></td>'
+            +'<td style="display:flex;gap:4px">'
+            +'<button class="btn btn-sm" style="font-size:11px" onclick="abrirModalTipoOT('+JSON.stringify(t).replace(/"/g,"\'").replace(/\'/g,"&#39;")+')" >✏️</button>'
+            +'<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarTipoOT('+t.id+',\''+t.nombre.replace(/'/g,'')+'\')">🗑️</button>'
+            +'</td></tr>';
+        }).join('')
+        +'</tbody></table></div>';
+    }
+    else if(tab==='estados'){
       const d=await sbGet('estados_ot','?order=orden_display')||[];
       el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
         +'<div style="font-size:12px;color:#64748b">'+d.length+' estados configurados</div>'
@@ -3835,6 +4071,50 @@ function abrirModalMaterial(m){
   }
   abrirModal('mat-modal');
   setTimeout(()=>document.getElementById('mat-nombre').focus(),100);
+}
+
+// ─── ABM TIPOS DE OT ───
+function abrirModalTipoOT(t){
+  document.getElementById('tot-id').value=t?.id||'';
+  document.getElementById('tot-nombre').value=t?.nombre||'';
+  document.getElementById('tot-duracion').value=t?.duracion_minutos||'';
+  document.getElementById('tot-equiv').value=t?.equivalencia_instalacion||'';
+  document.getElementById('tot-categoria').value=t?.categoria||'INSTALACION';
+  document.getElementById('tot-activo').value=t?.activo===false?'false':'true';
+  document.getElementById('tot-err').textContent='';
+  document.getElementById('tipo-ot-modal-title').textContent=(t?'Editar':'Nuevo')+' Tipo de OT';
+  abrirModal('tipo-ot-modal');
+  setTimeout(()=>document.getElementById('tot-nombre').focus(),100);
+}
+async function guardarTipoOT_cfg(){
+  const id=document.getElementById('tot-id').value;
+  const nombre=document.getElementById('tot-nombre').value.trim();
+  const duracion=parseInt(document.getElementById('tot-duracion').value)||null;
+  const equiv=parseFloat(document.getElementById('tot-equiv').value)||null;
+  const err=document.getElementById('tot-err');
+  if(!nombre){err.textContent='El nombre es obligatorio';return;}
+  if(!duracion){err.textContent='La duración es obligatoria';return;}
+  if(equiv===null||isNaN(equiv)){err.textContent='La equivalencia es obligatoria (ej: 1, 0.33, 0.17)';return;}
+  const data={
+    nombre,
+    duracion_minutos:duracion,
+    equivalencia_instalacion:equiv,
+    categoria:document.getElementById('tot-categoria').value,
+    activo:document.getElementById('tot-activo').value==='true'
+  };
+  try{
+    if(id)await sbPatch('tipos_ot','?id=eq.'+id,data);
+    else await sbPost('tipos_ot',data);
+    cerrarModal('tipo-ot-modal');
+    renderConfig('tipos-ot');
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+async function eliminarTipoOT(id, nombre){
+  if(!confirm('¿Eliminar el tipo "'+nombre+'"?\n⚠️ Solo eliminá si no tiene OTs asociadas.'))return;
+  try{
+    await sbFetch('tipos_ot','DELETE',null,'?id=eq.'+id);
+    renderConfig('tipos-ot');
+  }catch(e){alert('No se puede eliminar: '+e.message+'\n(Puede tener OTs asociadas. Desactivalo en su lugar.)');}
 }
 
 // ─── ABM ESTADOS ───
