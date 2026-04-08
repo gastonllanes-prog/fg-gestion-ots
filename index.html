@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v93</title>
+<title>FG Gestión OTs v94</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V93</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V94</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v93</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v94</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1423,7 +1423,7 @@ async function renderOTs(){
             const ids=[...(a||[]),...(b||[])].map(c=>c.id);
             const uniq=[...new Set(ids)];
             if(!uniq.length)return[];
-            return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${uniq.join(&eliminado=eq.false',')})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`);
+            return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${uniq.join(',')})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`);
           })
         );
         // Buscar por nodo
@@ -1874,7 +1874,7 @@ async function procesarPDFs(files){
   const existSet=new Set();
   for(let i=0;i<nums.length;i+=20){
     const lote=nums.slice(i,i+20);
-    try{const d=await sbGet('ordenes_trabajo',`?numero_ot=in.(${lote.join(&eliminado=eq.false',')})&select=numero_ot`)||[];d.forEach(x=>existSet.add(x.numero_ot));}catch(e){}
+    try{const d=await sbGet('ordenes_trabajo',`?numero_ot=in.(${lote.join(',')})&select=numero_ot`)||[];d.forEach(x=>existSet.add(x.numero_ot));}catch(e){}
   }
   todas.forEach(o=>o.existe=existSet.has(o.numero_ot));
   IMPORT_PREVIEW=todas;
@@ -3860,12 +3860,12 @@ async function renderClientes(){
       }else if(campo==='precinto'){
         const ots=await sbGet('ordenes_trabajo',`?select=cliente_id&tag=eq.${qe}&eliminado=eq.false`)||[];
         const ids=[...new Set(ots.map(o=>o.cliente_id).filter(Boolean))];
-        if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(&eliminado=eq.false',')})&order=apellido`)||[];
+        if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(',')})&order=apellido`)||[];
       }else if(campo==='ot'){
         const num=q.replace(/^005-0*/,'');
         const ots=await sbGet('ordenes_trabajo',`?select=cliente_id&numero_ot=ilike.*${encodeURIComponent(num)}*&eliminado=eq.false`)||[];
         const ids=[...new Set(ots.map(o=>o.cliente_id).filter(Boolean))];
-        if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(&eliminado=eq.false',')})&order=apellido`)||[];
+        if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(',')})&order=apellido`)||[];
       }
     }else{
       let p='?order=apellido&limit=100';
