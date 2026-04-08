@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v90</title>
+<title>FG Gestión OTs v92</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V90</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V92</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v90</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v92</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1379,13 +1379,80 @@ async function renderOTs(){
     const estFil=document.getElementById('ot-fil-estado').value;
     const q=document.getElementById('ot-search').value.trim().toLowerCase();
     const orderCol=OT_SORT==='numero_ot'?'numero_ot':OT_SORT==='tipo_tarea'?'tipo_tarea':'fecha_impresion';
-    let p=`?select=id,numero_ot,tipo_tarea,tipo_item,fecha_impresion,estado_id,estados_ot(nombre),grupos_ot(cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=${PAGE_SIZE}&offset=${OT_PAGE*PAGE_SIZE}`;
+    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,fecha_impresion,estado_id,estados_ot(nombre),grupos_ot(cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
-    if(tipo)p+=`&tipo_tarea=eq.${tipo}`;
-    else if(tipoItem)p+=`&tipo_item=eq.${tipoItem}`;
-    if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)p+=`&estado_id=eq.${eObj.id}`;}
-    let ots=await sbGet('ordenes_trabajo',p)||[];
-    if(q)ots=ots.filter(o=>(o.numero_ot||'').includes(q)||(o.clientes?.apellido||'').toLowerCase().includes(q)||(o.clientes?.nombre||'').toLowerCase().includes(q)||(o.clientes?.codigo_gigared||'').includes(q)||(o.clientes?.nodo||'').toLowerCase().includes(q)||(o.clientes?.telefono1||'').includes(q));
+    const extraFiltros=(()=>{let f='';if(tipo)f+=`&tipo_tarea=eq.${tipo}`;else if(tipoItem)f+=`&tipo_item=eq.${tipoItem}`;if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)f+=`&estado_id=eq.${eObj.id}`;}return f;})();
+
+    let ots=[];
+    if(q){
+      // Búsqueda server-side: 1) por numero_ot  2) por clientes que matcheen
+      const qNum=q.replace(/^0+/,'');
+      const esNumero=/^\d+$/.test(qNum);
+      const promesas=[];
+
+      // Siempre buscar por numero_ot (ilike)
+      promesas.push(sbGet('ordenes_trabajo',`?${SELECT_OTS}&numero_ot=ilike.*${q}*&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`));
+
+      if(esNumero){
+        // Buscar clientes por código gigared (contiene el número buscado)
+        promesas.push(
+          sbGet('clientes',`?codigo_gigared=ilike.*${qNum}*&select=id&limit=100`)
+            .then(clis=>{
+              if(!clis?.length)return[];
+              const ids=clis.map(c=>c.id).join(',');
+              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`);
+            })
+        );
+        // Buscar por telefono
+        promesas.push(
+          sbGet('clientes',`?telefono1=ilike.*${qNum}*&select=id&limit=100`)
+            .then(clis=>{
+              if(!clis?.length)return[];
+              const ids=clis.map(c=>c.id).join(',');
+              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`);
+            })
+        );
+      } else {
+        // Buscar clientes por apellido o nombre
+        promesas.push(
+          Promise.all([
+            sbGet('clientes',`?apellido=ilike.*${encodeURIComponent(q)}*&select=id&limit=100`),
+            sbGet('clientes',`?nombre=ilike.*${encodeURIComponent(q)}*&select=id&limit=100`)
+          ]).then(([a,b])=>{
+            const ids=[...(a||[]),...(b||[])].map(c=>c.id);
+            const uniq=[...new Set(ids)];
+            if(!uniq.length)return[];
+            return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${uniq.join(',')})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`);
+          })
+        );
+        // Buscar por nodo
+        promesas.push(
+          sbGet('clientes',`?nodo=ilike.*${encodeURIComponent(q)}*&select=id&limit=100`)
+            .then(clis=>{
+              if(!clis?.length)return[];
+              const ids=clis.map(c=>c.id).join(',');
+              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`);
+            })
+        );
+      }
+
+      const resultados=await Promise.all(promesas);
+      const seen=new Set();
+      for(const r of resultados){
+        for(const o of (r||[])){
+          if(!seen.has(o.id)){seen.add(o.id);ots.push(o);}
+        }
+      }
+      // Ordenar igual que server
+      ots.sort((a,b)=>{
+        const va=a[orderCol]||'';const vb=b[orderCol]||'';
+        return OT_SORT_DIR==='asc'?(va>vb?1:va<vb?-1:0):(va<vb?1:va>vb?-1:0);
+      });
+    } else {
+      // Sin búsqueda: paginación normal
+      let p=`?${SELECT_OTS}&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=${PAGE_SIZE}&offset=${OT_PAGE*PAGE_SIZE}${extraFiltros}`;
+      ots=await sbGet('ordenes_trabajo',p)||[];
+    }
     if(!ots.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div>No hay OTs. Importá un PDF para empezar.</div></div>';return;}
     const fmtDT=d=>{if(!d)return'—';try{const dt=new Date(d);return dt.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' '+dt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});}catch(e){return'—';}};
     const sortIcon=col=>`<span class="sort-icon">${OT_SORT===col?(OT_SORT_DIR==='asc'?'↑':'↓'):'↕'}</span>`;
@@ -1790,11 +1857,24 @@ function parsearPag(txt){
   const telArr=[...tels].filter(t=>!t.startsWith('2026')&&!t.startsWith('2025'));
   ot.telefono1=telArr[0]||'';ot.telefono2=telArr[1]||'';
 
-  // OBS GIGARED: solo para instalaciones (REPARAR lo setea desde obs_trabajo al final)
+  // OBS GIGARED: capturar texto libre que aparece antes del código de cliente en el PDF
+  // Puede empezar con cualquier palabra — no limitamos a trigger words
   if(ot.tipo_tarea!=='REPARACION'){
-    const rObsPat=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio|cambio\s+(?:de\s+)?tec?nolog|CAMBIO\s+TECNOLOG|\d+\s+bocas?|Alta\s+web|cliente\s+solicita)[^\n\r]{3,100}?)(?=\s+(?:Asignaci[oó]n:|\d{11}|Materiales|Nombre\s+del)|\s*$)/i;
-    const mObs=txt.match(rObsPat);
-    if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim();
+    // Estrategia 1: texto antes del código de cliente (005003XXXXXX) que no sea un campo estructural
+    const mObsZone=txt.match(/Materiales\s*:\s*\n?([\s\S]{5,200}?)\s*(?=\d{11}|\n{2,}|Asignaci[oó]n:)/i);
+    if(mObsZone){
+      const candidato=mObsZone[1].replace(/\s+/g,' ').trim();
+      // Descartar si es puro número de teléfono o campo técnico
+      if(candidato.length>5&&!/^\d+$/.test(candidato)&&!/^(?:Tag:|DIGITAL|CATV|Emisi[oó]n)/.test(candidato)){
+        ot.obs_gigared=candidato.substring(0,150);
+      }
+    }
+    // Estrategia 2 (fallback): trigger words conocidas
+    if(!ot.obs_gigared){
+      const rObsPat=/((?:Contrata|ALTAS\s*WEB|solicita|agrega|Por\s+cambio|cambio\s+(?:de\s+)?tec?nolog|CAMBIO\s+TECNOLOG|\d+\s+bocas?|Alta\s+web|cliente\s+solicita|con\s+cargo|sin\s+cargo)[^\n\r]{3,120}?)(?=\s+(?:Asignaci[oó]n:|\d{11}|Materiales|Nombre\s+del)|\s*$)/i;
+      const mObs=txt.match(rObsPat);
+      if(mObs)ot.obs_gigared=mObs[1].replace(/\s+/g,' ').trim();
+    }
   }
 
   // CAMPOS ESPECÍFICOS DE REPARACIÓN
@@ -1869,8 +1949,9 @@ function detectarItems(txt,tipoTarea,esActivo){
   // DECODIFICADOR_ADJ: cliente nuevo (Conexión Pendiente) — precio más bajo
   // DECODIFICADOR: cliente existente (Activo) — precio normal
   else if(/Deco\s+Digital\s+HD/i.test(txt)){tipo_item=esActivo?'DECODIFICADOR':'DECODIFICADOR_ADJ';}
-  else if(/\bGigacam\b/i.test(txt))tipo_item='GIGACAM';
-  else if(/\bSMART\s+CARD\b/i.test(txt))tipo_item='SMART_CARD';
+  // GIGACAM y SMART_CARD: buscar en bloque de materiales para no matchear el template de mano de obra
+  else if(/\bGigacam\b/i.test(bloque)||/Camara\s+IP\s+Macroplus/i.test(bloque))tipo_item='GIGACAM';
+  else if(/\bSMART\s+CARD\b/i.test(bloque))tipo_item='SMART_CARD';
   else if(/\bONU\b/i.test(txt)&&/\bFO\s+\d+\/\d+\s+MB\b/i.test(txt))tipo_item='ONU';
   // BOCA_ADICIONAL y CABLEMODEM: buscar SOLO en bloque de materiales
   else if(/\bBoca\s+Adicional\b/i.test(bloque))tipo_item='BOCA_ADICIONAL';
