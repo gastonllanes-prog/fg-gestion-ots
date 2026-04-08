@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v89</title>
+<title>FG Gestión OTs v90</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V89</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V90</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v89</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v90</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1844,12 +1844,18 @@ function detectarItems(txt,tipoTarea,esActivo){
     return{items:[],tipo_item};
   }
 
-  // Detección en orden de especificidad
+  // Extraer bloque de materiales (entre "Cantidad Descripción" y "Mano de obra")
+  // IMPORTANTE: BOCA_ADICIONAL y CABLEMODEM se buscan SOLO en este bloque,
+  // nunca en txt completo, porque el template de Mano de obra lista TODOS los
+  // tipos posibles siempre (incluye "Cablemodem", "boca adic.", etc.)
+  const _ini=txt.search(/[Cc]antidad\s+[Dd]escripci[oó]n/);
+  const _fin=txt.search(/[Mm]ano\s+de\s+obra/);
+  const bloque=_ini>-1&&_fin>_ini?txt.slice(_ini,_fin):txt.slice(0,600);
 
+  // Detección en orden de especificidad
   // RECONEXION: marker estructural "(RECONEXION)" puesto por Gigared en el campo Usuario
-  // Es el más confiable — no depende del operador
   const esReconexion=/\(RECONEXION\)/i.test(txt);
-  const tieneCMoONU=/\bCablemodem\b|\bCM\s+[\d]+|\bONU\b/i.test(txt);
+  const tieneCMoONU=/\bCablemodem\b|\bCM\s+[\d]+|\bONU\b/i.test(bloque);
   if(esReconexion){
     tipo_item=tieneCMoONU?'RECONEXION_EQUIPO':'RECONEXION';
   }
@@ -1858,25 +1864,20 @@ function detectarItems(txt,tipoTarea,esActivo){
   else if(/\bTV[-\s]?BOX\b/i.test(txt)||/SETOP[-\s]?BOX/i.test(txt))tipo_item='TV_BOX';
   // CAMBIO_TECNOLOGIA: regla estructural — Activo + ONU + FO + SIN Instalacion Basica
   else if(esActivo&&/\bONU\b/i.test(txt)&&/\bFO\s+[\d]+[\/\s][\d]+\s*MB\b/i.test(txt)&&!/\bInstalaci[oó]n\s+[Bb][aá]sica\b/i.test(txt))tipo_item='CAMBIO_TECNOLOGIA';
-  // AGREGA_TV: cliente Activo agrega TV sin instalación nueva
+  // AGREGA_TV
   else if(/agrega\s+servicio\s+(?:de\s+)?tv|cl\s+agrega|agrega\s+tv/i.test(txt))tipo_item='AGREGA_TV';
   // DECODIFICADOR_ADJ: cliente nuevo (Conexión Pendiente) — precio más bajo
   // DECODIFICADOR: cliente existente (Activo) — precio normal
   else if(/Deco\s+Digital\s+HD/i.test(txt)){tipo_item=esActivo?'DECODIFICADOR':'DECODIFICADOR_ADJ';}
-  // GIGACAM
   else if(/\bGigacam\b/i.test(txt))tipo_item='GIGACAM';
   else if(/\bSMART\s+CARD\b/i.test(txt))tipo_item='SMART_CARD';
   else if(/\bONU\b/i.test(txt)&&/\bFO\s+\d+\/\d+\s+MB\b/i.test(txt))tipo_item='ONU';
-  // BOCA_ADICIONAL: antes de CM porque el template de mano de obra siempre contiene "Cablemodem"
-  else if(/\bBoca\s+Adicional\b/i.test(txt))tipo_item='BOCA_ADICIONAL';
-  else if(/\bCablemodem\b|\bCM\s+\d+[\/\s]\d+\s+MB\b/i.test(txt)){
+  // BOCA_ADICIONAL y CABLEMODEM: buscar SOLO en bloque de materiales
+  else if(/\bBoca\s+Adicional\b/i.test(bloque))tipo_item='BOCA_ADICIONAL';
+  else if(/\bCablemodem\b|\bCM\s+\d+[\/\s]\d+\s+MB\b/i.test(bloque)){
     tipo_item=esActivo?'CM_EXISTENTE':'CABLEMODEM';
   }
 
-  // Parsear ítems del bloque Cantidad/Descripción
-  const ini=txt.search(/[Cc]antidad\s+[Dd]escripci[oó]n/);
-  const fin=txt.search(/[Mm]ano\s+de\s+obra/);
-  const bloque=ini>-1&&fin>ini?txt.slice(ini,fin):txt.slice(0,600);
   const vistos=new Set();
   const rItem=/(\b[1-9]\b)\s+(?:[1-9]\s+)?([A-Za-z\u00C0-\u024F][A-Za-z\u00C0-\u024F\s\/\.\(\)\-]{3,70}?)(?=\s{3,}|\s+\b[1-9]\b|$)/g;
   let mI;
