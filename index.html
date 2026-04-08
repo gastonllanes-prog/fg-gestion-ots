@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v88</title>
+<title>FG Gestión OTs v89</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V88</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V89</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v88</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v89</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1867,11 +1867,11 @@ function detectarItems(txt,tipoTarea,esActivo){
   else if(/\bGigacam\b/i.test(txt))tipo_item='GIGACAM';
   else if(/\bSMART\s+CARD\b/i.test(txt))tipo_item='SMART_CARD';
   else if(/\bONU\b/i.test(txt)&&/\bFO\s+\d+\/\d+\s+MB\b/i.test(txt))tipo_item='ONU';
+  // BOCA_ADICIONAL: antes de CM porque el template de mano de obra siempre contiene "Cablemodem"
+  else if(/\bBoca\s+Adicional\b/i.test(txt))tipo_item='BOCA_ADICIONAL';
   else if(/\bCablemodem\b|\bCM\s+\d+[\/\s]\d+\s+MB\b/i.test(txt)){
     tipo_item=esActivo?'CM_EXISTENTE':'CABLEMODEM';
   }
-  // BOCA_ADICIONAL: Activo + "Boca Adicional" + SIN Instalacion Basica (ya cubierta arriba)
-  else if(/\bBoca\s+Adicional\b/i.test(txt))tipo_item='BOCA_ADICIONAL';
 
   // Parsear ítems del bloque Cantidad/Descripción
   const ini=txt.search(/[Cc]antidad\s+[Dd]escripci[oó]n/);
