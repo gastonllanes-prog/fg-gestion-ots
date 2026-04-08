@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v92</title>
+<title>FG Gestión OTs v93</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V92</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V93</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v92</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v93</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -385,6 +385,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div style="margin-left:auto;display:flex;gap:8px">
       <button class="btn btn-sm btn-primary" onclick="abrirImportarPDF()">📄 Importar PDF</button>
       <button class="btn btn-sm" onclick="abrirManual()">+ Manual</button>
+      <button class="btn btn-sm" style="color:#dc2626;border-color:#fca5a5" onclick="verEliminados()">🗑️ Eliminados</button>
     </div>
   </div>
   <div class="search-bar">
@@ -1315,7 +1316,7 @@ function irAConFiltro(tipo,isItem=false){
 // DASHBOARD
 async function renderDashboard(){
   try{
-    const all=await sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,estados_ot(nombre)&limit=5000')||[];
+    const all=await sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,estados_ot(nombre)&limit=5000&eliminado=eq.false')||[];
     const hoy=new Date().toISOString().slice(0,10);
     let p=0,a=0,f=0,r=0;
     const tc={};
@@ -1350,8 +1351,8 @@ async function renderDashboard(){
     // Reconexiones = RECONEXION + RECONEXION_EQUIPO
     const elRec=g('dash-t-recon');if(elRec)elRec.textContent=(tc['RECONEXION']||0)+(tc['RECONEXION_EQUIPO']||0);
     const pEstado=ESTADOS.find(e=>e.nombre==='PENDIENTE');
-    const pend=pEstado?await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&estado_id=eq.${pEstado.id}&order=fecha_impresion.asc.nullslast&limit=8`)||[]:[];
-    const hoyOTs=await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&fecha_impresion=gte.${hoy}T00:00:00&order=fecha_impresion`)||[];
+    const pend=pEstado?await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&estado_id=eq.${pEstado.id}&order=fecha_impresion.asc.nullslast&limit=8&eliminado=eq.false`)||[]:[];
+    const hoyOTs=await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&fecha_impresion=gte.${hoy}T00:00:00&order=fecha_impresion&eliminado=eq.false`)||[];
     renderMini('dash-lista-pend',pend);
     renderMini('dash-lista-hoy',hoyOTs);
   }catch(e){console.error(e);document.getElementById('dash-lista-pend').innerHTML='<div class="empty-state"><div style="color:#dc2626;font-size:12px">Error: '+e.message+'</div></div>';document.getElementById('dash-lista-hoy').innerHTML='<div class="empty-state"><div style="color:#dc2626;font-size:12px">Error: '+e.message+'</div></div>';}
@@ -1391,47 +1392,47 @@ async function renderOTs(){
       const promesas=[];
 
       // Siempre buscar por numero_ot (ilike)
-      promesas.push(sbGet('ordenes_trabajo',`?${SELECT_OTS}&numero_ot=ilike.*${q}*&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`));
+      promesas.push(sbGet('ordenes_trabajo',`?${SELECT_OTS}&numero_ot=ilike.*${q}*&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`));
 
       if(esNumero){
         // Buscar clientes por código gigared (contiene el número buscado)
         promesas.push(
-          sbGet('clientes',`?codigo_gigared=ilike.*${qNum}*&select=id&limit=100`)
+          sbGet('clientes',`?codigo_gigared=ilike.*${qNum}*&select=id&limit=100&eliminado=eq.false`)
             .then(clis=>{
               if(!clis?.length)return[];
               const ids=clis.map(c=>c.id).join(',');
-              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`);
+              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`);
             })
         );
         // Buscar por telefono
         promesas.push(
-          sbGet('clientes',`?telefono1=ilike.*${qNum}*&select=id&limit=100`)
+          sbGet('clientes',`?telefono1=ilike.*${qNum}*&select=id&limit=100&eliminado=eq.false`)
             .then(clis=>{
               if(!clis?.length)return[];
               const ids=clis.map(c=>c.id).join(',');
-              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`);
+              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`);
             })
         );
       } else {
         // Buscar clientes por apellido o nombre
         promesas.push(
           Promise.all([
-            sbGet('clientes',`?apellido=ilike.*${encodeURIComponent(q)}*&select=id&limit=100`),
-            sbGet('clientes',`?nombre=ilike.*${encodeURIComponent(q)}*&select=id&limit=100`)
+            sbGet('clientes',`?apellido=ilike.*${encodeURIComponent(q)}*&select=id&limit=100&eliminado=eq.false`),
+            sbGet('clientes',`?nombre=ilike.*${encodeURIComponent(q)}*&select=id&limit=100&eliminado=eq.false`)
           ]).then(([a,b])=>{
             const ids=[...(a||[]),...(b||[])].map(c=>c.id);
             const uniq=[...new Set(ids)];
             if(!uniq.length)return[];
-            return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${uniq.join(',')})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`);
+            return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${uniq.join(&eliminado=eq.false',')})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`);
           })
         );
         // Buscar por nodo
         promesas.push(
-          sbGet('clientes',`?nodo=ilike.*${encodeURIComponent(q)}*&select=id&limit=100`)
+          sbGet('clientes',`?nodo=ilike.*${encodeURIComponent(q)}*&select=id&limit=100&eliminado=eq.false`)
             .then(clis=>{
               if(!clis?.length)return[];
               const ids=clis.map(c=>c.id).join(',');
-              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}`);
+              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`);
             })
         );
       }
@@ -1522,12 +1523,12 @@ async function verOT(num){
   const footer=document.getElementById('ot-modal-footer');
   body.innerHTML='<div class="loading"><span class="spinner"></span></div>';footer.innerHTML='';
   try{
-    const ots=await sbGet('ordenes_trabajo',`?numero_ot=eq.${num}&select=*,clientes(*),estados_ot(*),grupos_ot(*,cuadrillas(*))`)||[];
+    const ots=await sbGet('ordenes_trabajo',`?numero_ot=eq.${num}&select=*,clientes(*),estados_ot(*),grupos_ot(*,cuadrillas(*))&eliminado=eq.false`)||[];
     if(!ots.length){body.innerHTML='<p>OT no encontrada</p>';return;}
     const ot=ots[0];
     const items=await sbGet('ot_items_contratados',`?ot_id=eq.${ot.id}`)||[];
     let grupo=[];
-    if(ot.grupo_id)grupo=await sbGet('ordenes_trabajo',`?grupo_id=eq.${ot.grupo_id}&select=numero_ot,tipo_item,estados_ot(nombre)&order=orden_cierre`)||[];
+    if(ot.grupo_id)grupo=await sbGet('ordenes_trabajo',`?grupo_id=eq.${ot.grupo_id}&select=numero_ot,tipo_item,estados_ot(nombre)&order=orden_cierre&eliminado=eq.false`)||[];
     const cl=ot.clientes||{};
     const esRep=ot.tipo_tarea==='REPARACION';
     const domCalle=cl.calle||'';
@@ -1596,6 +1597,10 @@ async function verOT(num){
       if(est==='ASIGNADA'||est==='EN_PROCESO')btns+=`<button class="btn btn-green" onclick="abrirCierre(${ot.id},'${ot.numero_ot}','${ot.tipo_tarea||''}')">✓ Cerrar</button>`;
     }
     btns+=`<button class="btn btn-sm" style="margin-left:auto;font-size:11px;color:#64748b" onclick="editarTipoOT(${ot.id},'${ot.tipo_item||''}','${ot.tipo_tarea||''}')">✏️ Tipo</button>`;
+    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarOT(${ot.id})">✏️ Editar OT</button>`;
+    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarCliente(${cl.id})">👤 Editar cliente</button>`;
+    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626" onclick="eliminarOT(${ot.id},'${ot.numero_ot}',${ot.grupo_id||'null'})">🗑️ Eliminar OT</button>`;
+    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626" onclick="eliminarCliente(${cl.id},'${(cl.apellido||'')+' '+(cl.nombre||'')}')">🗑️ Eliminar cliente</button>`;
     footer.innerHTML=btns;
   }catch(e){body.innerHTML=`<p style="color:#dc2626">${e.message}</p>`;}
 }
@@ -1658,6 +1663,188 @@ async function guardarTipoOT(otId){
   }catch(e){err.textContent='Error: '+e.message;}
 }
 
+
+// ─── EDITAR OT COMPLETA ───────────────────────────────────────────────────────
+async function editarOT(otId){
+  const ots=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=*&eliminado=eq.false`)||[];
+  if(!ots.length)return;
+  const ot=ots[0];
+  const html=`
+    <div style="display:flex;flex-direction:column;gap:.75rem;padding:.5rem 0">
+      <div class="fg"><label>Obs Gigared</label><textarea id="eo-obs" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical">${ot.obs_gigared||''}</textarea></div>
+      <div class="fg"><label>Tag / Precinto</label><input id="eo-tag" value="${ot.tag||''}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div class="fg"><label>Fecha emisión Gigared</label><input id="eo-femision" type="date" value="${(ot.fecha_emision||'').slice(0,10)}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+        <div class="fg"><label>Fecha asignación Gigared</label><input id="eo-fasig" type="date" value="${(ot.fecha_asignacion_giga||'').slice(0,10)}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+      </div>
+      <p id="eo-err" class="err-msg"></p>
+    </div>`;
+  mostrarModal2('Editar OT '+numOT(ot.numero_ot), html, async ()=>{
+    const patch={
+      obs_gigared:document.getElementById('eo-obs').value.trim()||null,
+      tag:document.getElementById('eo-tag').value.trim()||null,
+      fecha_emision:document.getElementById('eo-femision').value||null,
+      fecha_asignacion_giga:document.getElementById('eo-fasig').value||null,
+    };
+    try{
+      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,patch);
+      cerrarModal('modal2');
+      verOT(ot.numero_ot);
+    }catch(e){document.getElementById('eo-err').textContent=e.message;}
+  },'Guardar');
+}
+
+// ─── EDITAR CLIENTE ───────────────────────────────────────────────────────────
+async function editarCliente(cliId){
+  const clis=await sbGet('clientes',`?id=eq.${cliId}&select=*&eliminado=eq.false`)||[];
+  if(!clis.length)return;
+  const cl=clis[0];
+  const html=`
+    <div style="display:flex;flex-direction:column;gap:.75rem;padding:.5rem 0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div class="fg"><label>Apellido</label><input id="ec-ape" value="${cl.apellido||''}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+        <div class="fg"><label>Nombre</label><input id="ec-nom" value="${cl.nombre||''}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:.75rem">
+        <div class="fg"><label>Calle</label><input id="ec-calle" value="${cl.calle||''}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+        <div class="fg"><label>Número</label><input id="ec-num" value="${cl.numero_domicilio||''}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div class="fg"><label>Barrio</label><input id="ec-barrio" value="${cl.barrio||''}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+        <div class="fg"><label>Localidad</label><input id="ec-loc" value="${cl.localidad||''}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem">
+        <div class="fg"><label>Teléfono 1</label><input id="ec-tel1" value="${cl.telefono1||''}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+        <div class="fg"><label>Teléfono 2</label><input id="ec-tel2" value="${cl.telefono2||''}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+        <div class="fg"><label>Nodo</label><input id="ec-nodo" value="${cl.nodo||''}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px"/></div>
+      </div>
+      <p id="ec-err" class="err-msg"></p>
+    </div>`;
+  mostrarModal2('Editar cliente '+fmtCodigo(cl.codigo_gigared), html, async ()=>{
+    const patch={
+      apellido:document.getElementById('ec-ape').value.trim(),
+      nombre:document.getElementById('ec-nom').value.trim(),
+      calle:document.getElementById('ec-calle').value.trim(),
+      numero_domicilio:document.getElementById('ec-num').value.trim(),
+      barrio:document.getElementById('ec-barrio').value.trim(),
+      localidad:document.getElementById('ec-loc').value.trim(),
+      telefono1:document.getElementById('ec-tel1').value.trim(),
+      telefono2:document.getElementById('ec-tel2').value.trim(),
+      nodo:document.getElementById('ec-nodo').value.trim(),
+    };
+    try{
+      await sbPatch('clientes',`?id=eq.${cliId}`,patch);
+      cerrarModal('modal2');
+      renderOTs();
+    }catch(e){document.getElementById('ec-err').textContent=e.message;}
+  },'Guardar');
+}
+
+// ─── ELIMINAR OT (soft delete) ────────────────────────────────────────────────
+async function eliminarOT(otId, numOt, grupoId){
+  const conf=confirm(`¿Eliminar OT ${numOT(numOt)}?\nVa a quedar guardada y se puede recuperar después.`);
+  if(!conf)return;
+  try{
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{eliminado:true});
+    // Si es la única OT del grupo, eliminar el grupo también
+    if(grupoId){
+      const restantes=await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&eliminado=eq.false`)||[];
+      if(!restantes.length) await sbPatch('grupos_ot',`?id=eq.${grupoId}`,{eliminado:true});
+    }
+    cerrarModal('ot-modal');
+    renderOTs();
+    showToast('OT eliminada (recuperable)','info');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// ─── ELIMINAR CLIENTE completo (soft delete) ──────────────────────────────────
+async function eliminarCliente(cliId, nombre){
+  const conf=confirm(`¿Eliminar cliente "${nombre.trim()}" y TODAS sus OTs?\nVan a quedar guardados y se pueden recuperar después.`);
+  if(!conf)return;
+  const conf2=confirm('Confirmación final: se van a marcar como eliminados el cliente y todas sus órdenes de trabajo.');
+  if(!conf2)return;
+  try{
+    await sbPatch('ordenes_trabajo',`?cliente_id=eq.${cliId}`,{eliminado:true});
+    await sbPatch('grupos_ot',`?cliente_id=eq.${cliId}`,{eliminado:true});
+    await sbPatch('clientes',`?id=eq.${cliId}`,{eliminado:true});
+    cerrarModal('ot-modal');
+    renderOTs();
+    showToast('Cliente y OTs eliminados (recuperables)','info');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// ─── RECUPERAR OT / CLIENTE ───────────────────────────────────────────────────
+async function verEliminados(){
+  const ots=await sbGet('ordenes_trabajo','?eliminado=eq.true&select=id,numero_ot,tipo_item,clientes(codigo_gigared,apellido,nombre)&order=created_at.desc&limit=200')||[];
+  if(!ots.length){showToast('No hay OTs eliminadas','info');return;}
+  const filas=ots.map(o=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border2);gap:8px">
+      <div>
+        <span style="font-weight:700;color:#2563eb">${numOT(o.numero_ot)}</span>
+        <span style="font-size:12px;color:#64748b;margin-left:8px">${o.clientes?.apellido||''} ${o.clientes?.nombre||''}</span>
+        <span style="font-size:11px;color:#94a3b8;margin-left:6px">${o.tipo_item||''}</span>
+      </div>
+      <button class="btn btn-sm btn-green" style="font-size:11px;white-space:nowrap" onclick="recuperarOT(${o.id},'${o.numero_ot}')">↩ Recuperar</button>
+    </div>`).join('');
+  mostrarModal2('OTs eliminadas ('+ots.length+')',`<div style="max-height:60vh;overflow-y:auto">${filas}</div>`,null,'Cerrar');
+}
+
+async function recuperarOT(otId, numOt){
+  try{
+    const ots=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=grupo_id&eliminado=eq.true`)||[];
+    const grupoId=ots[0]?.grupo_id;
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{eliminado:false});
+    if(grupoId) await sbPatch('grupos_ot',`?id=eq.${grupoId}`,{eliminado:false});
+    showToast('OT '+numOT(numOt)+' recuperada','ok');
+    verEliminados();
+    renderOTs();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// ─── MODAL GENÉRICO SECUNDARIO (modal2) ───────────────────────────────────────
+function mostrarModal2(titulo, html, onConfirm, btnLabel='Guardar'){
+  let m=document.getElementById('modal2');
+  if(!m){
+    m=document.createElement('div');m.id='modal2';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;display:flex;align-items:center;justify-content:center;padding:1rem';
+    m.innerHTML=`<div style="background:#fff;border-radius:16px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border2)">
+        <div id="modal2-titulo" style="font-size:16px;font-weight:800;color:#1e293b"></div>
+        <button onclick="cerrarModal('modal2')" style="background:none;border:none;cursor:pointer;font-size:18px;color:#64748b">✕</button>
+      </div>
+      <div id="modal2-body" style="padding:1.25rem 1.5rem"></div>
+      <div style="display:flex;gap:8px;padding:1rem 1.5rem;border-top:1px solid var(--border2);justify-content:flex-end">
+        <button class="btn" onclick="cerrarModal('modal2')">Cancelar</button>
+        <button id="modal2-confirm" class="btn btn-primary">Guardar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+  }
+  document.getElementById('modal2-titulo').textContent=titulo;
+  document.getElementById('modal2-body').innerHTML=html;
+  const confirmBtn=document.getElementById('modal2-confirm');
+  if(onConfirm){
+    confirmBtn.textContent=btnLabel;
+    confirmBtn.style.display='';
+    confirmBtn.onclick=onConfirm;
+    // Remove cancel button if no action
+    m.querySelector('.btn:not(#modal2-confirm)').style.display='';
+  } else {
+    confirmBtn.style.display='none';
+    m.querySelector('.btn:not(#modal2-confirm)').textContent=btnLabel;
+  }
+  m.style.display='flex';
+}
+
+// ─── TOAST HELPER ─────────────────────────────────────────────────────────────
+function showToast(msg, tipo='ok'){
+  let t=document.getElementById('toast-msg');
+  if(!t){t=document.createElement('div');t.id='toast-msg';t.style.cssText='position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);padding:.6rem 1.25rem;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:opacity .3s';document.body.appendChild(t);}
+  t.style.background=tipo==='ok'?'#16a34a':tipo==='info'?'#2563eb':'#dc2626';
+  t.style.color='#fff';t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._timer);t._timer=setTimeout(()=>{t.style.opacity='0';},3000);
+}
+
 // IMPORTAR PDF
 function abrirImportarPDF(){resetImport();abrirModal('import-modal');}
 function resetImport(){
@@ -1687,7 +1874,7 @@ async function procesarPDFs(files){
   const existSet=new Set();
   for(let i=0;i<nums.length;i+=20){
     const lote=nums.slice(i,i+20);
-    try{const d=await sbGet('ordenes_trabajo',`?numero_ot=in.(${lote.join(',')})&select=numero_ot`)||[];d.forEach(x=>existSet.add(x.numero_ot));}catch(e){}
+    try{const d=await sbGet('ordenes_trabajo',`?numero_ot=in.(${lote.join(&eliminado=eq.false',')})&select=numero_ot`)||[];d.forEach(x=>existSet.add(x.numero_ot));}catch(e){}
   }
   todas.forEach(o=>o.existe=existSet.has(o.numero_ot));
   IMPORT_PREVIEW=todas;
@@ -2026,7 +2213,7 @@ async function confirmarImport(){
     for(const[,gr] of Object.entries(porCli)){
       let cliId=null;
       if(gr[0].codigo_cliente){
-        const ex=await sbGet('clientes',`?codigo_gigared=eq.${gr[0].codigo_cliente}`)||[];
+        const ex=await sbGet('clientes',`?codigo_gigared=eq.${gr[0].codigo_cliente}&eliminado=eq.false`)||[];
         if(ex.length){
           cliId=ex[0].id;
           const upd={};
@@ -2091,7 +2278,7 @@ async function guardarManual(){
     const tipo=document.getElementById('m-tipo').value;
     let cliId=null;
     if(cod){
-      const ex=await sbGet('clientes',`?codigo_gigared=eq.${cod}`)||[];
+      const ex=await sbGet('clientes',`?codigo_gigared=eq.${cod}&eliminado=eq.false`)||[];
       if(ex.length)cliId=ex[0].id;
       else{
         const calle=document.getElementById('m-calle').value.trim();
@@ -2101,7 +2288,7 @@ async function guardarManual(){
         cliId=(Array.isArray(c)?c[0]:c)?.id;
       }
     }
-    const ex=await sbGet('ordenes_trabajo',`?numero_ot=eq.${num}`)||[];
+    const ex=await sbGet('ordenes_trabajo',`?numero_ot=eq.${num}&eliminado=eq.false`)||[];
     if(ex.length){err.textContent='Ya existe esa OT';return;}
     const g=await sbPost('grupos_ot',{cliente_id:cliId,estado_id:ePend?.id});
     const gId=(Array.isArray(g)?g[0]:g)?.id;
@@ -2139,7 +2326,7 @@ async function guardarEstado(){
   const eid=parseInt(sel.value);const mid=document.getElementById('est-motivo').value;
   const obs=document.getElementById('est-obs').value.trim();const err=document.getElementById('est-err');
   try{
-    const ot=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id`)||[];
+    const ot=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id&eliminado=eq.false`)||[];
     await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eid});
     await sbPost('historial_estados_ot',{ot_id:parseInt(otId),estado_anterior_id:ot[0]?.estado_id,estado_nuevo_id:eid,motivo_id:mid?parseInt(mid):null,observacion:obs||null,usuario_id:CU.id});
     cerrarModal('estado-modal');cerrarModal('ot-modal');renderOTs();
@@ -2155,7 +2342,7 @@ async function imprimirOrdenesProgramadas(){
 
   // Traer todos los grupos asignados para esa fecha con sus OTs
   const grupos=await sbGet('grupos_ot',
-    `?fecha_trabajo=eq.${fecha}&select=id,horario_visita,duracion_minutos,cuadrillas(nombre),ordenes_trabajo(numero_ot,tipo_tarea,tipo_item,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo)),observaciones&order=cuadrillas(nombre),horario_visita`
+    `?fecha_trabajo=eq.${fecha}&select=id,horario_visita,duracion_minutos,cuadrillas(nombre),ordenes_trabajo(numero_ot,tipo_tarea,tipo_item,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo)),observaciones&order=cuadrillas(nombre),horario_visita&eliminado=eq.false`
   )||[];
 
   if(!grupos.length){alert('No hay órdenes programadas para el '+new Date(fecha+'T12:00:00').toLocaleDateString('es-AR'));return;}
@@ -2465,7 +2652,7 @@ async function abrirResumenAsignacion(){
   cont.innerHTML='<div class="loading"><span class="spinner"></span></div>';
 
   // Calcular slots en cascada
-  const asigExist=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadId}&fecha_trabajo=eq.${fecha}&select=horario_visita,duracion_minutos`)||[];
+  const asigExist=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadId}&fecha_trabajo=eq.${fecha}&select=horario_visita,duracion_minutos&eliminado=eq.false`)||[];
   const ocupBase=new Set();
   asigExist.forEach(a=>{
     if(!a.horario_visita)return;
@@ -2582,7 +2769,7 @@ async function confirmarAsignacion(){
       const gid=typeof g.gid==='number'?g.gid:parseInt(g.gid);
       if(gid){
         // Traer obs anteriores para acumular historial
-        const gAct=await sbGet('grupos_ot',`?id=eq.${gid}&select=observaciones`).then(d=>d?.[0]);
+        const gAct=await sbGet('grupos_ot',`?id=eq.${gid}&select=observaciones&eliminado=eq.false`).then(d=>d?.[0]);
         const entrada=`[${ts}] Asignada a ${window._ASGN_CUAD?.nombre} — ${fechaDisplay} ${g.hora?formatHora12(g.hora):''}`;
         const obsAcum=(gAct?.observaciones?gAct.observaciones+'\n':'')+entrada;
         await sbPatch('grupos_ot',`?id=eq.${gid}`,{
@@ -2710,7 +2897,7 @@ async function volverAPendiente(grupoId){
 
   try{
     // Traer datos del grupo para el historial
-    const g=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=fecha_trabajo,horario_visita,cuadrillas(nombre),ordenes_trabajo(id,numero_ot)`).then(d=>d?.[0]);
+    const g=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=fecha_trabajo,horario_visita,cuadrillas(nombre),ordenes_trabajo(id,numero_ot)&eliminado=eq.false`).then(d=>d?.[0]);
     const cuadNombre=g?.cuadrillas?.nombre||'—';
     const fechaProg=g?.fecha_trabajo||'—';
     const horaProg=g?.horario_visita||'—';
@@ -2720,7 +2907,7 @@ async function volverAPendiente(grupoId){
     const entrada=`[${timestamp}] Devuelta a PENDIENTE desde ${cuadNombre} (${fechaProg} ${horaProg}). Motivo: ${obs.trim()}`;
 
     // Obtener observaciones anteriores
-    const gActual=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=observaciones`).then(d=>d?.[0]);
+    const gActual=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=observaciones&eliminado=eq.false`).then(d=>d?.[0]);
     const obsAcum=(gActual?.observaciones?gActual.observaciones+'\n':'')+entrada;
 
     // Actualizar grupo
@@ -2752,7 +2939,7 @@ async function cambiarEstadoGrupo(grupoId, nuevoEstado){
 }
 
 async function abrirReasignarDesdeAsignadas(grupoId){
-  const g=await sbGet('grupos_ot','?id=eq.'+grupoId+'&select=id,cuadrillas(nombre),ordenes_trabajo(tipo_tarea,clientes(codigo_gigared,apellido,nombre))').then(d=>d?.[0]);
+  const g=await sbGet('grupos_ot','?id=eq.&eliminado=eq.false'+grupoId+'&select=id,cuadrillas(nombre),ordenes_trabajo(tipo_tarea,clientes(codigo_gigared,apellido,nombre))').then(d=>d?.[0]);
   if(!g)return;
   const ots=g.ordenes_trabajo||[];
   const cl=ots[0]?.clientes;
@@ -2817,7 +3004,7 @@ async function generarSlots(cuadId, fecha, durMin){
   const desde=fecha+'T00:00:00';
   const hasta=fecha+'T23:59:59';
   // Traer grupos ya asignados ese día
-  const asig=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadId}&fecha_trabajo=eq.${fecha}&estado_id=not.is.null&select=horario_visita,duracion_minutos`)||[];
+  const asig=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadId}&fecha_trabajo=eq.${fecha}&estado_id=not.is.null&select=horario_visita,duracion_minutos&eliminado=eq.false`)||[];
 
   // Ocupar slots de 07:30 a 18:00
   const INICIO=8*60; // 08:00
@@ -2858,7 +3045,7 @@ async function abrirAsignarGrupo(grupoIds, tipos){
 
   // Traer datos de los grupos
   const grupos=await Promise.all(
-    grupoIds.map(gid=>sbGet('grupos_ot',`?id=eq.${gid}&select=id,clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,nodo),ordenes_trabajo(tipo_tarea,tipo_item)`).then(d=>d?.[0]))
+    grupoIds.map(gid=>sbGet('grupos_ot',`?id=eq.${gid}&select=id,clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,nodo),ordenes_trabajo(tipo_tarea,tipo_item)&eliminado=eq.false`).then(d=>d?.[0]))
   );
 
   // Guardar en memoria para usar al asignar
@@ -2900,7 +3087,7 @@ async function recalcularSlots(){
   if(!cuadId||!fecha||!window._ASIG_GRUPOS?.length)return;
 
   // Traer grupos ya asignados ese día a esa cuadrilla
-  const asigExist=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadId}&fecha_trabajo=eq.${fecha}&select=horario_visita,duracion_minutos`)||[];
+  const asigExist=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadId}&fecha_trabajo=eq.${fecha}&select=horario_visita,duracion_minutos&eliminado=eq.false`)||[];
 
   // Calcular ocupación base (sin contar los que estamos asignando ahora)
   const ocupBase=new Set();
@@ -3038,7 +3225,7 @@ async function abrirCierreGrupo(grupoId){
   document.getElementById('wiz-paso-contenido').innerHTML='<div class="loading"><span class="spinner"></span></div>';
   document.getElementById('wiz-pasos-bar').innerHTML='';
   try{
-    const g=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,cuadrilla_id,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_tarea,tipo_item,obs_gigared,sintoma_reportado,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo))`).then(d=>d?.[0]);
+    const g=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,cuadrilla_id,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_tarea,tipo_item,obs_gigared,sintoma_reportado,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo))&eliminado=eq.false`).then(d=>d?.[0]);
     const cuadId=g?.cuadrilla_id;
     const cuadNombre=g?.cuadrillas?.nombre||'—';
     const todasOTs=(g?.ordenes_trabajo||[]);
@@ -3088,7 +3275,7 @@ async function abrirCierreGrupo(grupoId){
 
 async function abrirCierre(otId, numot, tipoTarea){
   // Buscar el grupo de esta OT
-  const ot=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=grupo_id`).then(d=>d?.[0]);
+  const ot=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=grupo_id&eliminado=eq.false`).then(d=>d?.[0]);
   if(ot?.grupo_id) await abrirCierreGrupo(ot.grupo_id);
   else{
     // Fallback: solo esta OT
@@ -3619,14 +3806,14 @@ async function confirmarWizardCierre(){
       }
 
       // Cambiar estado de la OT
-      const otAntes=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=estado_id`).then(d=>d?.[0]);
+      const otAntes=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=estado_id&eliminado=eq.false`).then(d=>d?.[0]);
       await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eNuevo?.id,fecha_fin:new Date().toISOString(),observaciones:p.obs||null});
       try{await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:otAntes?.estado_id,estado_nuevo_id:eNuevo?.id,usuario_id:CU.id,observacion:p.obs||null});}catch(e){}
     }
 
     // Actualizar historial del grupo
     if(WIZ.grupoId){
-      const gAct=await sbGet('grupos_ot',`?id=eq.${WIZ.grupoId}&select=observaciones`).then(d=>d?.[0]);
+      const gAct=await sbGet('grupos_ot',`?id=eq.${WIZ.grupoId}&select=observaciones&eliminado=eq.false`).then(d=>d?.[0]);
       await sbPatch('grupos_ot',`?id=eq.${WIZ.grupoId}`,{observaciones:(gAct?.observaciones?gAct.observaciones+'\n':'')+histLines.join('\n')});
     }
 
@@ -3671,14 +3858,14 @@ async function renderClientes(){
         p+=`&nodo=ilike.*${qe}*`;
         clientes=await sbGet('clientes',p)||[];
       }else if(campo==='precinto'){
-        const ots=await sbGet('ordenes_trabajo',`?select=cliente_id&tag=eq.${qe}`)||[];
+        const ots=await sbGet('ordenes_trabajo',`?select=cliente_id&tag=eq.${qe}&eliminado=eq.false`)||[];
         const ids=[...new Set(ots.map(o=>o.cliente_id).filter(Boolean))];
-        if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(',')})&order=apellido`)||[];
+        if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(&eliminado=eq.false',')})&order=apellido`)||[];
       }else if(campo==='ot'){
         const num=q.replace(/^005-0*/,'');
-        const ots=await sbGet('ordenes_trabajo',`?select=cliente_id&numero_ot=ilike.*${encodeURIComponent(num)}*`)||[];
+        const ots=await sbGet('ordenes_trabajo',`?select=cliente_id&numero_ot=ilike.*${encodeURIComponent(num)}*&eliminado=eq.false`)||[];
         const ids=[...new Set(ots.map(o=>o.cliente_id).filter(Boolean))];
-        if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(',')})&order=apellido`)||[];
+        if(ids.length)clientes=await sbGet('clientes',`?id=in.(${ids.join(&eliminado=eq.false',')})&order=apellido`)||[];
       }
     }else{
       let p='?order=apellido&limit=100';
@@ -3723,8 +3910,8 @@ async function abrirDetalleCli(cliId){
   CLI_DET_ID=cliId;
   try{
     const [cArr,ots]=await Promise.all([
-      sbGet('clientes',`?id=eq.${cliId}`),
-      sbGet('ordenes_trabajo',`?cliente_id=eq.${cliId}&select=id,numero_ot,tipo_tarea,tipo_item,tag,fecha_emision,fecha_impresion,estados_ot(nombre),grupos_ot(cuadrillas(nombre))&order=fecha_impresion.desc.nullslast&limit=200`)
+      sbGet('clientes',`?id=eq.${cliId}&eliminado=eq.false`),
+      sbGet('ordenes_trabajo',`?cliente_id=eq.${cliId}&select=id,numero_ot,tipo_tarea,tipo_item,tag,fecha_emision,fecha_impresion,estados_ot(nombre),grupos_ot(cuadrillas(nombre))&order=fecha_impresion.desc.nullslast&limit=200&eliminado=eq.false`)
     ]);
     const c=(cArr||[])[0];if(!c)return;
     const otsArr=ots||[];
