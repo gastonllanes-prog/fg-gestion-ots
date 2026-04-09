@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v102</title>
+<title>FG Gestión OTs v103</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V102</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V103</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v102</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v103</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -4782,8 +4782,30 @@ async function confirmarAutocompletado(){
       const seriales=serialesPorMat[item.mat.id]||[];
       if(!seriales.length)continue;
       const cant=seriales.length;
-      const enDep=await sbGet('stock_seriales','?material_id=eq.'+item.mat.id+'&ubicacion=eq.DEPOSITO&serial=in.('+seriales.join(',')+')')||[];
-      if(enDep.length!==cant){err.textContent='Algunos seriales de '+item.mat.nombre+' no están en depósito. Verificá los números.';return;}
+      const enDepArr=await sbGet('stock_seriales','?material_id=eq.'+item.mat.id+'&ubicacion=eq.DEPOSITO&serial=in.('+seriales.join(',')+')')||[];
+      const enDepSet=new Set(enDepArr.map(e=>e.serial.toLowerCase()));
+      const noEnDep=seriales.filter(s=>!enDepSet.has(s.toLowerCase()));
+
+      // Si hay seriales que no están en depósito, pedir confirmación y registrar entrada
+      if(noEnDep.length){
+        const conf=confirm(
+          '⚠️ Los siguientes seriales de '+item.mat.nombre+' NO están en depósito:\n\n'+
+          noEnDep.join('\n')+
+          '\n\n¿Querés registrarlos como entrada a depósito y asignarlos a la cuadrilla igualmente?'
+        );
+        if(!conf){err.textContent='Cancelado. Verificá los seriales de '+item.mat.nombre;return;}
+        // Registrar cada serial faltante como entrada al depósito
+        for(const s of noEnDep){
+          await sbPost('stock_seriales',{material_id:item.mat.id,serial:s,ubicacion:'DEPOSITO'});
+          await sbPost('movimientos_stock',{tipo_movimiento:'ENTRADA_DEPOSITO',material_id:item.mat.id,cantidad:1,obs:'Ingreso automático — serial '+s+' no estaba en BD'});
+        }
+        // Actualizar cantidad en stock_deposito por los nuevos (se descontarán luego)
+        const sdNuevo=await sbGet('stock_deposito','?material_id=eq.'+item.mat.id)||[];
+        if(sdNuevo.length) await sbPatch('stock_deposito','?material_id=eq.'+item.mat.id,{cantidad:(sdNuevo[0].cantidad||0)+noEnDep.length,updated_at:new Date().toISOString()});
+        else await sbPost('stock_deposito',{material_id:item.mat.id,cantidad:noEnDep.length});
+      }
+
+      // Mover todos los seriales de DEPOSITO → CUADRILLA
       for(const s of seriales){
         await sbPatch('stock_seriales','?material_id=eq.'+item.mat.id+'&serial=eq.'+s,{ubicacion:'CUADRILLA_'+cuadId});
       }
@@ -4792,7 +4814,8 @@ async function confirmarAutocompletado(){
       const scr=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id)||[];
       if(scr.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id,{cantidad:(scr[0].cantidad||0)+cant});
       else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:item.mat.id,cantidad:cant});
-      await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:item.mat.id,cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs:'Autocompletado con seriales'});
+      const obsMovs=noEnDep.length?'Autocompletado — '+noEnDep.length+' serial(es) ingresados automáticamente':'Autocompletado con seriales';
+      await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:item.mat.id,cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs:obsMovs});
     }
     cerrarModal('autocomplete-modal');
     AUTOCOMPLETE_PENDING=null;
