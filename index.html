@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v108</title>
+<title>FG Gestión OTs v109</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V108</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V109</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v108</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v109</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1599,6 +1599,11 @@ async function verOT(num){
           ${ot.sintoma_reportado?`<div style="margin-bottom:.35rem"><strong>🔧 Tarea:</strong> ${ot.sintoma_reportado}</div>`:''}
           ${ot.obs_trabajo?`<div><strong>📋 Obs:</strong> ${ot.obs_trabajo}</div>`:''}
         </div>`:''}
+      ${esFinalizada&&(ot.tag||ot.equipo_instalado)?`
+        <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1.5px solid #bfdbfe;border-radius:12px;padding:.875rem 1rem;margin-bottom:1rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center">
+          ${ot.tag?`<div><div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📌 Precinto(s)</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#5b21b6">${ot.tag}</div></div>`:''}
+          ${ot.equipo_instalado?`<div><div style="font-size:10px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📱 Serial(es)</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#1d4ed8">${ot.equipo_instalado}</div></div>`:''}
+        </div>`:''}
       <div class="ot-info-grid">
         <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Domicilio</div><div class="ot-info-val">${domHtml}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Tel 1</div><div class="ot-info-val"><a href="tel:${(cl.telefono1||'').replace(/\D/g,'')}" style="color:#2563eb">${cl.telefono1||'—'}</a></div></div>
@@ -1606,7 +1611,7 @@ async function verOT(num){
         <div class="ot-info-item"><div class="ot-info-label">Nodo</div><div class="ot-info-val">${cl.nodo||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${cl.localidad||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val" style="color:${ot.tag?'#7c3aed':'#94a3b8'};font-weight:700">${ot.tag||'—'}</div></div>
-        ${esRep&&ot.equipo_instalado?`<div class="ot-info-item"><div class="ot-info-label">Equipo</div><div class="ot-info-val" style="font-family:monospace;font-size:12px">${ot.equipo_instalado}</div></div>`:''}
+        ${ot.equipo_instalado?`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">📱 Equipo(s) instalado(s)</div><div class="ot-info-val" style="font-family:monospace;font-size:13px;font-weight:700;color:#2563eb;letter-spacing:.05em">${ot.equipo_instalado}</div></div>`:''}
         <div class="ot-info-item"><div class="ot-info-label">Emisión Gigared</div><div class="ot-info-val">${fmtF(ot.fecha_emision)}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Asignación Gigared</div><div class="ot-info-val">${fmtF(ot.fecha_asignacion_giga)}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">F. Impresión Gigared</div><div class="ot-info-val" style="font-weight:700">${ot.fecha_impresion?new Date(ot.fecha_impresion).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</div></div>
@@ -3886,6 +3891,20 @@ async function confirmarWizardCierre(){
 
         const serDesc=Object.values(serFin).filter(Boolean).join(', ');
         histLines.push(`[${ts}] OT ${numOT(p.ot.numero_ot)} (${(p.ot.tipo_item||'').replace(/_/g,' ')}) CERRADA.${serDesc?' Serial: '+serDesc:''} ${p.obs?'Obs: '+p.obs:''}`);
+
+        // Guardar precintos en campo tag de la OT
+        const precintosUsados=[];
+        for(const [mid,cant] of Object.entries(p.corrCant||{})){
+          if(!cant)continue;
+          const sers=(WIZ.corrSels[mid]||[]).slice(0,cant);
+          const sersAUsar=sers.length>=cant?sers:WIZ.serialesMap[mid]?.slice(0,cant)||[];
+          if(sersAUsar.length)precintosUsados.push(...sersAUsar);
+        }
+        // Patch tag con precintos y equipo_instalado con seriales INDIVIDUAL
+        const patchOT={};
+        if(precintosUsados.length) patchOT.tag=precintosUsados.join(' - ');
+        if(serDesc) patchOT.equipo_instalado=serDesc;
+        if(Object.keys(patchOT).length) await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,patchOT);
       }else{
         histLines.push(`[${ts}] OT ${numOT(p.ot.numero_ot)} DEVUELTA A GIGARED. Motivo: ${p.obs}`);
       }
