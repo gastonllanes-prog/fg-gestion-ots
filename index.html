@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v104</title>
+<title>FG Gestión OTs v105</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V104</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V105</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v104</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v105</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -5281,14 +5281,15 @@ async function previewPrecintosAsig(){
   preview.textContent='Se asignarán: del '+inicio+' al '+fin+' ('+cant+' precintos)';
   // Validar que existan en depósito
   const matId=document.getElementById('asig-stock-mat-id').value;
-  const nums=[];for(let i=inicio;i<=fin;i++)nums.push(String(i));
+  const pad6=n=>String(n).padStart(6,'0');
+  const nums=[];for(let i=inicio;i<=fin;i++)nums.push(pad6(i));
   const existe=await sbGet('stock_seriales','?material_id=eq.'+matId+'&ubicacion=eq.DEPOSITO&serial=in.('+nums.join(',')+')')||[];
   if(existe.length!==cant){
     preview.style.color='#dc2626';
     preview.textContent='⚠️ '+existe.length+'/'+cant+' precintos disponibles en depósito para ese rango';
   }else{
     preview.style.color='#0369a1';
-    preview.textContent='✅ Del '+inicio+' al '+fin+' — '+cant+' disponibles en depósito';
+    preview.textContent='✅ Del '+pad6(inicio)+' al '+pad6(fin)+' — '+cant+' disponibles en depósito';
   }
 }
 
@@ -5318,7 +5319,8 @@ async function confirmarAsignarCuadrilla(){
     const inicio=parseInt(document.getElementById('asig-stock-corr-inicio').value)||0;
     if(!cant){err.textContent='Ingresá la cantidad';return;}
     if(!inicio){err.textContent='Ingresá el número inicial';return;}
-    const nums=[];for(let i=inicio;i<inicio+cant;i++)nums.push(String(i));
+    const pad6=n=>String(n).padStart(6,'0');
+    const nums=[];for(let i=inicio;i<inicio+cant;i++)nums.push(pad6(i));
     agregarAlCarrito(matId, mat, cant, nums, cantActual);
     cerrarModal('asig-stock-modal');
 
