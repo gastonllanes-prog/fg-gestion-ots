@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v96</title>
+<title>FG Gestión OTs v97</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V96</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V97</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v96</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v97</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1287,8 +1287,8 @@ function irA(sec){
 
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('show');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('show');}
-function cerrarModal(id){const el=document.getElementById(id);if(!el)return;if(el.style.display!==undefined&&el.tagName!=='INPUT')el.style.display='none';el.classList.add('hidden');}
-function abrirModal(id){document.getElementById(id).classList.remove('hidden');}
+function cerrarModal(id){const el=document.getElementById(id);if(!el)return;if(el.classList.contains('modal-overlay')){el.classList.add('hidden');}else{el.style.display='none';}}
+function abrirModal(id){const el=document.getElementById(id);if(!el)return;el.style.display='';el.classList.remove('hidden');}
 
 // Ir a OTs con filtro de tipo preseleccionado
 function irAConFiltroItem(tipoItem){
@@ -1826,15 +1826,18 @@ function mostrarModal2(titulo, html, onConfirm, btnLabel='Guardar'){
   document.getElementById('modal2-titulo').textContent=titulo;
   document.getElementById('modal2-body').innerHTML=html;
   const confirmBtn=document.getElementById('modal2-confirm');
+  const cancelBtn=m.querySelector('.btn:not(#modal2-confirm)');
+  // Siempre resetear estado de botones
+  cancelBtn.style.display='';
+  cancelBtn.textContent='Cancelar';
+  cancelBtn.onclick=()=>cerrarModal('modal2');
   if(onConfirm){
-    confirmBtn.textContent=btnLabel;
     confirmBtn.style.display='';
+    confirmBtn.textContent=btnLabel;
     confirmBtn.onclick=onConfirm;
-    // Remove cancel button if no action
-    m.querySelector('.btn:not(#modal2-confirm)').style.display='';
   } else {
     confirmBtn.style.display='none';
-    m.querySelector('.btn:not(#modal2-confirm)').textContent=btnLabel;
+    cancelBtn.textContent=btnLabel;
   }
   m.style.display='flex';
 }
