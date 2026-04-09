@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v109</title>
+<title>FG Gestión OTs v110</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V109</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V110</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v109</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v110</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -3819,6 +3819,22 @@ async function confirmarWizardCierre(){
   const sinObs=WIZ.pasos.filter(p=>p.accion==='DEVUELTA'&&!p.obs.trim());
   if(sinObs.length){document.getElementById('wiz-err').textContent='Completá el motivo de devolución en todas las OTs marcadas.';return;}
 
+  // Validar precintos: si corrCant > 0 pero corrSels no alcanza, avisar
+  const precintosIncompletos=[];
+  for(const p of WIZ.pasos.filter(pa=>pa.accion==='CERRAR')){
+    for(const [mid,cant] of Object.entries(p.corrCant||{})){
+      if(!cant)continue;
+      const seleccionados=(WIZ.corrSels[mid]||[]).length;
+      if(seleccionados<cant && WIZ.serialesMap[mid]?.length){
+        precintosIncompletos.push('OT '+numOT(p.ot.numero_ot)+': seleccioná '+cant+' precinto(s) en el paso de seriales');
+      }
+    }
+  }
+  if(precintosIncompletos.length){
+    const ok=confirm('⚠️ Precintos sin serial seleccionado:\n\n'+precintosIncompletos.join('\n')+'\n\n¿Continuar igualmente? Se guardará la cantidad sin número de serie.');
+    if(!ok){document.getElementById('wiz-err').textContent='Seleccioná los seriales de precinto antes de confirmar.';return;}
+  }
+
   // Validar que al menos una mano de obra fue seleccionada en algún paso CERRAR
   const pasosCerrar=WIZ.pasos.filter(p=>p.accion==='CERRAR');
   const sinManoObra=pasosCerrar.filter(p=>!Object.values(p.servs||{}).some(v=>v>0));
@@ -3843,8 +3859,9 @@ async function confirmarWizardCierre(){
       const eNuevo=p.accion==='DEVUELTA'?eDev:eFin;
 
       if(p.accion==='CERRAR'){
-        // --- Materiales sin serial ---
-        const matsArr=Object.entries(p.mats).filter(([,c])=>c>0).map(([mid,c])=>({ot_id:otId,material_id:parseInt(mid),cantidad:c}));
+        // --- Materiales sin serial (excluir INDIVIDUAL que ya están en serArr) ---
+        const matsIndividualIds=new Set(WIZ.catalogoMats.filter(m=>m.serial_tipo==='INDIVIDUAL').map(m=>String(m.id)));
+        const matsArr=Object.entries(p.mats).filter(([mid,c])=>c>0&&!matsIndividualIds.has(String(mid))).map(([mid,c])=>({ot_id:otId,material_id:parseInt(mid),cantidad:c}));
 
         // --- Seriales INDIVIDUAL desde serialesFinales (asignados en paso final) ---
         const serFin=WIZ.serialesFinales[otId]||{};
@@ -3898,7 +3915,8 @@ async function confirmarWizardCierre(){
           if(!cant)continue;
           const sers=(WIZ.corrSels[mid]||[]).slice(0,cant);
           const sersAUsar=sers.length>=cant?sers:WIZ.serialesMap[mid]?.slice(0,cant)||[];
-          if(sersAUsar.length)precintosUsados.push(...sersAUsar);
+          if(sersAUsar.length) precintosUsados.push(...sersAUsar);
+          else precintosUsados.push(`(${cant} precinto${cant>1?'s':''})`); // sin serial individual
         }
         // Patch tag con precintos y equipo_instalado con seriales INDIVIDUAL
         const patchOT={};
