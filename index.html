@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v97</title>
+<title>FG Gestión OTs v98</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V97</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V98</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v97</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v98</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1748,8 +1748,10 @@ async function eliminarOT(otId, numOt, grupoId){
   const conf=confirm(`¿Eliminar OT ${numOT(numOt)}?\nVa a quedar guardada y se puede recuperar después.`);
   if(!conf)return;
   try{
-    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{eliminado:true});
-    // Si es la única OT del grupo, eliminar el grupo también
+    const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');
+    const patch={eliminado:true};
+    if(eElim)patch.estado_id=eElim.id;
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,patch);
     if(grupoId){
       const restantes=await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&eliminado=eq.false`)||[];
       if(!restantes.length) await sbPatch('grupos_ot',`?id=eq.${grupoId}`,{eliminado:true});
@@ -1767,7 +1769,10 @@ async function eliminarCliente(cliId, nombre){
   const conf2=confirm('Confirmación final: se van a marcar como eliminados el cliente y todas sus órdenes de trabajo.');
   if(!conf2)return;
   try{
-    await sbPatch('ordenes_trabajo',`?cliente_id=eq.${cliId}`,{eliminado:true});
+    const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');
+    const patchOT={eliminado:true};
+    if(eElim)patchOT.estado_id=eElim.id;
+    await sbPatch('ordenes_trabajo',`?cliente_id=eq.${cliId}`,patchOT);
     await sbPatch('grupos_ot',`?cliente_id=eq.${cliId}`,{eliminado:true});
     await sbPatch('clientes',`?id=eq.${cliId}`,{eliminado:true});
     cerrarModal('ot-modal');
@@ -1794,10 +1799,17 @@ async function verEliminados(){
 
 async function recuperarOT(otId, numOt){
   try{
-    const ots=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=grupo_id&eliminado=eq.true`)||[];
+    const ots=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=grupo_id,cliente_id`)||[];
     const grupoId=ots[0]?.grupo_id;
-    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{eliminado:false});
-    if(grupoId) await sbPatch('grupos_ot',`?id=eq.${grupoId}`,{eliminado:false});
+    const ePend=ESTADOS.find(e=>e.nombre==='PENDIENTE');
+    const patch={eliminado:false};
+    if(ePend)patch.estado_id=ePend.id;
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,patch);
+    if(grupoId){
+      await sbPatch('grupos_ot',`?id=eq.${grupoId}`,{eliminado:false});
+    }
+    // Recuperar también el cliente si estaba eliminado
+    if(ots[0]?.cliente_id) await sbPatch('clientes',`?id=eq.${ots[0].cliente_id}`,{eliminado:false});
     showToast('OT '+numOT(numOt)+' recuperada','ok');
     verEliminados();
     renderOTs();
