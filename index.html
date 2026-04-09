@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v94</title>
+<title>FG Gestión OTs v96</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V94</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V96</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v94</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v96</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1287,7 +1287,7 @@ function irA(sec){
 
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('show');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('show');}
-function cerrarModal(id){document.getElementById(id).classList.add('hidden');}
+function cerrarModal(id){const el=document.getElementById(id);if(!el)return;if(el.style.display!==undefined&&el.tagName!=='INPUT')el.style.display='none';el.classList.add('hidden');}
 function abrirModal(id){document.getElementById(id).classList.remove('hidden');}
 
 // Ir a OTs con filtro de tipo preseleccionado
@@ -1382,7 +1382,8 @@ async function renderOTs(){
     const orderCol=OT_SORT==='numero_ot'?'numero_ot':OT_SORT==='tipo_tarea'?'tipo_tarea':'fecha_impresion';
     const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,fecha_impresion,estado_id,estados_ot(nombre),grupos_ot(cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
-    const extraFiltros=(()=>{let f='';if(tipo)f+=`&tipo_tarea=eq.${tipo}`;else if(tipoItem)f+=`&tipo_item=eq.${tipoItem}`;if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)f+=`&estado_id=eq.${eObj.id}`;}return f;})();
+    const extraFiltros=(()=>{let f='';if(tipo)f+=`&tipo_tarea=eq.${tipo}`;else if(tipoItem)f+=`&tipo_item=eq.${tipoItem}`;if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)f+=`&estado_id=eq.${eObj.id}`;}else{// Sin filtro de estado: excluir ELIMINADA_SISTEMA del listado normal
+const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado_id=neq.${eElim.id}`;}return f;})();
 
     let ots=[];
     if(q){
@@ -1451,7 +1452,9 @@ async function renderOTs(){
       });
     } else {
       // Sin búsqueda: paginación normal
-      let p=`?${SELECT_OTS}&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=${PAGE_SIZE}&offset=${OT_PAGE*PAGE_SIZE}${extraFiltros}`;
+      // Si se filtra por ELIMINADA_SISTEMA mostrar también los marcados eliminado=true
+      const elimFiltro=estFil==='ELIMINADA_SISTEMA'?'':`&eliminado=eq.false`;
+      let p=`?${SELECT_OTS}&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=${PAGE_SIZE}&offset=${OT_PAGE*PAGE_SIZE}${extraFiltros}${elimFiltro}`;
       ots=await sbGet('ordenes_trabajo',p)||[];
     }
     if(!ots.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div>No hay OTs. Importá un PDF para empezar.</div></div>';return;}
@@ -1523,7 +1526,7 @@ async function verOT(num){
   const footer=document.getElementById('ot-modal-footer');
   body.innerHTML='<div class="loading"><span class="spinner"></span></div>';footer.innerHTML='';
   try{
-    const ots=await sbGet('ordenes_trabajo',`?numero_ot=eq.${num}&select=*,clientes(*),estados_ot(*),grupos_ot(*,cuadrillas(*))&eliminado=eq.false`)||[];
+    const ots=await sbGet('ordenes_trabajo',`?numero_ot=eq.${num}&select=*,clientes(*),estados_ot(*),grupos_ot(*,cuadrillas(*))`)||[];
     if(!ots.length){body.innerHTML='<p>OT no encontrada</p>';return;}
     const ot=ots[0];
     const items=await sbGet('ot_items_contratados',`?ot_id=eq.${ot.id}`)||[];
