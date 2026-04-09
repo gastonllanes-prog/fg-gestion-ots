@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v98</title>
+<title>FG Gestión OTs v99</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V98</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V99</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v98</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v99</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -524,6 +524,24 @@ tr:hover td{background:rgba(37,99,235,.02)}
     </select>
     <button class="btn btn-sm btn-primary" id="cuad-asignar-btn" style="display:none" onclick="repartirACuadrillaActual()">+ Agregar material</button>
     <button class="btn btn-sm" id="cuad-autocomplete-btn" style="display:none" onclick="autocompletarCuadrilla()">⚡ Autocompletar</button>
+  </div>
+  <div class="nav" id="stock-cuad-nav" style="margin-bottom:1rem">
+    <div class="ntab active" onclick="stockCuadTab('stock',this)">Stock actual</div>
+    <div class="ntab" onclick="stockCuadTab('movimientos',this)">Movimientos</div>
+    <div class="ntab" onclick="stockCuadTab('reporte',this)">Reporte por cliente</div>
+  </div>
+  <!-- Filtros de fecha (visibles en movimientos y reporte) -->
+  <div id="cuad-fecha-filtros" style="display:none;margin-bottom:1rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px">
+      <label style="font-size:12px;color:#64748b;font-weight:600">Desde</label>
+      <input type="date" id="cuad-fecha-desde" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px" onchange="renderStockCuadTab()"/>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <label style="font-size:12px;color:#64748b;font-weight:600">Hasta</label>
+      <input type="date" id="cuad-fecha-hasta" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px" onchange="renderStockCuadTab()"/>
+    </div>
+    <button class="btn btn-sm" onclick="cuadFechaHoy()">Hoy</button>
+    <button class="btn btn-sm" onclick="cuadFechaSemana()">Esta semana</button>
   </div>
 
   <!-- BARRA DE CARRITO — visible cuando hay items pendientes -->
@@ -4291,6 +4309,215 @@ async function guardarTecnico(){
 }
 
 // ─── STOCK CUADRILLAS (sección separada) ───
+// ─── STOCK CUADRILLAS — TABS ─────────────────────────────────────────────────
+let STOCK_CUAD_TAB='stock';
+
+function stockCuadTab(tab, el){
+  STOCK_CUAD_TAB=tab;
+  document.querySelectorAll('#stock-cuad-nav .ntab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const filtros=document.getElementById('cuad-fecha-filtros');
+  filtros.style.display=(tab==='movimientos'||tab==='reporte')?'flex':'none';
+  renderStockCuadTab();
+}
+
+function cuadFechaHoy(){
+  const hoy=new Date().toISOString().slice(0,10);
+  document.getElementById('cuad-fecha-desde').value=hoy;
+  document.getElementById('cuad-fecha-hasta').value=hoy;
+  renderStockCuadTab();
+}
+
+function cuadFechaSemana(){
+  const hoy=new Date();
+  const lunes=new Date(hoy);lunes.setDate(hoy.getDate()-hoy.getDay()+1);
+  document.getElementById('cuad-fecha-desde').value=lunes.toISOString().slice(0,10);
+  document.getElementById('cuad-fecha-hasta').value=hoy.toISOString().slice(0,10);
+  renderStockCuadTab();
+}
+
+function renderStockCuadTab(){
+  if(STOCK_CUAD_TAB==='stock') renderStockCuadrillaSeleccionada();
+  else if(STOCK_CUAD_TAB==='movimientos') renderMovimientosCuadrilla();
+  else if(STOCK_CUAD_TAB==='reporte') renderReporteClientesCuadrilla();
+}
+
+async function renderMovimientosCuadrilla(){
+  const cuadId=document.getElementById('cuad-selector').value;
+  const el=document.getElementById('stock-cuad-tabla');
+  if(!cuadId){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🔧</div><div style="color:#94a3b8">Seleccioná una cuadrilla</div></div>';return;}
+  const desde=document.getElementById('cuad-fecha-desde').value;
+  const hasta=document.getElementById('cuad-fecha-hasta').value;
+  if(!desde||!hasta){el.innerHTML='<div class="card" style="color:#64748b;text-align:center;padding:2rem">Seleccioná un rango de fechas</div>';return;}
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    let q=`?cuadrilla_id=eq.${cuadId}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=id,tipo_movimiento,cantidad,obs,created_at,catalogo_materiales(nombre,unidad)&order=created_at.desc&limit=500`;
+    const movs=await sbGet('movimientos_stock',q)||[];
+    if(!movs.length){el.innerHTML='<div class="card" style="color:#64748b;text-align:center;padding:2rem">Sin movimientos en el período seleccionado</div>';return;}
+
+    // Agrupar por día
+    const porDia={};
+    movs.forEach(m=>{
+      const dia=m.created_at.slice(0,10);
+      if(!porDia[dia])porDia[dia]=[];
+      porDia[dia].push(m);
+    });
+
+    const tipoLabel={CONSUMO_OT:'🔩 Consumo OT',REPARTO_CUADRILLA:'📦 Entrada depósito',ENTRADA_DEPOSITO:'📥 Entrada Gigared'};
+    const tipoColor={CONSUMO_OT:'#dc2626',REPARTO_CUADRILLA:'#16a34a',ENTRADA_DEPOSITO:'#2563eb'};
+
+    let html='';
+    // Totales del período
+    const totales={};
+    movs.forEach(m=>{
+      const nom=m.catalogo_materiales?.nombre||'?';
+      if(!totales[nom])totales[nom]={nombre:nom,unidad:m.catalogo_materiales?.unidad||'',consumo:0,entrada:0};
+      if(m.tipo_movimiento==='CONSUMO_OT')totales[nom].consumo+=Math.abs(m.cantidad);
+      else totales[nom].entrada+=Math.abs(m.cantidad);
+    });
+
+    html+=`<div class="card" style="margin-bottom:1rem">
+      <div class="card-title">Resumen del período (${desde===hasta?desde:desde+' al '+hasta})</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="color:#64748b;font-size:11px;text-transform:uppercase">
+          <th style="text-align:left;padding:4px 8px">Material</th>
+          <th style="text-align:right;padding:4px 8px;color:#16a34a">Entradas</th>
+          <th style="text-align:right;padding:4px 8px;color:#dc2626">Consumo</th>
+        </tr></thead>
+        <tbody>
+          ${Object.values(totales).map(t=>`<tr style="border-top:1px solid var(--border2)">
+            <td style="padding:5px 8px">${t.nombre}</td>
+            <td style="text-align:right;padding:5px 8px;color:#16a34a;font-weight:600">${t.entrada||'—'}</td>
+            <td style="text-align:right;padding:5px 8px;color:#dc2626;font-weight:600">${t.consumo||'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+    // Detalle por día
+    Object.entries(porDia).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([dia,movsDia])=>{
+      const fmtDia=new Date(dia+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+      html+=`<div class="card" style="margin-bottom:.75rem">
+        <div class="card-title" style="margin-bottom:.5rem">📅 ${fmtDia}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="color:#64748b;font-size:11px;text-transform:uppercase">
+            <th style="text-align:left;padding:4px 8px">Hora</th>
+            <th style="text-align:left;padding:4px 8px">Tipo</th>
+            <th style="text-align:left;padding:4px 8px">Material</th>
+            <th style="text-align:right;padding:4px 8px">Cant.</th>
+            <th style="text-align:left;padding:4px 8px">Obs</th>
+          </tr></thead>
+          <tbody>
+            ${movsDia.map(m=>`<tr style="border-top:1px solid var(--border2)">
+              <td style="padding:5px 8px;color:#94a3b8;font-size:11px">${new Date(m.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</td>
+              <td style="padding:5px 8px;font-size:12px"><span style="color:${tipoColor[m.tipo_movimiento]||'#64748b'};font-weight:600">${tipoLabel[m.tipo_movimiento]||m.tipo_movimiento}</span></td>
+              <td style="padding:5px 8px">${m.catalogo_materiales?.nombre||'?'}</td>
+              <td style="text-align:right;padding:5px 8px;font-weight:700;color:${m.cantidad<0?'#dc2626':'#16a34a'}">${m.cantidad<0?m.cantidad:'+'+m.cantidad}</td>
+              <td style="padding:5px 8px;font-size:11px;color:#64748b">${m.obs||'—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    });
+
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<div class="card" style="color:#dc2626">${e.message}</div>`;}
+}
+
+async function renderReporteClientesCuadrilla(){
+  const cuadId=document.getElementById('cuad-selector').value;
+  const el=document.getElementById('stock-cuad-tabla');
+  if(!cuadId){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🔧</div><div style="color:#94a3b8">Seleccioná una cuadrilla</div></div>';return;}
+  const desde=document.getElementById('cuad-fecha-desde').value;
+  const hasta=document.getElementById('cuad-fecha-hasta').value;
+  if(!desde||!hasta){el.innerHTML='<div class="card" style="color:#64748b;text-align:center;padding:2rem">Seleccioná un rango de fechas</div>';return;}
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    // Traer ot_materiales_usados de OTs de esta cuadrilla en el período
+    const grupos=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadId}&fecha_trabajo=gte.${desde}&fecha_trabajo=lte.${hasta}&select=id,fecha_trabajo,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,clientes(codigo_gigared,apellido,nombre))`)||[];
+    if(!grupos.length){el.innerHTML='<div class="card" style="color:#64748b;text-align:center;padding:2rem">Sin trabajo registrado en el período seleccionado</div>';return;}
+
+    // Juntar todas las OT ids
+    const otIds=[];
+    grupos.forEach(g=>(g.ordenes_trabajo||[]).forEach(o=>otIds.push(o.id)));
+    if(!otIds.length){el.innerHTML='<div class="card" style="color:#64748b;text-align:center;padding:2rem">Sin OTs en el período</div>';return;}
+
+    // Traer materiales usados en esas OTs
+    const mats=await sbGet('ot_materiales_usados',`?ot_id=in.(${otIds.join(',')})&select=ot_id,cantidad,catalogo_materiales(nombre,unidad)`)||[];
+    const matsPorOT={};
+    mats.forEach(m=>{if(!matsPorOT[m.ot_id])matsPorOT[m.ot_id]=[];matsPorOT[m.ot_id].push(m);});
+
+    // Totales generales del período
+    const totalesPer={};
+    mats.forEach(m=>{
+      const nom=m.catalogo_materiales?.nombre||'?';
+      if(!totalesPer[nom])totalesPer[nom]={nombre:nom,unidad:m.catalogo_materiales?.unidad||'',total:0};
+      totalesPer[nom].total+=m.cantidad;
+    });
+
+    let html='';
+
+    // Resumen total período
+    if(Object.keys(totalesPer).length){
+      html+=`<div class="card" style="margin-bottom:1rem">
+        <div class="card-title">📊 Total materiales usados (${desde===hasta?desde:desde+' al '+hasta})</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="color:#64748b;font-size:11px;text-transform:uppercase">
+            <th style="text-align:left;padding:4px 8px">Material</th>
+            <th style="text-align:right;padding:4px 8px">Total</th>
+            <th style="text-align:left;padding:4px 8px">Unidad</th>
+          </tr></thead>
+          <tbody>
+            ${Object.values(totalesPer).sort((a,b)=>b.total-a.total).map(t=>`<tr style="border-top:1px solid var(--border2)">
+              <td style="padding:5px 8px">${t.nombre}</td>
+              <td style="text-align:right;padding:5px 8px;font-weight:700;color:#1e293b">${t.total}</td>
+              <td style="padding:5px 8px;color:#64748b">${t.unidad}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    }
+
+    // Detalle por día → por cliente → por OT
+    const porDia={};
+    grupos.forEach(g=>{
+      const dia=g.fecha_trabajo||'sin fecha';
+      if(!porDia[dia])porDia[dia]=[];
+      porDia[dia].push(g);
+    });
+
+    Object.entries(porDia).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([dia,gruposDia])=>{
+      const fmtDia=dia!=='sin fecha'?new Date(dia+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}):dia;
+      let htmlDia=`<div class="card" style="margin-bottom:.75rem"><div class="card-title">📅 ${fmtDia}</div>`;
+      gruposDia.forEach(g=>{
+        (g.ordenes_trabajo||[]).forEach(ot=>{
+          const cl=ot.clientes||{};
+          const oMats=matsPorOT[ot.id]||[];
+          htmlDia+=`<div style="margin:.5rem 0;padding:.5rem;background:#f8fafc;border-radius:8px;border:1px solid var(--border2)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:.35rem">
+              <span style="font-weight:700;color:#2563eb;font-size:13px">${numOT(ot.numero_ot)}</span>
+              <span style="font-size:12px;font-weight:600">${cl.apellido||''} ${cl.nombre||''}</span>
+              <span style="font-size:11px;color:#94a3b8">${fmtCodigo(cl.codigo_gigared)}</span>
+              ${ot.tipo_item?`<span style="font-size:11px;background:#e0f2fe;color:#0369a1;padding:1px 7px;border-radius:99px;font-weight:600">${ot.tipo_item.replace(/_/g,' ')}</span>`:''}
+            </div>`;
+          if(oMats.length){
+            htmlDia+=`<table style="width:100%;border-collapse:collapse;font-size:12px">`;
+            oMats.forEach(m=>{htmlDia+=`<tr><td style="padding:2px 8px;color:#475569">${m.catalogo_materiales?.nombre||'?'}</td><td style="text-align:right;padding:2px 8px;font-weight:600;color:#1e293b">${m.cantidad} ${m.catalogo_materiales?.unidad||''}</td></tr>`;});
+            htmlDia+=`</table>`;
+          } else {
+            htmlDia+=`<div style="font-size:12px;color:#94a3b8;padding:2px 8px">Sin materiales registrados</div>`;
+          }
+          htmlDia+=`</div>`;
+        });
+      });
+      htmlDia+=`</div>`;
+      html+=htmlDia;
+    });
+
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<div class="card" style="color:#dc2626">${e.message}</div>`;}
+}
+
 async function iniciarStockCuadrillas(){
   const sel=document.getElementById('cuad-selector');
   // Poblar selector si está vacío
@@ -4713,7 +4940,7 @@ function cambiarCuadrillaSeleccionada(){
   }
   CARRITO_CUAD={};
   actualizarBarraCarrito();
-  renderStockCuadrillaSeleccionada();
+  renderStockCuadTab();
 }
 
 function agregarAlCarrito(matId, mat, cantidad, seriales, cantActual){
