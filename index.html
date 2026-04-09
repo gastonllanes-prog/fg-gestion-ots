@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v101</title>
+<title>FG Gestión OTs v102</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V101</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V102</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v101</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v102</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -4592,6 +4592,16 @@ function repartirACuadrillaActual(){
   repartirACuadrilla(cuadId,nombre);
 }
 
+function acPreviewCorrelativo(matId){
+  const cant=parseInt(document.getElementById('ac-corr-cant-'+matId)?.value)||0;
+  const inicio=parseInt(document.getElementById('ac-corr-inicio-'+matId)?.value)||0;
+  const prev=document.getElementById('ac-corr-preview-'+matId);
+  if(!prev)return;
+  if(!inicio||!cant){prev.textContent='';return;}
+  const fin=inicio+cant-1;
+  prev.textContent='→ del '+inicio+' al '+fin;
+}
+
 function acActualizarContador(matId, total){
   const ta=document.getElementById('ac-serial-'+matId);
   const cnt=document.getElementById('ac-cnt-'+matId);
@@ -4612,7 +4622,7 @@ async function autocompletarCuadrilla(){
   const autocfg=await sbGet('autocomplete_config','?activo=eq.true')||[];
   const scMap={};sc.forEach(s=>{scMap[s.material_id]=s.cantidad||0;});
   const cfgMap={};autocfg.forEach(c=>{cfgMap[c.material_id]=c;});
-  const sinSerial=[], conSerial=[];
+  const sinSerial=[], conSerial=[], corrSerial=[];
   for(const m of mats){
     const cfg=cfgMap[m.id];
     if(!cfg||!cfg.activo)continue;
@@ -4623,15 +4633,16 @@ async function autocompletarCuadrilla(){
       // Con paquete (bobinas/bolsas): agrega cantidad fija configurada
       // Sin paquete (unidades): completa hasta el mínimo
       const cant=esPaq?(cfg.cantidad_reponer||1):(minimo-actual);
-      if(m.serial_tipo==='NINGUNO'||m.serial_tipo==='CORRELATIVO') sinSerial.push({mat:m,cant,actual,minimo,esPaq});
+      if(m.serial_tipo==='CORRELATIVO') corrSerial.push({mat:m,cant,actual,minimo});
+      else if(m.serial_tipo==='NINGUNO') sinSerial.push({mat:m,cant,actual,minimo,esPaq});
       else conSerial.push({mat:m,cant,actual,minimo,esPaq});
     }
   }
-  if(!sinSerial.length&&!conSerial.length){
+  if(!sinSerial.length&&!conSerial.length&&!corrSerial.length){
     alert('✅ El stock de '+cuadNombre+' está completo.');return;
   }
   // Mostrar modal de confirmación bonito
-  AUTOCOMPLETE_PENDING={cuadId,cuadNombre,sinSerial,conSerial};
+  AUTOCOMPLETE_PENDING={cuadId,cuadNombre,sinSerial,conSerial,corrSerial};
   const modal=document.getElementById('autocomplete-modal');
   document.getElementById('ac-modal-titulo').textContent='⚡ Autocompletar — '+cuadNombre;
   let html='';
@@ -4655,6 +4666,31 @@ async function autocompletarCuadrilla(){
       </div>`;
     }).join('');
   }
+  if(corrSerial.length){
+    html+='<div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .5rem">📌 Precintos Telecrafter — ingresá número inicial</div>';
+    html+=corrSerial.map(x=>`
+      <div style="padding:.75rem .875rem;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;margin-bottom:.4rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+          <span style="font-weight:600;font-size:13px">📌 ${x.mat.nombre}</span>
+          <span style="font-size:12px;color:#7c3aed;font-weight:600">A asignar: ${x.cant} · Tiene: ${x.actual}</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <div>
+            <label style="font-size:11px;color:#64748b;font-weight:600;display:block;margin-bottom:3px">Cantidad</label>
+            <input type="number" id="ac-corr-cant-${x.mat.id}" value="${x.cant}" min="1"
+              style="width:90px;padding:6px 8px;border:1px solid #c4b5fd;border-radius:8px;font-size:13px;font-weight:700"
+              oninput="acPreviewCorrelativo(${x.mat.id})"/>
+          </div>
+          <div>
+            <label style="font-size:11px;color:#64748b;font-weight:600;display:block;margin-bottom:3px">Primer número</label>
+            <input type="number" id="ac-corr-inicio-${x.mat.id}" placeholder="Ej: 1050"
+              style="width:130px;padding:6px 8px;border:1px solid #c4b5fd;border-radius:8px;font-size:13px"
+              oninput="acPreviewCorrelativo(${x.mat.id})"/>
+          </div>
+          <div id="ac-corr-preview-${x.mat.id}" style="font-size:12px;color:#7c3aed;font-weight:600;padding-bottom:6px"></div>
+        </div>
+      </div>`).join('');
+  }
   if(conSerial.length){
     html+='<div style="font-size:11px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .5rem">Equipos con serial — requieren escaneo</div>';
     html+=conSerial.map(x=>`
@@ -4675,7 +4711,7 @@ async function autocompletarCuadrilla(){
 let AUTOCOMPLETE_PENDING=null;
 
 async function confirmarAutocompletado(){
-  const {cuadId,sinSerial,conSerial}=AUTOCOMPLETE_PENDING||{};
+  const {cuadId,sinSerial,conSerial,corrSerial}=AUTOCOMPLETE_PENDING||{};
   if(!cuadId)return;
   const err=document.getElementById('ac-modal-err');
   err.textContent='';
@@ -4689,6 +4725,15 @@ async function confirmarAutocompletado(){
     const inv=seriales.filter(s=>!macReg.test(s.replace(/[:\-]/g,'')));
     if(inv.length){err.textContent='Seriales inválidos en '+item.mat.nombre+': '+inv[0];return;}
     serialesPorMat[item.mat.id]=seriales;
+  }
+  // Validar correlativos
+  const corrPorMat={};
+  for(const item of corrSerial||[]){
+    const cant=parseInt(document.getElementById('ac-corr-cant-'+item.mat.id)?.value)||0;
+    const inicio=parseInt(document.getElementById('ac-corr-inicio-'+item.mat.id)?.value)||0;
+    if(!inicio){err.textContent='Ingresá el número inicial para '+item.mat.nombre;return;}
+    if(!cant){err.textContent='Ingresá la cantidad para '+item.mat.nombre;return;}
+    corrPorMat[item.mat.id]={cant,inicio,fin:inicio+cant-1};
   }
   err.textContent='Guardando...';
   const sinStock=[];
@@ -4706,6 +4751,31 @@ async function confirmarAutocompletado(){
       if(scr.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id,{cantidad:(scr[0].cantidad||0)+cant});
       else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:item.mat.id,cantidad:cant});
       await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:item.mat.id,cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs:'Autocompletado'});
+    }
+    // Asignar correlativos (precintos)
+    for(const item of corrSerial||[]){
+      const {cant,inicio,fin}=corrPorMat[item.mat.id]||{};
+      if(!cant||!inicio)continue;
+      // Generar seriales del rango
+      const seriales=[];
+      for(let n=inicio;n<=fin;n++)seriales.push(String(n));
+      // Mover seriales del depósito a la cuadrilla
+      const enDep=await sbGet('stock_seriales',`?material_id=eq.${item.mat.id}&ubicacion=eq.DEPOSITO&serial=in.(${seriales.join(',')})`)||[];
+      if(enDep.length!==cant){
+        // Seriales no encontrados por número exacto — intentar por rango numérico en serial
+        // fallback: asignar cantidad sin verificar serial (para precintos sin serial individual en BD)
+        sinStock.push(item.mat.nombre+': '+enDep.length+'/'+cant+' seriales encontrados en depósito');
+      }
+      for(const s of enDep.map(e=>e.serial)){
+        await sbPatch('stock_seriales',`?material_id=eq.${item.mat.id}&serial=eq.${s}`,{ubicacion:'CUADRILLA_'+cuadId});
+      }
+      const cantReal=enDep.length||cant;
+      const sd=await sbGet('stock_deposito','?material_id=eq.'+item.mat.id)||[];
+      if(sd.length) await sbPatch('stock_deposito','?material_id=eq.'+item.mat.id,{cantidad:Math.max(0,(sd[0].cantidad||0)-cantReal),updated_at:new Date().toISOString()});
+      const scr=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id)||[];
+      if(scr.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+item.mat.id,{cantidad:(scr[0].cantidad||0)+cantReal});
+      else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:item.mat.id,cantidad:cantReal});
+      await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:item.mat.id,cuadrilla_id:parseInt(cuadId),cantidad:-cantReal,obs:'Precintos '+inicio+' al '+fin});
     }
     // Asignar con serial
     for(const item of conSerial||[]){
