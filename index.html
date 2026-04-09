@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v110</title>
+<title>FG Gestión OTs v111</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V110</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V111</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v110</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v111</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -261,6 +261,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div><div class="ph-title">Asignar OTs</div><div class="ph-sub">Programá órdenes por cuadrilla</div></div>
     <div style="margin-left:auto">
       <button class="btn btn-sm" onclick="imprimirOrdenesProgramadas()" style="gap:6px">🖨️ Reporte del día</button>
+      <button class="btn btn-sm btn-primary" onclick="abrirReporteGigared()" style="gap:6px">📊 Liquidación Gigared</button>
     </div>
   </div>
 
@@ -926,6 +927,21 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="modal-footer">
       <button class="btn btn-primary" style="flex:2" id="asig-stock-btn-ok" onclick="confirmarAsignarCuadrilla()">✓ Asignar</button>
       <button class="btn" onclick="cerrarModal('asig-stock-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REPORTE GIGARED -->
+<div class="modal-overlay hidden" id="rep-gigared-modal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title">📊 Liquidación Gigared <button class="modal-close" onclick="cerrarModal('rep-gigared-modal')">✕</button></div>
+    <div class="fg"><label>Desde</label><input type="date" id="rep-g-desde"/></div>
+    <div class="fg"><label>Hasta</label><input type="date" id="rep-g-hasta"/></div>
+    <p class="err-msg" id="rep-g-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:1" onclick="generarLiquidacionManoObra()">📋 Mano de Obra</button>
+      <button class="btn btn-primary" style="flex:1" onclick="generarLiquidacionMateriales()">🔩 Materiales</button>
+      <button class="btn" onclick="cerrarModal('rep-gigared-modal')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -6102,6 +6118,195 @@ async function confirmarImprimirEntrega(){
   if(!fecha){err.textContent='Seleccioná una fecha';return;}
   cerrarModal('fecha-entrega-modal');
   await imprimirEntregaGigared(fecha);
+}
+
+
+function abrirReporteGigared(){
+  const hoy=new Date().toISOString().slice(0,10);
+  document.getElementById('rep-g-desde').value=hoy;
+  document.getElementById('rep-g-hasta').value=hoy;
+  document.getElementById('rep-g-err').textContent='';
+  abrirModal('rep-gigared-modal');
+}
+
+async function _cargarDatosLiquidacion(){
+  const desde=document.getElementById('rep-g-desde').value;
+  const hasta=document.getElementById('rep-g-hasta').value;
+  const err=document.getElementById('rep-g-err');
+  if(!desde||!hasta){err.textContent='Seleccioná las fechas';return null;}
+  err.textContent='Cargando...';
+
+  // OTs finalizadas en el rango (por fecha_fin)
+  const ots=await sbGet('ordenes_trabajo',
+    `?estado_id=in.(${ESTADOS.filter(e=>e.nombre==='FINALIZADA').map(e=>e.id).join(',')})&fecha_fin=gte.${desde}T00:00:00&fecha_fin=lte.${hasta}T23:59:59&select=id,numero_ot,tipo_item,tipo_tarea,clientes(codigo_gigared,apellido,nombre)&eliminado=eq.false&order=clientes(codigo_gigared)&limit=500`
+  )||[];
+
+  if(!ots.length){err.textContent='No hay OTs finalizadas en ese período';return null;}
+
+  const otIds=ots.map(o=>o.id);
+
+  // Materiales y servicios en paralelo
+  const [mats, servs]=await Promise.all([
+    sbGet('ot_materiales_usados',`?ot_id=in.(${otIds.join(',')})&select=ot_id,cantidad,catalogo_materiales(nombre)`)||[],
+    sbGet('ot_servicios_realizados',`?ot_id=in.(${otIds.join(',')})&select=ot_id,cantidad,catalogo_servicios(nombre)`)||[]
+  ]);
+
+  err.textContent='';
+  return {ots, mats, servs, desde, hasta};
+}
+
+function _cssLiquidacion(){
+  return `*{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Arial,sans-serif;font-size:9px;padding:12px;color:#111}
+    h1{font-size:13px;font-weight:700;color:#1e3a5f;margin-bottom:2px}
+    h2{font-size:10px;color:#555;font-weight:400;margin-bottom:10px}
+    .tot-table{width:100%;border-collapse:collapse;margin-bottom:20px}
+    .tot-table th{background:#1e3a5f;color:#fff;padding:5px 8px;text-align:left;font-size:9px}
+    .tot-table td{border-bottom:1px solid #ddd;padding:4px 8px;font-size:9px}
+    .tot-table td:last-child{font-weight:700;text-align:right;color:#1e3a5f}
+    .section-title{background:#1e3a5f;color:#fff;font-weight:700;font-size:9px;padding:4px 8px;margin:16px 0 0}
+    .grid-wrap{overflow-x:auto;margin-bottom:8px}
+    .grid-table{border-collapse:collapse;font-size:8px;min-width:100%}
+    .grid-table th{background:#e8edf3;padding:3px 5px;text-align:center;border:1px solid #ccc;font-weight:700;white-space:nowrap;font-size:8px;writing-mode:vertical-lr;transform:rotate(180deg);height:60px;vertical-align:bottom}
+    .grid-table th.row-header{writing-mode:horizontal-tb;transform:none;height:auto;text-align:left;min-width:180px;background:#f0f4f8}
+    .grid-table td{border:1px solid #ddd;padding:2px 4px;text-align:center;font-size:8px}
+    .grid-table td.row-label{text-align:left;font-weight:600;background:#f8fafc;padding:2px 6px;white-space:nowrap}
+    .grid-table td.has-val{background:#eff6ff;font-weight:700;color:#1d4ed8}
+    @media print{body{padding:6px}@page{size:A4 landscape;margin:8mm}}`;
+}
+
+async function generarLiquidacionManoObra(){
+  const data=await _cargarDatosLiquidacion();
+  if(!data)return;
+  const {ots, servs, desde, hasta}=data;
+
+  // Mapear ot_id → cliente
+  const otMap={};
+  ots.forEach(o=>otMap[o.id]=o);
+
+  // Totales globales de servicios
+  const totServ={};
+  servs.forEach(s=>{
+    const nom=s.catalogo_servicios?.nombre||'?';
+    totServ[nom]=(totServ[nom]||0)+s.cantidad;
+  });
+
+  // Datos por cliente (código sin prefijo)
+  const porCliente={};
+  servs.forEach(s=>{
+    const ot=otMap[s.ot_id];
+    if(!ot)return;
+    const cod=fmtCodigo(ot.clientes?.codigo_gigared);
+    if(!porCliente[cod])porCliente[cod]={cod,nombre:(ot.clientes?.apellido||'')+' '+(ot.clientes?.nombre||''),servs:{}};
+    const nom=s.catalogo_servicios?.nombre||'?';
+    porCliente[cod].servs[nom]=(porCliente[cod].servs[nom]||0)+s.cantidad;
+  });
+
+  const clientes=Object.values(porCliente).sort((a,b)=>a.cod.localeCompare(b.cod));
+  const nombresServ=Object.keys(totServ).sort();
+  const fechaDisplay=(d)=>new Date(d+'T12:00:00').toLocaleDateString('es-AR');
+  const rango=desde===hasta?fechaDisplay(desde):fechaDisplay(desde)+' al '+fechaDisplay(hasta);
+
+  const CHUNK=11; // clientes por grupo (columnas)
+  const css=_cssLiquidacion();
+  let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Liquidación MO</title><style>${css}</style></head><body>`;
+  html+=`<h1>FG Conexiones S.R.L. — Liquidación de Mano de Obra</h1><h2>Período: ${rango}</h2>`;
+
+  // Página 1: totales
+  html+=`<table class="tot-table"><thead><tr><th>#</th><th>Descripción</th><th>Cantidad</th></tr></thead><tbody>`;
+  nombresServ.forEach((n,i)=>{html+=`<tr><td>${i+1}</td><td>${n}</td><td>${totServ[n]}</td></tr>`;});
+  html+=`</tbody></table>`;
+
+  // Grilla por grupos de CHUNK clientes
+  for(let i=0;i<clientes.length;i+=CHUNK){
+    const grupo=clientes.slice(i,i+CHUNK);
+    html+=`<div class="section-title">Liquidación de mano de obra — ${rango}</div>`;
+    html+=`<div class="grid-wrap"><table class="grid-table"><thead><tr>`;
+    html+=`<th class="row-header">Servicio</th>`;
+    grupo.forEach(c=>{html+=`<th>${c.cod}</th>`;});
+    html+=`</tr></thead><tbody>`;
+    nombresServ.forEach(n=>{
+      const hasAny=grupo.some(c=>(c.servs[n]||0)>0);
+      html+=`<tr><td class="row-label">${n}</td>`;
+      grupo.forEach(c=>{
+        const v=c.servs[n]||0;
+        html+=v>0?`<td class="has-val">${v.toFixed(2)}</td>`:`<td></td>`;
+      });
+      html+=`</tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  }
+
+  html+=`</body></html>`;
+  const win=window.open('','_blank');
+  win.document.write(html);win.document.close();
+  setTimeout(()=>win.print(),600);
+}
+
+async function generarLiquidacionMateriales(){
+  const data=await _cargarDatosLiquidacion();
+  if(!data)return;
+  const {ots, mats, desde, hasta}=data;
+
+  const otMap={};
+  ots.forEach(o=>otMap[o.id]=o);
+
+  // Totales globales
+  const totMat={};
+  mats.forEach(m=>{
+    const nom=m.catalogo_materiales?.nombre||'?';
+    totMat[nom]=(totMat[nom]||0)+m.cantidad;
+  });
+
+  // Datos por cliente
+  const porCliente={};
+  mats.forEach(m=>{
+    const ot=otMap[m.ot_id];
+    if(!ot)return;
+    const cod=fmtCodigo(ot.clientes?.codigo_gigared);
+    if(!porCliente[cod])porCliente[cod]={cod,mats:{}};
+    const nom=m.catalogo_materiales?.nombre||'?';
+    porCliente[cod].mats[nom]=(porCliente[cod].mats[nom]||0)+m.cantidad;
+  });
+
+  const clientes=Object.values(porCliente).sort((a,b)=>a.cod.localeCompare(b.cod));
+  const nombresMat=Object.keys(totMat).sort();
+  const fechaDisplay=(d)=>new Date(d+'T12:00:00').toLocaleDateString('es-AR');
+  const rango=desde===hasta?fechaDisplay(desde):fechaDisplay(desde)+' al '+fechaDisplay(hasta);
+
+  const CHUNK=11;
+  const css=_cssLiquidacion();
+  let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Liquidación Mat</title><style>${css}</style></head><body>`;
+  html+=`<h1>FG Conexiones S.R.L. — Liquidación de Materiales Utilizados</h1><h2>Período: ${rango}</h2>`;
+
+  // Página 1: totales
+  html+=`<table class="tot-table"><thead><tr><th>Descripción</th><th>Cantidad</th></tr></thead><tbody>`;
+  nombresMat.forEach(n=>{html+=`<tr><td>${n}</td><td>${totMat[n]}</td></tr>`;});
+  html+=`</tbody></table>`;
+
+  // Grilla
+  for(let i=0;i<clientes.length;i+=CHUNK){
+    const grupo=clientes.slice(i,i+CHUNK);
+    html+=`<div class="section-title">Liquidación de materiales — ${rango}</div>`;
+    html+=`<div class="grid-wrap"><table class="grid-table"><thead><tr>`;
+    html+=`<th class="row-header">Material</th>`;
+    grupo.forEach(c=>{html+=`<th>${c.cod}</th>`;});
+    html+=`</tr></thead><tbody>`;
+    nombresMat.forEach(n=>{
+      html+=`<tr><td class="row-label">${n}</td>`;
+      grupo.forEach(c=>{
+        const v=c.mats[n]||0;
+        html+=v>0?`<td class="has-val">${v.toFixed(2)}</td>`:`<td></td>`;
+      });
+      html+=`</tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  }
+
+  html+=`</body></html>`;
+  const win=window.open('','_blank');
+  win.document.write(html);win.document.close();
+  setTimeout(()=>win.print(),600);
 }
 
 async function imprimirEntregaGigared(fechaFiltro){
