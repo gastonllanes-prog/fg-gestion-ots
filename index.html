@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v111</title>
+<title>FG Gestión OTs v114</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V111</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V114</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v111</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v114</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -261,7 +261,6 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div><div class="ph-title">Asignar OTs</div><div class="ph-sub">Programá órdenes por cuadrilla</div></div>
     <div style="margin-left:auto">
       <button class="btn btn-sm" onclick="imprimirOrdenesProgramadas()" style="gap:6px">🖨️ Reporte del día</button>
-      <button class="btn btn-sm btn-primary" onclick="abrirReporteGigared()" style="gap:6px">📊 Liquidación Gigared</button>
     </div>
   </div>
 
@@ -379,6 +378,22 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <button class="btn btn-sm" onclick="renderAsignadas()" style="align-self:flex-end;padding:8px 14px">🔄 Actualizar</button>
   </div>
   <div id="asig-list-tabla"><div class="loading"><span class="spinner"></span></div></div>
+</div>
+
+<div id="s-liquidacion" style="display:none">
+  <div class="ph">
+    <div class="ph-icon blue">📊</div>
+    <div><div class="ph-title">Liquidación diaria</div><div class="ph-sub">Mano de obra y materiales para Gigared</div></div>
+  </div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem;max-width:480px">
+    <div class="fg"><label>Desde</label><input type="date" id="liq-desde" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px"/></div>
+    <div class="fg"><label>Hasta</label><input type="date" id="liq-hasta" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px"/></div>
+    <p class="err-msg" id="liq-err"></p>
+    <div style="display:flex;gap:10px;margin-top:.5rem">
+      <button class="btn btn-primary" style="flex:1;padding:12px" onclick="liqGenerarMO()">📋 Mano de Obra</button>
+      <button class="btn btn-primary" style="flex:1;padding:12px" onclick="liqGenerarMat()">🔩 Materiales</button>
+    </div>
+  </div>
 </div>
 
 <div id="s-ots" style="display:none">
@@ -1294,7 +1309,7 @@ function construirMenu(){
   const nav=document.getElementById('sb-nav');
   const items=[
     {sec:'Principal'},{id:'dashboard',icon:'📊',label:'Dashboard'},{id:'ots',icon:'📋',label:'Órdenes de trabajo'},
-    {id:'asignar',icon:'📍',label:'Asignar OTs'},{id:'asignadas',icon:'✓',label:'Cerrar OTs'},
+    {id:'asignar',icon:'📍',label:'Asignar OTs'},{id:'asignadas',icon:'✓',label:'Cerrar OTs'},{id:'liquidacion',icon:'📊',label:'Liquidación diaria'},
     {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},
     {id:'tecnicos',icon:'👷',label:'Técnicos'},
     {sec:'Stock'},{id:'stock-cuad',icon:'🔧',label:'Stock Cuadrillas'},{id:'stock',icon:'📦',label:'Stock Depósito'},
@@ -1313,9 +1328,9 @@ function irA(sec){
   const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
   document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
-  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
+  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',liquidacion:'Liquidación diaria',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
   closeSidebar();
-  const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
+  const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,liquidacion:()=>abrirReporteGigaredSeccion(),clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
 }
 
@@ -6121,6 +6136,36 @@ async function confirmarImprimirEntrega(){
 }
 
 
+function abrirReporteGigaredSeccion(){
+  // Inicializar fechas al día de hoy
+  const hoy=new Date().toISOString().slice(0,10);
+  const d=document.getElementById('liq-desde');
+  const h=document.getElementById('liq-hasta');
+  if(d&&!d.value)d.value=hoy;
+  if(h&&!h.value)h.value=hoy;
+}
+
+async function liqGenerarMO(){
+  document.getElementById('rep-g-desde').value=document.getElementById('liq-desde').value;
+  document.getElementById('rep-g-hasta').value=document.getElementById('liq-hasta').value;
+  document.getElementById('rep-g-err').textContent='';
+  // Sync error display to section
+  await generarLiquidacionManoObra();
+  const e=document.getElementById('rep-g-err').textContent;
+  if(e)document.getElementById('liq-err').textContent=e;
+  else document.getElementById('liq-err').textContent='';
+}
+
+async function liqGenerarMat(){
+  document.getElementById('rep-g-desde').value=document.getElementById('liq-desde').value;
+  document.getElementById('rep-g-hasta').value=document.getElementById('liq-hasta').value;
+  document.getElementById('rep-g-err').textContent='';
+  await generarLiquidacionMateriales();
+  const e=document.getElementById('rep-g-err').textContent;
+  if(e)document.getElementById('liq-err').textContent=e;
+  else document.getElementById('liq-err').textContent='';
+}
+
 function abrirReporteGigared(){
   const hoy=new Date().toISOString().slice(0,10);
   document.getElementById('rep-g-desde').value=hoy;
@@ -6136,43 +6181,85 @@ async function _cargarDatosLiquidacion(){
   if(!desde||!hasta){err.textContent='Seleccioná las fechas';return null;}
   err.textContent='Cargando...';
 
-  // OTs finalizadas en el rango (por fecha_fin)
+  // OTs finalizadas en el rango por fecha_fin
+  const eFinId=ESTADOS.find(e=>e.nombre==='FINALIZADA')?.id;
+  if(!eFinId){err.textContent='Estado FINALIZADA no encontrado';return null;}
+
   const ots=await sbGet('ordenes_trabajo',
-    `?estado_id=in.(${ESTADOS.filter(e=>e.nombre==='FINALIZADA').map(e=>e.id).join(',')})&fecha_fin=gte.${desde}T00:00:00&fecha_fin=lte.${hasta}T23:59:59&select=id,numero_ot,tipo_item,tipo_tarea,clientes(codigo_gigared,apellido,nombre)&eliminado=eq.false&order=clientes(codigo_gigared)&limit=500`
+    `?estado_id=eq.${eFinId}&fecha_fin=gte.${desde}T00:00:00&fecha_fin=lte.${hasta}T23:59:59`+
+    `&select=id,numero_ot,tipo_item,tipo_tarea,equipo_instalado,tag,clientes(codigo_gigared,apellido,nombre)`+
+    `&eliminado=eq.false&order=clientes(codigo_gigared)&limit=1000`
   )||[];
 
   if(!ots.length){err.textContent='No hay OTs finalizadas en ese período';return null;}
 
   const otIds=ots.map(o=>o.id);
-
-  // Materiales y servicios en paralelo
-  const [mats, servs]=await Promise.all([
-    sbGet('ot_materiales_usados',`?ot_id=in.(${otIds.join(',')})&select=ot_id,cantidad,catalogo_materiales(nombre)`)||[],
-    sbGet('ot_servicios_realizados',`?ot_id=in.(${otIds.join(',')})&select=ot_id,cantidad,catalogo_servicios(nombre)`)||[]
+  // Cargar en paralelo: materiales, servicios, movimientos con seriales
+  const [mats, servs, movsSerial]=await Promise.all([
+    sbGet('ot_materiales_usados',`?ot_id=in.(${otIds.join(',')})&select=ot_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo)`)||[],
+    sbGet('ot_servicios_realizados',`?ot_id=in.(${otIds.join(',')})&select=ot_id,cantidad,catalogo_servicios(nombre)`)||[],
+    sbGet('movimientos_stock',`?tipo_movimiento=eq.CONSUMO_OT&obs=like.*OT%20*serial*&obs=like.*${desde.slice(0,7)}*&select=obs,material_id,catalogo_materiales(nombre,serial_tipo)&limit=2000`)||[]
   ]);
 
   err.textContent='';
-  return {ots, mats, servs, desde, hasta};
+  return {ots, mats, servs, movsSerial, desde, hasta};
 }
 
-function _cssLiquidacion(){
+function _cssLiqReport(){
   return `*{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:Arial,sans-serif;font-size:9px;padding:12px;color:#111}
-    h1{font-size:13px;font-weight:700;color:#1e3a5f;margin-bottom:2px}
-    h2{font-size:10px;color:#555;font-weight:400;margin-bottom:10px}
-    .tot-table{width:100%;border-collapse:collapse;margin-bottom:20px}
-    .tot-table th{background:#1e3a5f;color:#fff;padding:5px 8px;text-align:left;font-size:9px}
-    .tot-table td{border-bottom:1px solid #ddd;padding:4px 8px;font-size:9px}
-    .tot-table td:last-child{font-weight:700;text-align:right;color:#1e3a5f}
-    .section-title{background:#1e3a5f;color:#fff;font-weight:700;font-size:9px;padding:4px 8px;margin:16px 0 0}
-    .grid-wrap{overflow-x:auto;margin-bottom:8px}
-    .grid-table{border-collapse:collapse;font-size:8px;min-width:100%}
-    .grid-table th{background:#e8edf3;padding:3px 5px;text-align:center;border:1px solid #ccc;font-weight:700;white-space:nowrap;font-size:8px;writing-mode:vertical-lr;transform:rotate(180deg);height:60px;vertical-align:bottom}
-    .grid-table th.row-header{writing-mode:horizontal-tb;transform:none;height:auto;text-align:left;min-width:180px;background:#f0f4f8}
-    .grid-table td{border:1px solid #ddd;padding:2px 4px;text-align:center;font-size:8px}
-    .grid-table td.row-label{text-align:left;font-weight:600;background:#f8fafc;padding:2px 6px;white-space:nowrap}
-    .grid-table td.has-val{background:#eff6ff;font-weight:700;color:#1d4ed8}
-    @media print{body{padding:6px}@page{size:A4 landscape;margin:8mm}}`;
+    body{font-family:Arial,sans-serif;font-size:9px;padding:10px 14px;color:#111}
+    h1{font-size:12px;font-weight:700;color:#1e3a5f;margin-bottom:1px}
+    .periodo{font-size:9px;color:#666;margin-bottom:10px}
+    .section-lbl{font-size:9px;font-weight:700;color:#1e3a5f;text-transform:uppercase;letter-spacing:.04em;
+      border-bottom:2px solid #1e3a5f;padding-bottom:2px;margin:12px 0 6px}
+    .tot-table{width:100%;border-collapse:collapse;margin-bottom:8px}
+    .tot-table th{background:#1e3a5f;color:#fff;padding:4px 8px;text-align:left;font-size:8px}
+    .tot-table td{border-bottom:1px solid #eee;padding:3px 8px;font-size:9px}
+    .tot-table td:last-child{font-weight:700;text-align:right;width:80px;color:#1e3a5f}
+    .grid-lbl{font-size:8px;font-weight:700;color:#555;margin:14px 0 3px}
+    .g-table{border-collapse:collapse;width:100%;table-layout:fixed}
+    .g-table th.cli-h{background:#1e3a5f;color:#fff;padding:2px 1px;text-align:center;font-size:7px;
+      writing-mode:horizontal-tb;transform:none;height:auto;vertical-align:middle;width:30px;overflow:hidden;white-space:nowrap}
+    .g-table th.row-h{background:#e8edf3;text-align:left;font-size:7.5px;font-weight:700;
+      padding:3px 5px;width:22%;writing-mode:horizontal-tb;transform:none;height:auto;vertical-align:middle}
+    .g-table td{border:1px solid #ddd;padding:2px 1px;text-align:center;font-size:7.5px;vertical-align:middle}
+    .g-table td.rl{text-align:left;font-size:7.5px;padding:2px 4px;background:#fafafa;font-weight:600;border-right:2px solid #ccc}
+    .g-table td.v{background:#eff6ff;font-weight:700;color:#1e40af}
+    .serial-block{margin-top:14px;page-break-before:always}
+    .serial-block h3{font-size:10px;font-weight:700;color:#1e3a5f;margin-bottom:6px}
+    .ser-cli{margin-bottom:6px;padding:5px 8px;background:#f8fafc;border-left:3px solid #2563eb;border-radius:0 4px 4px 0}
+    .ser-cli .cli-title{font-weight:700;font-size:9px;color:#1e3a5f;margin-bottom:3px}
+    .ser-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;font-size:8px}
+    .ser-mat{font-weight:600;color:#555;min-width:60px}
+    .ser-val{font-family:monospace;background:#e0f2fe;padding:1px 5px;border-radius:3px;color:#0369a1;font-size:8px}
+    @media print{body{padding:6px 10px}@page{size:A4 landscape;margin:7mm}
+      .serial-block{page-break-before:always}.g-group{page-break-inside:avoid}}`;
+}
+
+function _buildGrid(items, clientes, colKey, labelKey, CHUNK){
+  // items: [{cod, [colKey]: {nombre: qty}}]
+  // labelKey: nombre de la propiedad del item
+  let html='';
+  for(let i=0;i<clientes.length;i+=CHUNK){
+    const grupo=clientes.slice(i,i+CHUNK);
+    html+=`<div class="g-group"><table class="g-table"><colgroup><col style="width:22%">`;
+    grupo.forEach(()=>{html+=`<col style="width:${Math.floor(78/grupo.length)}%">`;});
+    html+=`</colgroup><thead><tr><th class="row-h">${labelKey}</th>`;
+    grupo.forEach(c=>{html+=`<th class="cli-h">${c.cod}</th>`;});
+    html+='</tr></thead><tbody>';
+    items.forEach(nom=>{
+      const hasAny=grupo.some(c=>(c[colKey][nom]||0)>0);
+      if(!hasAny)return; // skip empty rows for this group
+      html+=`<tr><td class="rl">${nom}</td>`;
+      grupo.forEach(c=>{
+        const v=c[colKey][nom]||0;
+        html+=v>0?`<td class="v">${Number.isInteger(v)?v:v.toFixed(2)}</td>`:`<td></td>`;
+      });
+      html+='</tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+  return html;
 }
 
 async function generarLiquidacionManoObra(){
@@ -6180,62 +6267,38 @@ async function generarLiquidacionManoObra(){
   if(!data)return;
   const {ots, servs, desde, hasta}=data;
 
-  // Mapear ot_id → cliente
-  const otMap={};
-  ots.forEach(o=>otMap[o.id]=o);
-
-  // Totales globales de servicios
+  const otMap={};ots.forEach(o=>otMap[o.id]=o);
   const totServ={};
-  servs.forEach(s=>{
-    const nom=s.catalogo_servicios?.nombre||'?';
-    totServ[nom]=(totServ[nom]||0)+s.cantidad;
-  });
+  servs.forEach(s=>{const n=s.catalogo_servicios?.nombre||'?';totServ[n]=(totServ[n]||0)+s.cantidad;});
 
-  // Datos por cliente (código sin prefijo)
   const porCliente={};
   servs.forEach(s=>{
-    const ot=otMap[s.ot_id];
-    if(!ot)return;
+    const ot=otMap[s.ot_id];if(!ot)return;
     const cod=fmtCodigo(ot.clientes?.codigo_gigared);
-    if(!porCliente[cod])porCliente[cod]={cod,nombre:(ot.clientes?.apellido||'')+' '+(ot.clientes?.nombre||''),servs:{}};
-    const nom=s.catalogo_servicios?.nombre||'?';
-    porCliente[cod].servs[nom]=(porCliente[cod].servs[nom]||0)+s.cantidad;
+    if(!porCliente[cod])porCliente[cod]={cod,s:{}};
+    const n=s.catalogo_servicios?.nombre||'?';
+    porCliente[cod].s[n]=(porCliente[cod].s[n]||0)+s.cantidad;
   });
 
-  const clientes=Object.values(porCliente).sort((a,b)=>a.cod.localeCompare(b.cod));
+  const clientes=Object.values(porCliente).sort((a,b)=>parseInt(a.cod)-parseInt(b.cod));
   const nombresServ=Object.keys(totServ).sort();
-  const fechaDisplay=(d)=>new Date(d+'T12:00:00').toLocaleDateString('es-AR');
-  const rango=desde===hasta?fechaDisplay(desde):fechaDisplay(desde)+' al '+fechaDisplay(hasta);
+  const fmtD=d=>new Date(d+'T12:00:00').toLocaleDateString('es-AR');
+  const rango=desde===hasta?fmtD(desde):fmtD(desde)+' al '+fmtD(hasta);
 
-  const CHUNK=11; // clientes por grupo (columnas)
-  const css=_cssLiquidacion();
+  const css=_cssLiqReport();
   let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Liquidación MO</title><style>${css}</style></head><body>`;
-  html+=`<h1>FG Conexiones S.R.L. — Liquidación de Mano de Obra</h1><h2>Período: ${rango}</h2>`;
+  html+=`<h1>FG Conexiones S.R.L. — Liquidación de Mano de Obra</h1><div class="periodo">Período: ${rango}</div>`;
 
-  // Página 1: totales
+  // Resumen totales
+  html+=`<div class="section-lbl">Total Mano de Obra</div>`;
   html+=`<table class="tot-table"><thead><tr><th>#</th><th>Descripción</th><th>Cantidad</th></tr></thead><tbody>`;
   nombresServ.forEach((n,i)=>{html+=`<tr><td>${i+1}</td><td>${n}</td><td>${totServ[n]}</td></tr>`;});
   html+=`</tbody></table>`;
 
-  // Grilla por grupos de CHUNK clientes
-  for(let i=0;i<clientes.length;i+=CHUNK){
-    const grupo=clientes.slice(i,i+CHUNK);
-    html+=`<div class="section-title">Liquidación de mano de obra — ${rango}</div>`;
-    html+=`<div class="grid-wrap"><table class="grid-table"><thead><tr>`;
-    html+=`<th class="row-header">Servicio</th>`;
-    grupo.forEach(c=>{html+=`<th>${c.cod}</th>`;});
-    html+=`</tr></thead><tbody>`;
-    nombresServ.forEach(n=>{
-      const hasAny=grupo.some(c=>(c.servs[n]||0)>0);
-      html+=`<tr><td class="row-label">${n}</td>`;
-      grupo.forEach(c=>{
-        const v=c.servs[n]||0;
-        html+=v>0?`<td class="has-val">${v.toFixed(2)}</td>`:`<td></td>`;
-      });
-      html+=`</tr>`;
-    });
-    html+=`</tbody></table></div>`;
-  }
+  // Grilla — 20 clientes por grupo
+  const CHUNK=20;
+  html+=`<div class="grid-lbl">Liquidación de mano de obra — ${rango}</div>`;
+  html+=_buildGrid(nombresServ, clientes, 's', 'Servicio', CHUNK);
 
   html+=`</body></html>`;
   const win=window.open('','_blank');
@@ -6248,59 +6311,89 @@ async function generarLiquidacionMateriales(){
   if(!data)return;
   const {ots, mats, desde, hasta}=data;
 
-  const otMap={};
-  ots.forEach(o=>otMap[o.id]=o);
+  const otMap={};ots.forEach(o=>otMap[o.id]=o);
 
-  // Totales globales
-  const totMat={};
+  // Separar materiales con serial y sin serial
+  const totConSerial={};
+  const totSinSerial={};
   mats.forEach(m=>{
-    const nom=m.catalogo_materiales?.nombre||'?';
-    totMat[nom]=(totMat[nom]||0)+m.cantidad;
+    const n=m.catalogo_materiales?.nombre||'?';
+    const tipo=m.catalogo_materiales?.serial_tipo||'NINGUNO';
+    if(tipo!=='NINGUNO') totConSerial[n]=(totConSerial[n]||0)+m.cantidad;
+    else totSinSerial[n]=(totSinSerial[n]||0)+m.cantidad;
   });
 
-  // Datos por cliente
   const porCliente={};
   mats.forEach(m=>{
-    const ot=otMap[m.ot_id];
-    if(!ot)return;
+    const ot=otMap[m.ot_id];if(!ot)return;
     const cod=fmtCodigo(ot.clientes?.codigo_gigared);
-    if(!porCliente[cod])porCliente[cod]={cod,mats:{}};
-    const nom=m.catalogo_materiales?.nombre||'?';
-    porCliente[cod].mats[nom]=(porCliente[cod].mats[nom]||0)+m.cantidad;
+    if(!porCliente[cod])porCliente[cod]={cod,ms:{},mc:{}};
+    const n=m.catalogo_materiales?.nombre||'?';
+    const tipo=m.catalogo_materiales?.serial_tipo||'NINGUNO';
+    if(tipo!=='NINGUNO') porCliente[cod].mc[n]=(porCliente[cod].mc[n]||0)+m.cantidad;
+    else porCliente[cod].ms[n]=(porCliente[cod].ms[n]||0)+m.cantidad;
   });
 
-  const clientes=Object.values(porCliente).sort((a,b)=>a.cod.localeCompare(b.cod));
-  const nombresMat=Object.keys(totMat).sort();
-  const fechaDisplay=(d)=>new Date(d+'T12:00:00').toLocaleDateString('es-AR');
-  const rango=desde===hasta?fechaDisplay(desde):fechaDisplay(desde)+' al '+fechaDisplay(hasta);
+  // Seriales por cliente (de equipo_instalado y tag en OT)
+  const serialesCli={};
+  ots.forEach(o=>{
+    const cod=fmtCodigo(o.clientes?.codigo_gigared);
+    if(!serialesCli[cod])serialesCli[cod]=[];
+    if(o.equipo_instalado) serialesCli[cod].push({label:'Equipos',val:o.equipo_instalado});
+    if(o.tag) serialesCli[cod].push({label:'Precinto(s)',val:o.tag});
+  });
 
-  const CHUNK=11;
-  const css=_cssLiquidacion();
+  const clientes=Object.values(porCliente).sort((a,b)=>parseInt(a.cod)-parseInt(b.cod));
+  const nomConSerial=Object.keys(totConSerial).sort();
+  const nomSinSerial=Object.keys(totSinSerial).sort();
+  const fmtD=d=>new Date(d+'T12:00:00').toLocaleDateString('es-AR');
+  const rango=desde===hasta?fmtD(desde):fmtD(desde)+' al '+fmtD(hasta);
+
+  const css=_cssLiqReport();
   let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Liquidación Mat</title><style>${css}</style></head><body>`;
-  html+=`<h1>FG Conexiones S.R.L. — Liquidación de Materiales Utilizados</h1><h2>Período: ${rango}</h2>`;
+  html+=`<h1>FG Conexiones S.R.L. — Liquidación de Materiales Utilizados</h1><div class="periodo">Período: ${rango}</div>`;
 
-  // Página 1: totales
-  html+=`<table class="tot-table"><thead><tr><th>Descripción</th><th>Cantidad</th></tr></thead><tbody>`;
-  nombresMat.forEach(n=>{html+=`<tr><td>${n}</td><td>${totMat[n]}</td></tr>`;});
-  html+=`</tbody></table>`;
+  // Resumen — dos tablas separadas
+  if(nomConSerial.length){
+    html+=`<div class="section-lbl">Equipos y Precintos (con serial)</div>`;
+    html+=`<table class="tot-table"><thead><tr><th>Descripción</th><th>Cantidad</th></tr></thead><tbody>`;
+    nomConSerial.forEach(n=>{html+=`<tr><td>${n}</td><td>${totConSerial[n]}</td></tr>`;});
+    html+=`</tbody></table>`;
+  }
+  if(nomSinSerial.length){
+    html+=`<div class="section-lbl">Materiales</div>`;
+    html+=`<table class="tot-table"><thead><tr><th>Descripción</th><th>Cantidad</th></tr></thead><tbody>`;
+    nomSinSerial.forEach(n=>{html+=`<tr><td>${n}</td><td>${totSinSerial[n]}</td></tr>`;});
+    html+=`</tbody></table>`;
+  }
 
-  // Grilla
-  for(let i=0;i<clientes.length;i+=CHUNK){
-    const grupo=clientes.slice(i,i+CHUNK);
-    html+=`<div class="section-title">Liquidación de materiales — ${rango}</div>`;
-    html+=`<div class="grid-wrap"><table class="grid-table"><thead><tr>`;
-    html+=`<th class="row-header">Material</th>`;
-    grupo.forEach(c=>{html+=`<th>${c.cod}</th>`;});
-    html+=`</tr></thead><tbody>`;
-    nombresMat.forEach(n=>{
-      html+=`<tr><td class="row-label">${n}</td>`;
-      grupo.forEach(c=>{
-        const v=c.mats[n]||0;
-        html+=v>0?`<td class="has-val">${v.toFixed(2)}</td>`:`<td></td>`;
+  // Grilla equipos/precintos
+  const CHUNK=20;
+  if(nomConSerial.length){
+    html+=`<div class="grid-lbl">Liquidación — Equipos y Precintos — ${rango}</div>`;
+    html+=_buildGrid(nomConSerial, clientes, 'mc', 'Equipo/Precinto', CHUNK);
+  }
+  // Grilla materiales
+  if(nomSinSerial.length){
+    html+=`<div class="grid-lbl" style="margin-top:14px">Liquidación — Materiales — ${rango}</div>`;
+    html+=_buildGrid(nomSinSerial, clientes, 'ms', 'Material', CHUNK);
+  }
+
+  // Seriales por cliente
+  const clientesConSerial=Object.entries(serialesCli).filter(([,s])=>s.length>0).sort(([a],[b])=>parseInt(a)-parseInt(b));
+  if(clientesConSerial.length){
+    html+=`<div class="serial-block"><h3>Detalle de Seriales por Cliente</h3>`;
+    clientesConSerial.forEach(([cod,sers])=>{
+      html+=`<div class="ser-cli"><div class="cli-title">Cliente ${cod}</div><div class="ser-row">`;
+      sers.forEach(s=>{
+        html+=`<span class="ser-mat">${s.label}:</span> `;
+        s.val.split(',').map(v=>v.trim()).filter(Boolean).forEach(v=>{
+          html+=`<span class="ser-val">${v}</span> `;
+        });
       });
-      html+=`</tr>`;
+      html+=`</div></div>`;
     });
-    html+=`</tbody></table></div>`;
+    html+=`</div>`;
   }
 
   html+=`</body></html>`;
@@ -6308,6 +6401,7 @@ async function generarLiquidacionMateriales(){
   win.document.write(html);win.document.close();
   setTimeout(()=>win.print(),600);
 }
+
 
 async function imprimirEntregaGigared(fechaFiltro){
   const desde=fechaFiltro+'T00:00:00';
