@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v99</title>
+<title>FG Gestión OTs v100</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V99</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V100</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v99</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v100</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -531,7 +531,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="ntab" onclick="stockCuadTab('reporte',this)">Reporte por cliente</div>
   </div>
   <!-- Filtros de fecha (visibles en movimientos y reporte) -->
-  <div id="cuad-fecha-filtros" style="display:none;margin-bottom:1rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <div id="cuad-fecha-filtros" style="display:none;margin-bottom:1rem;gap:8px;align-items:center;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:6px">
       <label style="font-size:12px;color:#64748b;font-weight:600">Desde</label>
       <input type="date" id="cuad-fecha-desde" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px" onchange="renderStockCuadTab()"/>
@@ -4318,6 +4318,10 @@ function stockCuadTab(tab, el){
   if(el)el.classList.add('active');
   const filtros=document.getElementById('cuad-fecha-filtros');
   filtros.style.display=(tab==='movimientos'||tab==='reporte')?'flex':'none';
+  // Botones de asignación solo en tab Stock actual
+  const cuadId=document.getElementById('cuad-selector').value;
+  document.getElementById('cuad-asignar-btn').style.display=(tab==='stock'&&cuadId)?'':'none';
+  document.getElementById('cuad-autocomplete-btn').style.display=(tab==='stock'&&cuadId)?'':'none';
   renderStockCuadTab();
 }
 
@@ -4529,9 +4533,14 @@ async function iniciarStockCuadrillas(){
       sel.appendChild(o);
     });
   }
-  document.getElementById('stock-cuad-tabla').innerHTML='<div class="empty-state"><div class="empty-state-icon">🔧</div><div style="color:#94a3b8">Seleccioná una cuadrilla para ver su stock</div></div>';
-  document.getElementById('cuad-asignar-btn').style.display='none';
-  document.getElementById('cuad-autocomplete-btn').style.display='none';
+  // Si ya hay una cuadrilla seleccionada (p.ej. al volver desde otro menú), renderizarla
+  if(sel.value){
+    renderStockCuadTab();
+  } else {
+    document.getElementById('stock-cuad-tabla').innerHTML='<div class="empty-state"><div class="empty-state-icon">🔧</div><div style="color:#94a3b8">Seleccioná una cuadrilla para ver su stock</div></div>';
+    document.getElementById('cuad-asignar-btn').style.display='none';
+    document.getElementById('cuad-autocomplete-btn').style.display='none';
+  }
 }
 
 async function renderStockCuadrillaSeleccionada(){
