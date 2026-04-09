@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v106</title>
+<title>FG Gestión OTs v108</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V106</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V108</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v106</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v108</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1550,6 +1550,21 @@ async function verOT(num){
     const items=await sbGet('ot_items_contratados',`?ot_id=eq.${ot.id}`)||[];
     let grupo=[];
     if(ot.grupo_id)grupo=await sbGet('ordenes_trabajo',`?grupo_id=eq.${ot.grupo_id}&select=numero_ot,tipo_item,estados_ot(nombre)&order=orden_cierre&eliminado=eq.false`)||[];
+    // Para OTs finalizadas: traer materiales usados, seriales y mano de obra
+    let matsUsados=[], servRealiz=[], serialesCliente=[];
+    const esFinalizada=(ot.estados_ot?.nombre==='FINALIZADA');
+    if(esFinalizada){
+      [matsUsados, servRealiz]=await Promise.all([
+        sbGet('ot_materiales_usados',`?ot_id=eq.${ot.id}&select=cantidad,catalogo_materiales(nombre,unidad,serial_tipo)`)||[],
+        sbGet('ot_servicios_realizados',`?ot_id=eq.${ot.id}&select=cantidad,catalogo_servicios(nombre,categoria)`)||[]
+      ]);
+      // Seriales entregados al cliente (INDIVIDUAL y CORRELATIVO)
+      const matsConSerial=(matsUsados||[]).filter(m=>m.catalogo_materiales?.serial_tipo==='INDIVIDUAL'||m.catalogo_materiales?.serial_tipo==='CORRELATIVO');
+      if(matsConSerial.length){
+        const matIds=[...new Set(matsConSerial.map(m=>m.catalogo_materiales?.id||0).filter(Boolean))];
+        serialesCliente=await sbGet('stock_seriales',`?ubicacion=eq.CLIENTE&material_id=in.(${matIds.join(',')})&select=serial,material_id,catalogo_materiales(nombre)&order=material_id`)||[];
+      }
+    }
     const cl=ot.clientes||{};
     const esRep=ot.tipo_tarea==='REPARACION';
     const domCalle=cl.calle||'';
@@ -1608,6 +1623,31 @@ async function verOT(num){
         ${ot.grupos_ot.observaciones.split('\n').filter(Boolean).map(l=>`<div style="font-size:12px;color:#1e3a5f;padding:3px 0;border-bottom:1px solid #e0f2fe">${l}</div>`).join('')}
       </div>`:''}
       ${items.length?`<div class="card" style="margin-bottom:.75rem"><div class="card-title">${esRep?'Servicios (referencia)':'Items contratados'}</div>${items.map(i=>`<div class="row"><span>${i.descripcion}</span><span style="font-weight:700">x${i.cantidad}</span></div>`).join('')}</div>`:''}
+      ${esFinalizada?`
+        ${matsUsados&&matsUsados.length?`<div class="card" style="margin-bottom:.75rem;border-color:#bbf7d0">
+          <div class="card-title" style="color:#16a34a">🔩 Materiales usados</div>
+          ${matsUsados.map(m=>{
+            const nom=m.catalogo_materiales?.nombre||'?';
+            const uni=m.catalogo_materiales?.unidad||'';
+            const tipo=m.catalogo_materiales?.serial_tipo||'NINGUNO';
+            const serDeMat=(serialesCliente||[]).filter(s=>s.catalogo_materiales?.nombre===nom);
+            return `<div class="row" style="flex-wrap:wrap;gap:4px">
+              <span>${nom}</span>
+              <span style="font-weight:700;color:#16a34a">${m.cantidad} ${uni}</span>
+              ${serDeMat.length?`<div style="width:100%;display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">
+                ${serDeMat.map(s=>`<span style="background:#f0fdf4;border:1px solid #bbf7d0;padding:2px 8px;border-radius:6px;font-family:monospace;font-size:11px;color:#166534">${s.serial}</span>`).join('')}
+              </div>`:''}
+            </div>`;
+          }).join('')}
+        </div>`:''}
+        ${servRealiz&&servRealiz.length?`<div class="card" style="margin-bottom:.75rem;border-color:#bae6fd">
+          <div class="card-title" style="color:#0369a1">⚙️ Mano de obra</div>
+          ${servRealiz.map(s=>`<div class="row">
+            <span>${s.catalogo_servicios?.nombre||'?'}</span>
+            <span style="font-weight:700;color:#0369a1">x${s.cantidad}</span>
+          </div>`).join('')}
+        </div>`:''}
+      `:''}
       ${grupo.length>=1?`<div class="card"><div class="card-title">Grupo · ${grupo.length} OT${grupo.length>1?'s':''}</div>${grupo.map(g=>`<div class="ot-grupo-item" style="cursor:pointer" onclick="cerrarModal('ot-modal');setTimeout(()=>verOT('${g.numero_ot}'),200)"><div class="ot-grupo-num">${numOT(g.numero_ot)}</div><div class="ot-grupo-tipo">${g.tipo_item||'—'}</div>${badgeE(g.estados_ot?.nombre||'')}</div>`).join('')}</div>`:''}
     `;
     const est=ot.estados_ot?.nombre||'';
@@ -3773,6 +3813,15 @@ async function confirmarWizardCierre(){
   // Validar devueltas con obs
   const sinObs=WIZ.pasos.filter(p=>p.accion==='DEVUELTA'&&!p.obs.trim());
   if(sinObs.length){document.getElementById('wiz-err').textContent='Completá el motivo de devolución en todas las OTs marcadas.';return;}
+
+  // Validar que al menos una mano de obra fue seleccionada en algún paso CERRAR
+  const pasosCerrar=WIZ.pasos.filter(p=>p.accion==='CERRAR');
+  const sinManoObra=pasosCerrar.filter(p=>!Object.values(p.servs||{}).some(v=>v>0));
+  if(sinManoObra.length){
+    const nombres=sinManoObra.map(p=>'OT '+numOT(p.ot.numero_ot)).join(', ');
+    const ok=confirm('⚠️ Las siguientes OTs no tienen mano de obra seleccionada:\n\n'+nombres+'\n\n¿Querés cerrarlas igualmente?');
+    if(!ok){document.getElementById('wiz-err').textContent='Seleccioná la mano de obra antes de confirmar.';return;}
+  }
 
   document.getElementById('wiz-err').textContent='Guardando...';
   try{
