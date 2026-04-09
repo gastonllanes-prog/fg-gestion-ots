@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v105</title>
+<title>FG Gestión OTs v106</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V105</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V106</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v105</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v106</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -4602,10 +4602,14 @@ function acPreviewCorrelativo(matId){
   prev.textContent='→ del '+inicio+' al '+fin;
 }
 
+// Almacena los valores de seriales en tiempo real (evita bugs de DOM en validación)
+const AC_SERIALES_CACHE={};
+
 function acActualizarContador(matId, total){
   const ta=document.getElementById('ac-serial-'+matId);
   const cnt=document.getElementById('ac-cnt-'+matId);
   if(!ta||!cnt)return;
+  AC_SERIALES_CACHE[matId]=ta.value; // guardar en cache
   const cargados=ta.value.split('\n').map(s=>s.trim()).filter(s=>s.length>0).length;
   const faltan=Math.max(0,total-cargados);
   const color=faltan===0?'#16a34a':'#ea580c';
@@ -4705,6 +4709,8 @@ async function autocompletarCuadrilla(){
       </div>`).join('');
   }
   document.getElementById('ac-modal-body').innerHTML=html;
+  // Limpiar cache de seriales
+  Object.keys(AC_SERIALES_CACHE).forEach(k=>delete AC_SERIALES_CACHE[k]);
   abrirModal('autocomplete-modal');
 }
 
@@ -4715,16 +4721,25 @@ async function confirmarAutocompletado(){
   if(!cuadId)return;
   const err=document.getElementById('ac-modal-err');
   err.textContent='';
-  // Validar seriales
+  // Validar seriales — lee del cache (guardado en oninput) con fallback al DOM
   const serialesPorMat={};
   for(const item of conSerial||[]){
-    const txt=(document.getElementById('ac-serial-'+item.mat.id)?.value||'').trim();
-    const seriales=txt.split('\n').map(s=>s.trim().toLowerCase()).filter(Boolean);
-    if(seriales.length!==item.cant){err.textContent=item.mat.nombre+': ingresaste '+seriales.length+' seriales pero faltan '+item.cant;return;}
+    // Leer del cache primero, fallback al DOM
+    const rawCache=AC_SERIALES_CACHE[item.mat.id]||'';
+    const rawDom=(document.getElementById('ac-serial-'+item.mat.id)?.value||'');
+    const txt=(rawCache||rawDom).trim();
+    const seriales=txt.split('\n').map(s=>s.trim().toUpperCase().replace(/[:\-]/g,'')).filter(Boolean);
+    if(!seriales.length){
+      err.textContent=item.mat.nombre+': no ingresaste ningún serial';return;
+    }
+    if(seriales.length!==item.cant){
+      const ok=confirm(item.mat.nombre+': se esperaban '+item.cant+' seriales pero ingresaste '+seriales.length+'. ¿Continuar igualmente?');
+      if(!ok){err.textContent='Corregí los seriales de '+item.mat.nombre;return;}
+    }
     const macReg=/^[0-9A-Fa-f]{12}$/;
-    const inv=seriales.filter(s=>!macReg.test(s.replace(/[:\-]/g,'')));
+    const inv=seriales.filter(s=>!macReg.test(s));
     if(inv.length){err.textContent='Seriales inválidos en '+item.mat.nombre+': '+inv[0];return;}
-    serialesPorMat[item.mat.id]=seriales;
+    serialesPorMat[item.mat.id]=seriales.map(s=>s.toLowerCase());
   }
   // Validar correlativos
   const corrPorMat={};
