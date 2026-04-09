@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v100</title>
+<title>FG Gestión OTs v101</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V100</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V101</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v100</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v101</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -4592,6 +4592,17 @@ function repartirACuadrillaActual(){
   repartirACuadrilla(cuadId,nombre);
 }
 
+function acActualizarContador(matId, total){
+  const ta=document.getElementById('ac-serial-'+matId);
+  const cnt=document.getElementById('ac-cnt-'+matId);
+  if(!ta||!cnt)return;
+  const cargados=ta.value.split('\n').map(s=>s.trim()).filter(s=>s.length>0).length;
+  const faltan=Math.max(0,total-cargados);
+  const color=faltan===0?'#16a34a':'#ea580c';
+  cnt.style.color=color;
+  cnt.textContent='A cargar: '+total+' · Cargados: '+cargados+(faltan>0?' · Faltan: '+faltan:' ✅');
+}
+
 async function autocompletarCuadrilla(){
   const cuadId=document.getElementById('cuad-selector').value;
   const cuadNombre=document.getElementById('cuad-selector').selectedOptions[0]?.text||'';
@@ -4650,10 +4661,11 @@ async function autocompletarCuadrilla(){
       <div style="padding:.6rem .875rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;margin-bottom:.4rem">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
           <span style="font-weight:600;font-size:13px">📱 ${x.mat.nombre}</span>
-          <span style="font-size:13px;font-weight:700;color:#ea580c">Faltan ${x.cant}</span>
+          <span id="ac-cnt-${x.mat.id}" style="font-size:13px;font-weight:700;color:#ea580c">A cargar: ${x.cant} · Faltan: ${x.cant}</span>
         </div>
         <textarea id="ac-serial-${x.mat.id}" rows="2" placeholder="Escaneá o pegá los seriales (uno por línea)..."
-          style="width:100%;padding:6px 8px;border:1px solid #fed7aa;border-radius:8px;font-family:monospace;font-size:12px;resize:vertical"></textarea>
+          style="width:100%;padding:6px 8px;border:1px solid #fed7aa;border-radius:8px;font-family:monospace;font-size:12px;resize:vertical"
+          oninput="acActualizarContador(${x.mat.id},${x.cant})"></textarea>
       </div>`).join('');
   }
   document.getElementById('ac-modal-body').innerHTML=html;
