@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v117</title>
+<title>FG Gestión OTs v118</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V117</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V118</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v117</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v118</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -429,6 +429,14 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <option value="SERVICE">Service</option>
     </select>
     <select class="filter-select" id="ot-fil-cuad" onchange="buscarOTs()"><option value="">Todas las cuadrillas</option></select>
+  </div>
+  <!-- Barra de selección fija — aparece cuando hay checkboxes tildados -->
+  <div id="ot-sel-bar" style="display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:12px;padding:.75rem 1.25rem;margin-bottom:1rem;color:#fff">
+    <div style="font-weight:700;font-size:14px">📋 <span id="ot-sel-count">0 clientes seleccionados</span></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="limpiarSeleccion()">✕ Limpiar</button>
+      <button class="btn btn-sm" style="background:#16a34a;color:#fff;border-color:#16a34a;font-size:13px;font-weight:700;padding:7px 18px" onclick="asignarSeleccionados()">📍 Asignar seleccionados</button>
+    </div>
   </div>
   <div id="ot-lista"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
   <div style="text-align:center;margin-top:1rem;display:none" id="ot-mas-btn"><button class="btn btn-sm" onclick="cargarMasOTs()">Cargar más</button></div>
@@ -1594,8 +1602,7 @@ const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado
           </td>
         </tr>`;
       }).join('')}</tbody>
-    </table></div>
-    <div id="ot-sel-bar" style="display:none"></div>`;
+    </table></div>`;
     document.getElementById('ot-mas-btn').style.display=ots.length===PAGE_SIZE?'block':'none';
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
@@ -3161,18 +3168,6 @@ function actualizarBarraSeleccion(){
   const bar=document.getElementById('ot-sel-bar');
   if(!bar)return;
   if(sels.length){
-    // Construir barra si está vacía
-    if(!bar.innerHTML.trim()){
-      bar.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:12px;padding:.75rem 1.25rem;margin-bottom:1rem;color:#fff';
-      bar.innerHTML=`
-        <div style="font-weight:700;font-size:14px">
-          📋 <span id="ot-sel-count"></span>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="limpiarSeleccion()">✕ Limpiar</button>
-          <button class="btn btn-sm" style="background:#16a34a;color:#fff;border-color:#16a34a;font-size:13px;font-weight:700;padding:7px 18px" onclick="asignarSeleccionados()">📍 Asignar seleccionados</button>
-        </div>`;
-    }
     bar.style.display='flex';
     const cnt=document.getElementById('ot-sel-count');
     if(cnt)cnt.textContent=sels.length+' cliente'+(sels.length!==1?'s':'')+' seleccionado'+(sels.length!==1?'s':'');
