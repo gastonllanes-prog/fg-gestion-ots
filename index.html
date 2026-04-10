@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v114</title>
+<title>FG Gestión OTs v115</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -169,7 +169,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V114</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V115</div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v114</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v115</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1688,6 +1688,8 @@ async function verOT(num){
     `;
     const est=ot.estados_ot?.nombre||'';
     let btns='';
+    // Botón PDF siempre visible si existe
+    if(ot.pdf_url) btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="window.open('${ot.pdf_url}','_blank')">📄 Ver PDF</button>`;
     if(est!=='FINALIZADA'&&est!=='ELIMINADA_SISTEMA'){
       if(!ot.grupos_ot?.cuadrillas)btns+=`<button class="btn btn-primary" onclick="abrirAsignar(${ot.grupo_id||ot.id})">📍 Asignar</button>`;
       btns+=`<button class="btn" onclick="abrirCambiarEstado(${ot.id},'${est}')">↕ Estado</button>`;
@@ -1972,14 +1974,37 @@ function dragOver(e){e.preventDefault();document.getElementById('drop-zone').cla
 function dragLeave(){document.getElementById('drop-zone').classList.remove('drag-over');}
 function dropFile(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag-over');if(e.dataTransfer.files.length)procesarPDFs(e.dataTransfer.files);}
 
+// ─── SUPABASE STORAGE ─────────────────────────────────────────────────────────
+async function subirPDFStorage(file, filename){
+  // Sube el archivo a Supabase Storage bucket ot-pdfs
+  // Retorna la URL pública o null si falla
+  try{
+    const r=await fetch(`${SB_URL}/storage/v1/object/ot-pdfs/${encodeURIComponent(filename)}`,{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':file.type||'application/pdf','Cache-Control':'3600'},
+      body:file
+    });
+    if(!r.ok){
+      // Si ya existe, ignorar el error (409 conflict = ya subido)
+      if(r.status!==409)console.warn('Storage upload error:',r.status,await r.text());
+    }
+    // URL pública
+    return `${SB_URL}/storage/v1/object/public/ot-pdfs/${encodeURIComponent(filename)}`;
+  }catch(e){
+    console.warn('Storage upload failed:',e.message);
+    return null;
+  }
+}
+
 async function procesarPDFs(files){
   if(!files||!files.length)return;
   document.getElementById('import-prog-wrap').style.display='';
   document.getElementById('import-err').textContent='';
   const todas=[];
+  window._IMPORT_FILES=files; // guardar referencia para subir a Storage en confirmarImport
   for(let i=0;i<files.length;i++){
     setProg(`Leyendo ${files[i].name}...`,Math.round((i/files.length)*50));
-    try{const txt=await extraerTxtPDF(files[i]);todas.push(...parsearOTs(txt));}catch(e){console.error(e);}
+    try{const txt=await extraerTxtPDF(files[i]);const parsed=parsearOTs(txt);parsed.forEach(o=>o._fileName=files[i].name);todas.push(...parsed);}catch(e){console.error(e);}
   }
   setProg('Verificando en base de datos...',70);
   const nums=todas.map(o=>o.numero_ot);
@@ -2368,6 +2393,29 @@ async function confirmarImport(){
     }
     document.getElementById('import-ok-msg').textContent=`✓ ${ok} OTs importadas correctamente`;
     if(errores.length)document.getElementById('import-err').textContent=`⚠ ${errores.length} fallaron: ${errores[0]}`;
+
+    // Subir PDFs al Storage y asociar URL a cada OT
+    if(window._IMPORT_FILES&&window._IMPORT_FILES.length){
+      setProg('Subiendo PDFs...',95);
+      // Mapear nombre de archivo a OTs del lote
+      const fileMap={};
+      nuevas.forEach(o=>{if(o._fileName){if(!fileMap[o._fileName])fileMap[o._fileName]=[];fileMap[o._fileName].push(o.numero_ot);}});
+      for(const [fname, nums] of Object.entries(fileMap)){
+        const file=[...window._IMPORT_FILES].find(f=>f.name===fname);
+        if(!file)continue;
+        // Nombre único: fecha + nombre original
+        const storeName=new Date().toISOString().slice(0,10)+'_'+fname.replace(/[^a-zA-Z0-9._-]/g,'_');
+        const url=await subirPDFStorage(file, storeName);
+        if(url){
+          // Actualizar todas las OTs de este archivo con la pdf_url
+          for(const num of nums){
+            try{await sbPatch('ordenes_trabajo',`?numero_ot=eq.${num}`,{pdf_url:url});}catch(e){}
+          }
+        }
+      }
+      window._IMPORT_FILES=null;
+    }
+
     setTimeout(()=>{cerrarModal('import-modal');irA('ots');},errores.length?3000:1500);
   }catch(e){document.getElementById('import-err').textContent='Error: '+e.message;btn.disabled=false;btn.textContent='✓ Importar OTs nuevas';}
 }
