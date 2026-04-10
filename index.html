@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v115</title>
+<title>FG Gestión OTs v116</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -73,7 +73,8 @@ body.app-ready #main-content{display:flex}
 .tipo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.5rem}
 .tipo-stat{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1rem;box-shadow:var(--card-shadow);cursor:pointer;transition:all .15s;text-align:center}
 .tipo-stat:hover{border-color:var(--accent);transform:translateY(-1px)}
-.tipo-stat .ts-num{font-size:32px;font-weight:900;line-height:1;margin-bottom:4px}
+.tipo-stat .ts-num{font-size:32px;font-weight:900;line-height:1;margin-bottom:2px}
+.tipo-stat .ts-sub{font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:3px}
 .tipo-stat .ts-lbl{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
 @media(max-width:900px){.tipo-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:600px){.tipo-grid{grid-template-columns:1fr 1fr}}
@@ -169,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V115</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V116</div>
   </div>
 </div>
 
@@ -179,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v115</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v116</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -195,56 +196,67 @@ tr:hover td{background:rgba(37,99,235,.02)}
 <div id="s-dashboard" style="display:none">
   <div class="ph"><div class="ph-icon blue">📊</div><div><div class="ph-title">Dashboard</div><div class="ph-sub">Resumen general</div></div></div>
   <div class="stat-grid">
-    <div class="stat" style="cursor:pointer" onclick="irAConFiltroEstado('PENDIENTE')"><div class="lbl">Total pendientes</div><div class="val amber" id="dash-pend">—</div></div>
-    <div class="stat" style="cursor:pointer" onclick="irAOTsAsignadas()"><div class="lbl">Asignadas</div><div class="val blue" id="dash-asig">—</div></div>
-    <div class="stat" style="cursor:pointer" onclick="irAConFiltroEstado('FINALIZADA')"><div class="lbl">Finalizadas hoy</div><div class="val green" id="dash-fin">—</div></div>
-    <div class="stat"><div class="lbl">A reprogramar</div><div class="val red" id="dash-repro">—</div></div>
+    <div class="stat" style="cursor:pointer" onclick="irAConFiltroEstado('PENDIENTE')"><div class="lbl">Total pendientes</div><div class="val amber" id="dash-pend">—</div><div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-pend-ots"></div></div>
+    <div class="stat" style="cursor:pointer" onclick="irAOTsAsignadas()"><div class="lbl">Asignadas</div><div class="val blue" id="dash-asig">—</div><div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-asig-ots"></div></div>
+    <div class="stat" style="cursor:pointer" onclick="irAConFiltroEstado('FINALIZADA')"><div class="lbl">Finalizadas hoy</div><div class="val green" id="dash-fin">—</div><div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-fin-ots"></div></div>
+    <div class="stat"><div class="lbl">A reprogramar</div><div class="val red" id="dash-repro">—</div><div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-repro-ots"></div></div>
   </div>
   <div class="card-title" style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Pendientes por tipo — clic para ver</div>
   <div class="tipo-grid">
     <div class="tipo-stat" onclick="irAConFiltro('BASICA',true)">
       <div class="ts-num blue" id="dash-t-inst">—</div>
+      <div class="ts-sub" id="dash-t-inst-cli"></div>
       <div class="ts-lbl">📶 Instalaciones</div>
     </div>
     <div class="tipo-stat" onclick="irAConFiltro('REPARACION',true)">
       <div class="ts-num" style="color:#ea580c" id="dash-t-rep">—</div>
+      <div class="ts-sub" id="dash-t-rep-cli"></div>
       <div class="ts-lbl">🔧 Reparaciones</div>
     </div>
 
     <div class="tipo-stat" onclick="irAConFiltro('CAMBIO_DOMICILIO',false)">
       <div class="ts-num" style="color:#7c3aed" id="dash-t-camdom">—</div>
+      <div class="ts-sub" id="dash-t-camdom-cli"></div>
       <div class="ts-lbl">🏠 Cambio dom.</div>
     </div>
     <div class="tipo-stat" onclick="irAConFiltro('CAMBIO_TECNOLOGIA',true)">
       <div class="ts-num" style="color:#8b5cf6" id="dash-t-camtec">—</div>
+      <div class="ts-sub" id="dash-t-camtec-cli"></div>
       <div class="ts-lbl">🔄 Cambio tecnol.</div>
     </div>
     <div class="tipo-stat" onclick="irAConFiltro('DECODIFICADOR',true)">
       <div class="ts-num" style="color:#4f46e5" id="dash-t-hd">—</div>
+      <div class="ts-sub" id="dash-t-hd-cli"></div>
       <div class="ts-lbl">📺 HDs</div>
     </div>
     <div class="tipo-stat" onclick="irAConFiltro('TV_BOX',true)">
       <div class="ts-num" style="color:#4f46e5" id="dash-t-tvbox">—</div>
+      <div class="ts-sub" id="dash-t-tvbox-cli"></div>
       <div class="ts-lbl">📺 TV Box</div>
     </div>
     <div class="tipo-stat" onclick="irAConFiltro('DESCONECTAR',false)">
       <div class="ts-num red" id="dash-t-desco">—</div>
+      <div class="ts-sub" id="dash-t-desco-cli"></div>
       <div class="ts-lbl">❌ Desconexiones</div>
     </div>
     <div class="tipo-stat" onclick="irAConFiltro('CM_EXISTENTE',true)">
       <div class="ts-num" style="color:#0d9488" id="dash-t-cmex">—</div>
+      <div class="ts-sub" id="dash-t-cmex-cli"></div>
       <div class="ts-lbl">📦 CM Existente</div>
     </div>
     <div class="tipo-stat" onclick="irAConFiltro('BOCA_ADICIONAL',true)">
       <div class="ts-num" style="color:#0891b2" id="dash-t-boca">—</div>
+      <div class="ts-sub" id="dash-t-boca-cli"></div>
       <div class="ts-lbl">🔌 Bocas adic.</div>
     </div>
     <div class="tipo-stat" onclick="irAConFiltro('AGREGA_TV',true)">
       <div class="ts-num" style="color:#0891b2" id="dash-t-agrtv">—</div>
+      <div class="ts-sub" id="dash-t-agrtv-cli"></div>
       <div class="ts-lbl">📺 Agrega TV</div>
     </div>
     <div class="tipo-stat" onclick="irAConFiltro('RECONEXION',true)">
       <div class="ts-num" style="color:#16a34a" id="dash-t-recon">—</div>
+      <div class="ts-sub" id="dash-t-recon-cli"></div>
       <div class="ts-lbl">🔁 Reconexiones</div>
     </div>
   </div>
@@ -1365,28 +1377,49 @@ function irAConFiltro(tipo,isItem=false){
 // DASHBOARD
 async function renderDashboard(){
   try{
-    const all=await sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,estados_ot(nombre)&limit=5000&eliminado=eq.false')||[];
+    const all=await sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,grupo_id,cliente_id,estados_ot(nombre)&limit=5000&eliminado=eq.false')||[];
     const hoy=new Date().toISOString().slice(0,10);
     let p=0,a=0,f=0,r=0;
-    const tc={};
+    // Clientes únicos por estado (grupo_id = visita única)
+    const pGrupos=new Set(), aGrupos=new Set(), fGrupos=new Set(), rGrupos=new Set();
+    // OTs y grupos por tipo (solo PENDIENTE)
+    const tc={}, tcGrupos={};
     all.forEach(o=>{
       const n=o.estados_ot?.nombre||'';
+      const gid=o.grupo_id||o.id;
       if(n==='PENDIENTE'){
-        p++;
+        p++;pGrupos.add(gid);
         const k=o.tipo_item||o.tipo_tarea||'';
         tc[k]=(tc[k]||0)+1;
+        if(!tcGrupos[k])tcGrupos[k]=new Set();
+        tcGrupos[k].add(gid);
       }
-      else if(n==='ASIGNADA'||n==='EN_PROCESO')a++;
-      else if(n==='FINALIZADA'&&(o.fecha_fin||'').startsWith(hoy))f++;
-      else if(n==='A_REPROGRAMAR'||n==='DEVUELTA_GIGARED')r++;
+      else if(n==='ASIGNADA'||n==='EN_PROCESO'){a++;aGrupos.add(gid);}
+      else if(n==='FINALIZADA'&&(o.fecha_fin||'').startsWith(hoy)){f++;fGrupos.add(gid);}
+      else if(n==='A_REPROGRAMAR'||n==='DEVUELTA_GIGARED'){r++;rGrupos.add(gid);}
     });
-    document.getElementById('dash-pend').textContent=p;
-    document.getElementById('dash-asig').textContent=a;
-    document.getElementById('dash-fin').textContent=f;
-    document.getElementById('dash-repro').textContent=r;
-    // Conteo por tipo_item
+
+    // Top stats: número grande = clientes, abajo = OTs
+    const setVal=(id,clientes,ots)=>{
+      const el=document.getElementById(id);
+      const sub=document.getElementById(id+'-ots');
+      if(el)el.textContent=clientes;
+      if(sub)sub.textContent=ots!==clientes?`${ots} OTs`:'';
+    };
+    setVal('dash-pend',pGrupos.size,p);
+    setVal('dash-asig',aGrupos.size,a);
+    setVal('dash-fin',fGrupos.size,f);
+    setVal('dash-repro',rGrupos.size,r);
+
+    // Tipo stats: número grande = clientes únicos, sub = OTs totales
     const g=id=>document.getElementById(id);
-    const s=(id,k)=>{const el=g(id);if(el)el.textContent=tc[k]||0;};
+    const s=(id,k)=>{
+      const el=g(id);const sub=g(id+'-cli');
+      const clientes=(tcGrupos[k]||new Set()).size;
+      const ots=tc[k]||0;
+      if(el)el.textContent=clientes;
+      if(sub)sub.textContent=ots!==clientes?`${ots} OTs`:'';
+    };
     s('dash-t-inst','BASICA');
     s('dash-t-rep','REPARACION');
     s('dash-t-camdom','CAMBIO_DOMICILIO');
@@ -1398,7 +1431,11 @@ async function renderDashboard(){
     s('dash-t-boca','BOCA_ADICIONAL');
     s('dash-t-agrtv','AGREGA_TV');
     // Reconexiones = RECONEXION + RECONEXION_EQUIPO
-    const elRec=g('dash-t-recon');if(elRec)elRec.textContent=(tc['RECONEXION']||0)+(tc['RECONEXION_EQUIPO']||0);
+    const elRec=g('dash-t-recon');const subRec=g('dash-t-recon-cli');
+    const reconGrupos=new Set([...(tcGrupos['RECONEXION']||new Set()),...(tcGrupos['RECONEXION_EQUIPO']||new Set())]);
+    const reconOTs=(tc['RECONEXION']||0)+(tc['RECONEXION_EQUIPO']||0);
+    if(elRec)elRec.textContent=reconGrupos.size;
+    if(subRec)subRec.textContent=reconOTs!==reconGrupos.size?`${reconOTs} OTs`:'';
     const pEstado=ESTADOS.find(e=>e.nombre==='PENDIENTE');
     const pend=pEstado?await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&estado_id=eq.${pEstado.id}&order=fecha_impresion.asc.nullslast&limit=8&eliminado=eq.false`)||[]:[];
     const hoyOTs=await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&fecha_impresion=gte.${hoy}T00:00:00&order=fecha_impresion&eliminado=eq.false`)||[];
