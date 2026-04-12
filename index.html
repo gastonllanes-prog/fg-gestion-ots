@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v128</title>
+<title>FG Gestión OTs v132</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V128</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V132</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v128</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v132</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2142,7 +2142,8 @@ function parsearPag(txt){
   const otBC=ot.numero_ot.replace('005-00','00500').replace('005-0','00500');
 
   // TIPO DE TAREA
-  ot.es_cambio_domicilio=/cambio\s+de\s+domicilio/i.test(txt)||/por\s+cambio\s+de\s+domicilio/i.test(txt);
+  // Detecta cambio de domicilio en cualquier orden (PDF.js puede invertir el texto)
+  ot.es_cambio_domicilio=/cambio\s+de\s+domicilio/i.test(txt)||/por\s+cambio\s+de\s+domicilio/i.test(txt)||/domicilio\s+de\s+cambio/i.test(txt)||/domicilio\s+de\s+Cambio/i.test(txt);
   if(/\bREPARAR\b/i.test(txt))ot.tipo_tarea='REPARACION';
   else if(/\bDESCONECTAR\b/i.test(txt))ot.tipo_tarea='DESCONECTAR';
   else if(/\bINSTALAR\b/i.test(txt)){
@@ -2429,6 +2430,12 @@ async function confirmarImport(){
     for(const[,gr] of Object.entries(porCli)){
       let cliId=null;
       if(gr[0].codigo_cliente){
+        // Para DESCONECTAR sin nombre, buscar el ex-cliente real para obtener nombre
+        const esDesconSinNombre=gr[0].tipo_tarea==='DESCONECTAR'&&!gr[0].apellido&&gr[0].codigo_cliente_real;
+        if(esDesconSinNombre){
+          const exReal=await sbGet('clientes',`?codigo_gigared=eq.${gr[0].codigo_cliente_real}&eliminado=eq.false`)||[];
+          if(exReal.length){gr[0].apellido=exReal[0].apellido||'';gr[0].nombre=exReal[0].nombre||'';}
+        }
         const ex=await sbGet('clientes',`?codigo_gigared=eq.${gr[0].codigo_cliente}&eliminado=eq.false`)||[];
         if(ex.length){
           cliId=ex[0].id;
@@ -2452,8 +2459,26 @@ async function confirmarImport(){
           cliId=(Array.isArray(c)?c[0]:c)?.id;
         }
       }
-      const g=await sbPost('grupos_ot',{lote_id:loteId,cliente_id:cliId,estado_id:ePend?.id});
-      const gId=(Array.isArray(g)?g[0]:g)?.id;
+      // Para DESCONECTAR por cambio de dom: buscar grupo del cliente real para agrupar juntos
+      let gId=null;
+      const esDesconCambioDom=gr[0].tipo_tarea==='DESCONECTAR'&&gr[0].codigo_cliente_real;
+      if(esDesconCambioDom){
+        // Buscar si existe un grupo con CAMBIO_DOMICILIO del cliente real (pendiente)
+        const codReal=gr[0].codigo_cliente_real;
+        const cliReal=await sbGet('clientes',`?codigo_gigared=eq.${codReal}&eliminado=eq.false`)||[];
+        if(cliReal.length){
+          const gReal=await sbGet('grupos_ot',`?cliente_id=eq.${cliReal[0].id}&eliminado=eq.false&select=id,ordenes_trabajo(tipo_tarea)`)||[];
+          const gCambioDom=gReal.find(g=>(g.ordenes_trabajo||[]).some(o=>o.tipo_tarea==='CAMBIO_DOMICILIO'));
+          if(gCambioDom){gId=gCambioDom.id;console.log('DESCONECTAR agrupada con grupo cambio dom:',gId);}
+        }
+      }
+      let grupoEsExistente=false;
+      if(!gId){
+        const g=await sbPost('grupos_ot',{lote_id:loteId,cliente_id:cliId,estado_id:ePend?.id});
+        gId=(Array.isArray(g)?g[0]:g)?.id;
+      } else {
+        grupoEsExistente=true; // No tocar el estado del grupo existente
+      }
       for(let idx=0;idx<gr.length;idx++){
         const o=gr[idx];
         try{
@@ -2475,6 +2500,24 @@ async function confirmarImport(){
     }
     document.getElementById('import-ok-msg').textContent=`✓ ${ok} OTs importadas correctamente`;
     if(errores.length)document.getElementById('import-err').textContent=`⚠ ${errores.length} fallaron: ${errores[0]}`;
+
+    // Verificar cambios de domicilio sin desconexión correspondiente
+    const cambiosDom=nuevas.filter(o=>o.tipo_tarea==='CAMBIO_DOMICILIO');
+    if(cambiosDom.length){
+      // Buscar en la BD si hay DESCONECTAR con codigo_cliente_real == estos clientes
+      const codsReales=cambiosDom.map(o=>o.codigo_cliente).filter(Boolean);
+      const descExist=await sbGet('ordenes_trabajo',
+        `?codigo_cliente_real=in.(${codsReales.map(c=>'00500'+c.slice(-6)).join(',')},${codsReales.join(',')})&select=codigo_cliente_real&eliminado=eq.false`
+      )||[];
+      const codsConDesco=new Set(descExist.map(d=>d.codigo_cliente_real));
+      const sinDesco=cambiosDom.filter(o=>!codsConDesco.has(o.codigo_cliente)&&!codsConDesco.has('00500'+o.codigo_cliente?.slice(-6)));
+      if(sinDesco.length){
+        const nombres=sinDesco.map(o=>`${o.apellido||''} ${o.nombre||''}`.trim()||o.codigo_cliente).join(', ');
+        setTimeout(()=>{
+          alert('⚠️ ATENCIÓN: Los siguientes cambios de domicilio no tienen OT de desconexión:\n\n'+nombres+'\n\nSolicitar a Gigared las órdenes de desconexión correspondientes.');
+        },1800);
+      }
+    }
 
     // Subir PDFs al Storage y asociar URL a cada OT
     if(window._IMPORT_FILES&&window._IMPORT_FILES.length){
