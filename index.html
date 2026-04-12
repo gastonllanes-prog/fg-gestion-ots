@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v120</title>
+<title>FG Gestión OTs v121</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V120</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V121</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v120</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v121</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -966,6 +966,20 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
 </div>
 
+<!-- MODAL VER PDF -->
+<div class="modal-overlay hidden" id="pdf-viewer-modal" style="align-items:stretch;padding:0">
+  <div style="background:#fff;width:100%;height:100%;display:flex;flex-direction:column;position:relative">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem;border-bottom:1px solid var(--border2);flex-shrink:0">
+      <div style="font-size:15px;font-weight:700;color:#1e3a5f">📄 Orden de Trabajo</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a id="pdf-download-link" href="" download target="_blank" class="btn btn-sm" style="font-size:12px">⬇ Descargar</a>
+        <button onclick="cerrarModal('pdf-viewer-modal')" style="background:none;border:none;cursor:pointer;font-size:20px;color:#64748b;padding:4px 8px">✕</button>
+      </div>
+    </div>
+    <iframe id="pdf-iframe" src="" style="flex:1;border:none;width:100%;height:100%"></iframe>
+  </div>
+</div>
+
 <!-- MODAL REPORTE GIGARED -->
 <div class="modal-overlay hidden" id="rep-gigared-modal">
   <div class="modal" style="max-width:440px">
@@ -1733,7 +1747,7 @@ async function verOT(num){
     const est=ot.estados_ot?.nombre||'';
     let btns='';
     // Botón PDF siempre visible si existe
-    if(ot.pdf_url) btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="window.open('${ot.pdf_url}','_blank')">📄 Ver PDF</button>`;
+    if(ot.pdf_url) btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="verPDFInline('${ot.pdf_url}')">📄 Ver PDF</button>`;
     if(est!=='FINALIZADA'&&est!=='ELIMINADA_SISTEMA'){
       if(!ot.grupos_ot?.cuadrillas)btns+=`<button class="btn btn-primary" onclick="abrirAsignar(${ot.grupo_id||ot.id})">📍 Asignar</button>`;
       btns+=`<button class="btn" onclick="abrirCambiarEstado(${ot.id},'${est}')">↕ Estado</button>`;
@@ -2020,20 +2034,27 @@ function dropFile(e){e.preventDefault();document.getElementById('drop-zone').cla
 
 // ─── SUPABASE STORAGE ─────────────────────────────────────────────────────────
 async function subirPDFStorage(file, filename){
-  // Sube el archivo a Supabase Storage bucket ot-pdfs
-  // Retorna la URL pública o null si falla
+  // Sube el archivo a Supabase Storage bucket ot-pdfs usando upsert
   try{
-    const r=await fetch(`${SB_URL}/storage/v1/object/ot-pdfs/${encodeURIComponent(filename)}`,{
+    // Leer como ArrayBuffer para enviar correctamente
+    const buf=await file.arrayBuffer();
+    const r=await fetch(`${SB_URL}/storage/v1/object/ot-pdfs/${filename}`,{
       method:'POST',
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':file.type||'application/pdf','Cache-Control':'3600'},
-      body:file
+      headers:{
+        'apikey':SB_KEY,
+        'Authorization':'Bearer '+SB_KEY,
+        'Content-Type':'application/pdf',
+        'Cache-Control':'3600',
+        'x-upsert':'true'
+      },
+      body:buf
     });
     if(!r.ok){
-      // Si ya existe, ignorar el error (409 conflict = ya subido)
-      if(r.status!==409)console.warn('Storage upload error:',r.status,await r.text());
+      const txt=await r.text();
+      console.warn('Storage upload error:',r.status,txt);
+      return null;
     }
-    // URL pública
-    return `${SB_URL}/storage/v1/object/public/ot-pdfs/${encodeURIComponent(filename)}`;
+    return `${SB_URL}/storage/v1/object/public/ot-pdfs/${filename}`;
   }catch(e){
     console.warn('Storage upload failed:',e.message);
     return null;
@@ -6284,6 +6305,15 @@ async function liqGenerarMat(){
   const e=document.getElementById('rep-g-err').textContent;
   if(e)document.getElementById('liq-err').textContent=e;
   else document.getElementById('liq-err').textContent='';
+}
+
+function verPDFInline(url){
+  document.getElementById('pdf-iframe').src=url;
+  document.getElementById('pdf-download-link').href=url;
+  // Abrir modal a pantalla completa
+  const m=document.getElementById('pdf-viewer-modal');
+  m.classList.remove('hidden');
+  m.style.display='flex';
 }
 
 function abrirReporteGigared(){
