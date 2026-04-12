@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v123</title>
+<title>FG Gestión OTs v124</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V123</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V124</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v123</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v124</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2052,9 +2052,12 @@ async function subirPDFStorage(file, filename){
     if(!r.ok){
       const txt=await r.text();
       console.warn('Storage upload error:',r.status,txt);
+      document.getElementById('import-err').textContent='PDF Storage error '+r.status+': '+txt;
       return null;
     }
-    return `${SB_URL}/storage/v1/object/public/ot-pdfs/${cleanName}`;
+    const url=`${SB_URL}/storage/v1/object/public/ot-pdfs/${cleanName}`;
+    console.log('PDF subido OK:',url);
+    return url;
   }catch(e){
     console.warn('Storage upload failed:',e.message);
     return null;
@@ -2473,9 +2476,13 @@ async function confirmarImport(){
         const url=await subirPDFStorage(file, storeName);
         if(url){
           // Actualizar todas las OTs de este archivo con la pdf_url
+          let updated=0;
           for(const num of nums){
-            try{await sbPatch('ordenes_trabajo',`?numero_ot=eq.${num}`,{pdf_url:url});}catch(e){}
+            try{await sbPatch('ordenes_trabajo',`?numero_ot=eq.${num}`,{pdf_url:url});updated++;}catch(e){}
           }
+          console.log(`PDF ${fname}: URL guardada en ${updated} OTs`);
+        } else {
+          console.warn('No se pudo subir:', fname);
         }
       }
       window._IMPORT_FILES=null;
