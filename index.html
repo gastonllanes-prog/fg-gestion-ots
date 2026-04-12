@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v124</title>
+<title>FG Gestión OTs v125</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V124</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V125</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v124</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v125</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2117,7 +2117,18 @@ async function extraerTxtPDF(file){
 }
 
 function parsearOTs(txt){
-  return txt.split(/___PAG\d+___/).map(p=>parsearPag(p.trim())).filter(o=>o&&o.numero_ot);
+  const partes=txt.split(/(___PAG\d+___)/);
+  const result=[];
+  let paginaActual=1;
+  for(let i=0;i<partes.length;i++){
+    const m=partes[i].match(/___PAG(\d+)___/);
+    if(m){paginaActual=parseInt(m[1]);continue;}
+    const p=partes[i].trim();
+    if(!p)continue;
+    const ot=parsearPag(p);
+    if(ot&&ot.numero_ot){ot.pdf_page=paginaActual;result.push(ot);}
+  }
+  return result;
 }
 
 function parsearPag(txt){
@@ -2446,7 +2457,7 @@ async function confirmarImport(){
       for(let idx=0;idx<gr.length;idx++){
         const o=gr[idx];
         try{
-          const otData={numero_ot:o.numero_ot,grupo_id:gId,cliente_id:cliId,tipo_tarea:o.tipo_tarea||'INSTALAR',tipo_item:o.tipo_item||'BASICA',orden_cierre:idx,estado_id:ePend?.id,fecha_emision:o.fecha_emision||null,fecha_asignacion_giga:o.fecha_asignacion_giga||null,obs_gigared:o.obs_gigared||null,tag:o.tag||null,es_cambio_domicilio:o.es_cambio_domicilio||false,fecha_impresion:o.fecha_impresion||null,codigo_cliente_real:o.codigo_cliente_real||null};
+          const otData={numero_ot:o.numero_ot,grupo_id:gId,cliente_id:cliId,tipo_tarea:o.tipo_tarea||'INSTALAR',tipo_item:o.tipo_item||'BASICA',orden_cierre:idx,estado_id:ePend?.id,fecha_emision:o.fecha_emision||null,fecha_asignacion_giga:o.fecha_asignacion_giga||null,obs_gigared:o.obs_gigared||null,tag:o.tag||null,es_cambio_domicilio:o.es_cambio_domicilio||false,fecha_impresion:o.fecha_impresion||null,codigo_cliente_real:o.codigo_cliente_real||null,pdf_page:o.pdf_page||null};
           if(o.tipo_tarea==='REPARACION'){
             if(o.sintoma_reportado)otData.sintoma_reportado=o.sintoma_reportado;
             if(o.obs_trabajo)otData.obs_trabajo=o.obs_trabajo;
@@ -2475,12 +2486,13 @@ async function confirmarImport(){
         const storeName=new Date().toISOString().slice(0,10)+'_'+fname.replace(/[^a-zA-Z0-9._-]/g,'_');
         const url=await subirPDFStorage(file, storeName);
         if(url){
-          // Actualizar todas las OTs de este archivo con la pdf_url
+          // Actualizar cada OT con su URL + número de página exacto
           let updated=0;
-          for(const num of nums){
-            try{await sbPatch('ordenes_trabajo',`?numero_ot=eq.${num}`,{pdf_url:url});updated++;}catch(e){}
+          for(const o of nuevas.filter(x=>x._fileName===fname)){
+            const urlConPagina=o.pdf_page?url+'#page='+o.pdf_page:url;
+            try{await sbPatch('ordenes_trabajo',`?numero_ot=eq.${o.numero_ot}`,{pdf_url:urlConPagina});updated++;}catch(e){}
           }
-          console.log(`PDF ${fname}: URL guardada en ${updated} OTs`);
+          console.log(`PDF ${fname}: URL con página guardada en ${updated} OTs`);
         } else {
           console.warn('No se pudo subir:', fname);
         }
