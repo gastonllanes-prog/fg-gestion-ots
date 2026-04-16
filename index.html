@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v134</title>
+<title>FG Gestión OTs v135</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V134</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V135</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v134</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v135</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -3196,7 +3196,7 @@ async function renderAsignadas(){
   const cuadId=document.getElementById('asig-list-cuad')?.value;
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
-    let q='?select=id,horario_visita,duracion_minutos,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_tarea,tipo_item,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,telefono1))&order=horario_visita';
+    let q='?select=id,horario_visita,duracion_minutos,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_tarea,tipo_item,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,telefono1))&order=horario_visita&eliminado=eq.false';
     if(fecha) q+='&fecha_trabajo=eq.'+fecha;
     if(cuadId) q+='&cuadrilla_id=eq.'+cuadId;
     else q+='&cuadrilla_id=not.is.null';
@@ -5231,6 +5231,27 @@ function acActualizarTotal(matId,actual,cantPaq,unidad,nombrePaq){
   const cant=parseInt(inp.value)||0;
   totalEl.textContent='= '+(actual+cant)+' '+unidad;
 }
+function acActualizarCantEq(matId, yaTiene){
+  const inp=document.getElementById('ac-eq-cant-'+matId);
+  const cntEl=document.getElementById('ac-cnt-'+matId);
+  const serialEl=document.getElementById('ac-serial-'+matId);
+  if(!inp||!cntEl)return;
+  const total=parseInt(inp.value)||0;
+  const faltan=Math.max(0,total-yaTiene);
+  cntEl.style.color=faltan>0?'#dc2626':'#16a34a';
+  cntEl.textContent='Tiene: '+yaTiene+' · Faltan: '+faltan;
+  // Actualizar placeholder del textarea
+  if(serialEl) serialEl.placeholder='Escaneá o pegá '+faltan+' serial(es) (uno por línea)...';
+  // Actualizar el cant del item en AUTOCOMPLETE_PENDING
+  const item=AUTOCOMPLETE_PENDING?.conSerial?.find(x=>x.mat.id===matId);
+  if(item) item.cant=total;
+}
+function acQuitarEquipo(matId){
+  const row=document.querySelector('[id="ac-eq-cant-'+matId+'"]')?.closest('div[style*="fff7ed"]');
+  if(row){row.style.opacity='.4';row.style.pointerEvents='none';}
+  const item=AUTOCOMPLETE_PENDING?.conSerial?.find(x=>x.mat.id===matId);
+  if(item) item.cant=0;
+}
 function acQuitarSerial(matId,serial){
   // Marcar serial para exclusión en AUTOCOMPLETE_PENDING
   const item=AUTOCOMPLETE_PENDING?.conSerial?.find(x=>x.mat.id===matId);
@@ -5348,9 +5369,8 @@ async function autocompletarCuadrilla(){
       </div>`).join('');
   }
   if(conSerial.length){
-    html+='<div style="font-size:11px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .5rem">Equipos con serial — requieren escaneo</div>';
+    html+='<div style="font-size:11px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .5rem">Equipos con serial <span style="font-weight:400;font-style:italic">(editá la cantidad o quitá los que no van)</span></div>';
     html+=conSerial.map(x=>{
-      // Seriales ya en el bolso de la cuadrilla (de WIZ.scMap o de AC_SERIALES_YA no disponible aquí — usar campo de AC)
       const yaEnBolso=x.yaEnBolso||[];
       const totalNecesita=x.cant;
       const yaTiene=yaEnBolso.length;
@@ -5361,17 +5381,35 @@ async function autocompletarCuadrilla(){
             <button type="button" onclick="acQuitarSerial(${x.mat.id},'${s}')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:13px;line-height:1;padding:0">×</button>
           </span>`).join('')
         : '';
-      return `<div style="padding:.6rem .875rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;margin-bottom:.4rem">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;flex-wrap:wrap;gap:4px">
-          <span style="font-weight:600;font-size:13px">📱 ${x.mat.nombre}</span>
-          <span id="ac-cnt-${x.mat.id}" style="font-size:12px;font-weight:700;color:#ea580c">A cargar: ${totalNecesita} · Tiene: ${yaTiene} · <span style="color:${faltan>0?'#dc2626':'#16a34a'}">Faltan: ${faltan}</span></span>
-        </div>
-        ${bolsoHtml?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.4rem" id="ac-bolso-${x.mat.id}">${bolsoHtml}</div>`:`<div id="ac-bolso-${x.mat.id}"></div>`}
-        ${faltan>0?`<textarea id="ac-serial-${x.mat.id}" rows="2" placeholder="Escaneá o pegá ${faltan} serial(es) (uno por línea)..."
-          style="width:100%;padding:6px 8px;border:1px solid #fed7aa;border-radius:8px;font-family:monospace;font-size:12px;resize:vertical"
-          oninput="acActualizarContador(${x.mat.id},${faltan})"></textarea>`
-        :`<div style="font-size:12px;color:#16a34a;font-weight:600;padding:4px 0">✓ Cantidad completa en bolso</div>`}
-      </div>`;
+      // Construir HTML con concatenación para evitar template literals anidados
+      const cntId='ac-cnt-'+x.mat.id;
+      const bolsoId='ac-bolso-'+x.mat.id;
+      const serialId='ac-serial-'+x.mat.id;
+      const cantId='ac-eq-cant-'+x.mat.id;
+      let html2='<div style="padding:.6rem .875rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;margin-bottom:.4rem">';
+      // Fila header: nombre + input cantidad + contador
+      html2+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:.4rem;flex-wrap:wrap">';
+      html2+='<span style="font-weight:600;font-size:13px;flex:1">📱 '+x.mat.nombre+'</span>';
+      html2+='<div style="display:flex;align-items:center;gap:6px">';
+      html2+='<span style="font-size:12px;color:#64748b">A cargar:</span>';
+      html2+='<input type="number" id="'+cantId+'" value="'+totalNecesita+'" min="'+(yaTiene)+'" style="width:65px;padding:4px 6px;border:2px solid #ea580c;border-radius:8px;font-size:13px;font-weight:700;text-align:center" oninput="acActualizarCantEq('+x.mat.id+','+yaTiene+')">';
+      html2+='<span id="'+cntId+'" style="font-size:12px;font-weight:700;color:'+(faltan>0?'#dc2626':'#16a34a')+'">Tiene: '+yaTiene+' · Faltan: '+faltan+'</span>';
+      html2+='<button type="button" onclick="acQuitarEquipo('+x.mat.id+')" style="padding:3px 8px;border-radius:6px;border:1px solid #dc2626;color:#dc2626;background:none;font-size:11px;cursor:pointer;font-weight:700">✕</button>';
+      html2+='</div></div>';
+      // Chips MACs ya en bolso
+      html2+='<div id="'+bolsoId+'" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:'+( yaEnBolso.length?'.4rem':'0')+'">';
+      html2+=bolsoHtml;
+      html2+='</div>';
+      // Textarea para nuevos seriales
+      if(faltan>0){
+        html2+='<textarea id="'+serialId+'" rows="2" placeholder="Escaneá o pegá '+faltan+' serial(es) (uno por línea)..."';
+        html2+=' style="width:100%;padding:6px 8px;border:1px solid #fed7aa;border-radius:8px;font-family:monospace;font-size:12px;resize:vertical"';
+        html2+=' oninput="acActualizarContador('+x.mat.id+','+faltan+')"></textarea>';
+      } else {
+        html2+='<div style="font-size:12px;color:#16a34a;font-weight:600;padding:4px 0">✓ Cantidad completa en bolso</div>';
+      }
+      html2+='</div>';
+      return html2;
     }).join('');
   }
   document.getElementById('ac-modal-body').innerHTML=html;
@@ -5395,7 +5433,7 @@ async function confirmarAutocompletado(){
 
   // Validar seriales — leer nuevos del DOM + respetar los ya en bolso (yaEnBolso)
   const serialesPorMat={};
-  for(const item of conSerial||[]){
+  for(const item of (conSerial||[]).filter(x=>x.cant>0)){
     const yaEnBolso=item.yaEnBolso||[];
     const faltan=Math.max(0,item.cant-yaEnBolso.length);
     const rawCache=AC_SERIALES_CACHE[item.mat.id]||'';
@@ -5469,7 +5507,7 @@ async function confirmarAutocompletado(){
       await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:item.mat.id,cuadrilla_id:parseInt(cuadId),cantidad:-cantReal,obs:'Precintos '+inicio+' al '+fin});
     }
     // Asignar con serial (solo los nuevos; los yaEnBolso ya están asignados)
-    for(const item of conSerial||[]){
+    for(const item of (conSerial||[]).filter(x=>x.cant>0)){
       const {nuevos=[],yaEnBolso=[]}=serialesPorMat[item.mat.id]||{};
       const seriales=nuevos;
       if(!seriales.length)continue; // Solo nuevos a agregar
