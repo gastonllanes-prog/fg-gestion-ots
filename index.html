@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v147</title>
+<title>FG Gestión OTs v149</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V147</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V149</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v147</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v149</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -194,75 +194,70 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div id="page-area">
 
 <div id="s-dashboard" style="display:none">
-  <div class="ph"><div class="ph-icon blue">📊</div><div><div class="ph-title">Dashboard</div><div class="ph-sub">Resumen general</div></div></div>
-  <div class="stat-grid">
-    <div class="stat" style="cursor:pointer" onclick="irAConFiltroEstado('PENDIENTE')"><div class="lbl">Total pendientes</div><div class="val amber" id="dash-pend">—</div><div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-pend-ots"></div></div>
-    <div class="stat" style="cursor:pointer" onclick="irAOTsAsignadas()"><div class="lbl">Asignadas</div><div class="val blue" id="dash-asig">—</div><div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-asig-ots"></div></div>
-    <div class="stat" style="cursor:pointer" onclick="irAFinalizadasHoy()"><div class="lbl">Finalizadas hoy</div><div class="val green" id="dash-fin">—</div><div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-fin-ots"></div></div>
-    <div class="stat"><div class="lbl">A reprogramar</div><div class="val red" id="dash-repro">—</div><div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-repro-ots"></div></div>
-  </div>
-  <div class="card-title" style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Pendientes por tipo — clic para ver</div>
-  <div class="tipo-grid">
-    <div class="tipo-stat" onclick="irAConFiltro('BASICA',true)">
-      <div class="ts-num blue" id="dash-t-inst">—</div>
-      <div class="ts-sub" id="dash-t-inst-cli"></div>
-      <div class="ts-lbl">📶 Instalaciones</div>
-    </div>
-    <div class="tipo-stat" onclick="irAConFiltro('REPARACION',true)">
-      <div class="ts-num" style="color:#ea580c" id="dash-t-rep">—</div>
-      <div class="ts-sub" id="dash-t-rep-cli"></div>
-      <div class="ts-lbl">🔧 Reparaciones</div>
-    </div>
+  <div class="ph"><div class="ph-icon blue">📊</div><div><div class="ph-title">Dashboard</div><div class="ph-sub" id="dash-fecha-hoy"></div></div></div>
 
-    <div class="tipo-stat" onclick="irAConFiltro('CAMBIO_DOMICILIO',false)">
-      <div class="ts-num" style="color:#7c3aed" id="dash-t-camdom">—</div>
-      <div class="ts-sub" id="dash-t-camdom-cli"></div>
-      <div class="ts-lbl">🏠 Cambio dom.</div>
+  <!-- Métricas principales -->
+  <div class="stat-grid" style="margin-bottom:1rem">
+    <div class="stat" style="cursor:pointer;border-left:4px solid #f59e0b" onclick="irAConFiltroEstado('PENDIENTE')">
+      <div class="lbl">Pendientes</div>
+      <div class="val amber" id="dash-pend">—</div>
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-pend-ots"></div>
+      <div style="font-size:10px;color:#f59e0b;margin-top:4px">clientes · ver →</div>
     </div>
-    <div class="tipo-stat" onclick="irAConFiltro('CAMBIO_TECNOLOGIA',true)">
-      <div class="ts-num" style="color:#8b5cf6" id="dash-t-camtec">—</div>
-      <div class="ts-sub" id="dash-t-camtec-cli"></div>
-      <div class="ts-lbl">🔄 Cambio tecnol.</div>
+    <div class="stat" style="cursor:pointer;border-left:4px solid #2563eb" onclick="irAOTsAsignadas()">
+      <div class="lbl">Asignadas</div>
+      <div class="val blue" id="dash-asig">—</div>
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-asig-ots"></div>
+      <div style="font-size:10px;color:#2563eb;margin-top:4px">en curso hoy</div>
     </div>
-    <div class="tipo-stat" onclick="irAConFiltro('DECODIFICADOR',true)">
-      <div class="ts-num" style="color:#4f46e5" id="dash-t-hd">—</div>
-      <div class="ts-sub" id="dash-t-hd-cli"></div>
-      <div class="ts-lbl">📺 HDs</div>
+    <div class="stat" style="cursor:pointer;border-left:4px solid #16a34a" onclick="irAFinalizadasHoy()">
+      <div class="lbl">Finalizadas hoy</div>
+      <div class="val green" id="dash-fin">—</div>
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-fin-ots"></div>
+      <div style="font-size:10px;color:#16a34a;margin-top:4px">ver detalle →</div>
     </div>
-    <div class="tipo-stat" onclick="irAConFiltro('TV_BOX',true)">
-      <div class="ts-num" style="color:#4f46e5" id="dash-t-tvbox">—</div>
-      <div class="ts-sub" id="dash-t-tvbox-cli"></div>
-      <div class="ts-lbl">📺 TV Box</div>
-    </div>
-    <div class="tipo-stat" onclick="irAConFiltro('DESCONECTAR',false)">
-      <div class="ts-num red" id="dash-t-desco">—</div>
-      <div class="ts-sub" id="dash-t-desco-cli"></div>
-      <div class="ts-lbl">❌ Desconexiones</div>
-    </div>
-    <div class="tipo-stat" onclick="irAConFiltro('CM_EXISTENTE',true)">
-      <div class="ts-num" style="color:#0d9488" id="dash-t-cmex">—</div>
-      <div class="ts-sub" id="dash-t-cmex-cli"></div>
-      <div class="ts-lbl">📦 CM Existente</div>
-    </div>
-    <div class="tipo-stat" onclick="irAConFiltro('BOCA_ADICIONAL',true)">
-      <div class="ts-num" style="color:#0891b2" id="dash-t-boca">—</div>
-      <div class="ts-sub" id="dash-t-boca-cli"></div>
-      <div class="ts-lbl">🔌 Bocas adic.</div>
-    </div>
-    <div class="tipo-stat" onclick="irAConFiltro('AGREGA_TV',true)">
-      <div class="ts-num" style="color:#0891b2" id="dash-t-agrtv">—</div>
-      <div class="ts-sub" id="dash-t-agrtv-cli"></div>
-      <div class="ts-lbl">📺 Agrega TV</div>
-    </div>
-    <div class="tipo-stat" onclick="irAConFiltro('RECONEXION',true)">
-      <div class="ts-num" style="color:#16a34a" id="dash-t-recon">—</div>
-      <div class="ts-sub" id="dash-t-recon-cli"></div>
-      <div class="ts-lbl">🔁 Reconexiones</div>
+    <div class="stat" style="border-left:4px solid #dc2626">
+      <div class="lbl">A reprogramar</div>
+      <div class="val red" id="dash-repro">—</div>
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-repro-ots"></div>
+      <div style="font-size:10px;color:#dc2626;margin-top:4px">devueltas + a reprogram.</div>
     </div>
   </div>
-  <div class="form-2col">
-    <div><div class="card"><div class="card-title">Pendientes de asignar</div><div id="dash-lista-pend"><div class="loading"><span class="spinner"></span></div></div></div></div>
-    <div><div class="card"><div class="card-title">OTs de hoy</div><div id="dash-lista-hoy"><div class="loading"><span class="spinner"></span></div></div></div></div>
+
+  <!-- Gráfico de barras pendientes por tipo -->
+  <div class="card" style="margin-bottom:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <div class="card-title" style="margin-bottom:0">Pendientes por tipo</div>
+      <div style="font-size:11px;color:#94a3b8">clic en barra para ver OTs</div>
+    </div>
+    <div id="dash-chart" style="min-height:80px"></div>
+  </div>
+
+  <!-- Progreso del día -->
+  <div class="card" style="margin-bottom:1rem">
+    <div class="card-title" style="margin-bottom:.75rem">Progreso de hoy</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:.5rem">
+      <div style="flex:1;background:#f1f5f9;border-radius:99px;height:12px;overflow:hidden">
+        <div id="dash-prog-bar" style="height:100%;background:linear-gradient(90deg,#2563eb,#16a34a);border-radius:99px;transition:width .5s;width:0%"></div>
+      </div>
+      <div id="dash-prog-txt" style="font-size:12px;font-weight:700;color:#1e3a5f;min-width:60px;text-align:right">0 / 0</div>
+    </div>
+    <div id="dash-prog-cuads" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:.5rem"></div>
+  </div>
+
+  <!-- Detalle por tipo (mini cards clickeables) -->
+  <div class="tipo-grid" style="margin-bottom:1rem">
+    <div class="tipo-stat" onclick="irAConFiltro('BASICA',true)"><div class="ts-num blue" id="dash-t-inst">—</div><div class="ts-sub" id="dash-t-inst-cli"></div><div class="ts-lbl">📶 Instalaciones</div></div>
+    <div class="tipo-stat" onclick="irAConFiltro('REPARACION',true)"><div class="ts-num" style="color:#ea580c" id="dash-t-rep">—</div><div class="ts-sub" id="dash-t-rep-cli"></div><div class="ts-lbl">🔧 Reparaciones</div></div>
+    <div class="tipo-stat" onclick="irAConFiltro('CAMBIO_DOMICILIO',false)"><div class="ts-num" style="color:#7c3aed" id="dash-t-camdom">—</div><div class="ts-sub" id="dash-t-camdom-cli"></div><div class="ts-lbl">🏠 Cambio dom.</div></div>
+    <div class="tipo-stat" onclick="irAConFiltro('CAMBIO_TECNOLOGIA',true)"><div class="ts-num" style="color:#8b5cf6" id="dash-t-camtec">—</div><div class="ts-sub" id="dash-t-camtec-cli"></div><div class="ts-lbl">🔄 Cambio tec.</div></div>
+    <div class="tipo-stat" onclick="irAConFiltro('DECODIFICADOR',true)"><div class="ts-num" style="color:#4f46e5" id="dash-t-hd">—</div><div class="ts-sub" id="dash-t-hd-cli"></div><div class="ts-lbl">📺 HDs</div></div>
+    <div class="tipo-stat" onclick="irAConFiltro('TV_BOX',true)"><div class="ts-num" style="color:#4f46e5" id="dash-t-tvbox">—</div><div class="ts-sub" id="dash-t-tvbox-cli"></div><div class="ts-lbl">📺 TV Box</div></div>
+    <div class="tipo-stat" onclick="irAConFiltro('DESCONECTAR',false)"><div class="ts-num red" id="dash-t-desco">—</div><div class="ts-sub" id="dash-t-desco-cli"></div><div class="ts-lbl">❌ Desconexiones</div></div>
+    <div class="tipo-stat" onclick="irAConFiltro('CM_EXISTENTE',true)"><div class="ts-num" style="color:#0d9488" id="dash-t-cmex">—</div><div class="ts-sub" id="dash-t-cmex-cli"></div><div class="ts-lbl">📦 CM Existente</div></div>
+    <div class="tipo-stat" onclick="irAConFiltro('BOCA_ADICIONAL',true)"><div class="ts-num" style="color:#0891b2" id="dash-t-boca">—</div><div class="ts-sub" id="dash-t-boca-cli"></div><div class="ts-lbl">🔌 Bocas adic.</div></div>
+    <div class="tipo-stat" onclick="irAConFiltro('AGREGA_TV',true)"><div class="ts-num" style="color:#0891b2" id="dash-t-agrtv">—</div><div class="ts-sub" id="dash-t-agrtv-cli"></div><div class="ts-lbl">📺 Agrega TV</div></div>
+    <div class="tipo-stat" onclick="irAConFiltro('RECONEXION',true)"><div class="ts-num" style="color:#16a34a" id="dash-t-recon">—</div><div class="ts-sub" id="dash-t-recon-cli"></div><div class="ts-lbl">🔁 Reconexiones</div></div>
   </div>
 </div>
 
@@ -1456,7 +1451,7 @@ function irA(sec){
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
   document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',liquidacion:'Liquidación diaria',informes:'Informes',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
   closeSidebar();
-  const fn={dashboard:renderDashboard,ots:()=>{renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
+  const fn={dashboard:renderDashboard,ots:()=>{const sel=document.getElementById('ot-fil-estado');if(sel&&!sel.value)sel.value='PENDIENTE';renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
 }
 
@@ -1503,7 +1498,15 @@ async function renderDashboard(){
       const gid=o.grupo_id||o.id;
       if(n==='PENDIENTE'){
         p++;pGrupos.add(gid);
-        const k=o.tipo_item||o.tipo_tarea||'';
+        // Normalizar tipo para el conteo del dashboard
+        // tipo_tarea: CAMBIO_DOMICILIO, DESCONECTAR (→DESCONEXION), REPARACION tienen prioridad
+        // El resto usa tipo_item (BASICA, ONU, CABLEMODEM, etc.)
+        const k=(()=>{
+          if(o.tipo_tarea==='CAMBIO_DOMICILIO') return 'CAMBIO_DOMICILIO';
+          if(o.tipo_tarea==='DESCONECTAR') return 'DESCONEXION'; // normalizar
+          if(o.tipo_tarea==='REPARACION') return 'REPARACION';
+          return o.tipo_item||o.tipo_tarea||'';
+        })();
         tc[k]=(tc[k]||0)+1;
         if(!tcGrupos[k])tcGrupos[k]=new Set();
         tcGrupos[k].add(gid);
@@ -1550,12 +1553,86 @@ async function renderDashboard(){
     const reconOTs=(tc['RECONEXION']||0)+(tc['RECONEXION_EQUIPO']||0);
     if(elRec)elRec.textContent=reconGrupos.size;
     if(subRec)subRec.textContent=reconOTs!==reconGrupos.size?`${reconOTs} OTs`:'';
-    const pEstado=ESTADOS.find(e=>e.nombre==='PENDIENTE');
-    const pend=pEstado?await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&estado_id=eq.${pEstado.id}&order=fecha_impresion.asc.nullslast&limit=8&eliminado=eq.false`)||[]:[];
-    const hoyOTs=await sbGet('ordenes_trabajo',`?select=numero_ot,tipo_tarea,tipo_item,clientes(apellido,nombre),estados_ot(nombre)&fecha_impresion=gte.${hoy}T00:00:00&order=fecha_impresion&eliminado=eq.false`)||[];
-    renderMini('dash-lista-pend',pend);
-    renderMini('dash-lista-hoy',hoyOTs);
-  }catch(e){console.error(e);document.getElementById('dash-lista-pend').innerHTML='<div class="empty-state"><div style="color:#dc2626;font-size:12px">Error: '+e.message+'</div></div>';document.getElementById('dash-lista-hoy').innerHTML='<div class="empty-state"><div style="color:#dc2626;font-size:12px">Error: '+e.message+'</div></div>';}
+    // Fecha hoy en el header
+    const fechaHoyEl=document.getElementById('dash-fecha-hoy');
+    if(fechaHoyEl) fechaHoyEl.textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+    // Gráfico de barras horizontal — pendientes por tipo
+    const tiposChart=[
+      {k:'BASICA',l:'Instalaciones',col:'#2563eb'},
+      {k:'CAMBIO_TECNOLOGIA',l:'Cambio tec.',col:'#8b5cf6'},
+      {k:'REPARACION',l:'Reparaciones',col:'#ea580c'},
+      {k:'CAMBIO_DOMICILIO',l:'Cambio dom.',col:'#7c3aed'},
+      {k:'DECODIFICADOR',l:'HDs',col:'#4f46e5'},
+      {k:'RECONEXION',l:'Reconexiones',col:'#16a34a'},
+      {k:'CM_EXISTENTE',l:'CM Existente',col:'#0d9488'},
+      {k:'BOCA_ADICIONAL',l:'Bocas adic.',col:'#0891b2'},
+      {k:'TV_BOX',l:'TV Box',col:'#4f46e5'},
+      {k:'DESCONEXION',l:'Desconex.',col:'#dc2626'},
+      {k:'AGREGA_TV',l:'Agrega TV',col:'#0891b2'},
+    ];
+    const chartEl=document.getElementById('dash-chart');
+    if(chartEl){
+      const datos=tiposChart.map(t=>({...t,v:(tcGrupos[t.k]||new Set()).size,ots:tc[t.k]||0}))
+        .filter(d=>d.v>0).sort((a,b)=>b.v-a.v);
+      const maxV=datos.length?Math.max(...datos.map(d=>d.v)):1;
+      if(!datos.length){
+        chartEl.innerHTML='<div style="font-size:12px;color:#94a3b8;text-align:center;padding:1rem">Sin pendientes por tipo</div>';
+      } else {
+        const rows=[];
+        datos.forEach(function(d){
+          const pct=Math.round((d.v/maxV)*100);
+          const isItem=(['REPARACION','CAMBIO_DOMICILIO','DESCONEXION'].indexOf(d.k)<0);
+          const key=d.k==='DESCONEXION'?'DESCONECTAR':d.k;
+          const row=document.createElement('div');
+          row.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer';
+          row.onclick=function(){irAConFiltro(key,isItem);};
+          row.innerHTML='<div style="font-size:11px;color:#64748b;min-width:90px;text-align:right;white-space:nowrap">'+d.l+'</div>'
+            +'<div style="flex:1;background:#f1f5f9;border-radius:99px;height:18px;overflow:hidden">'
+              +'<div style="height:100%;width:'+pct+'%;background:'+d.col+';border-radius:99px;transition:width .4s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;min-width:24px">'
+                +'<span style="font-size:10px;font-weight:700;color:#fff">'+d.v+'</span>'
+              +'</div>'
+            +'</div>'
+            +'<div style="font-size:10px;color:#94a3b8;min-width:30px">'+(d.ots!==d.v?d.ots+' OTs':'')+'</div>';
+          rows.push(row);
+        });
+        chartEl.innerHTML='';
+        rows.forEach(function(r){chartEl.appendChild(r);});
+      }
+    }
+
+    // Progreso del día: finalizadas hoy vs (finalizadas + asignadas)
+    const totalActivo=f+a;
+    const pct=totalActivo>0?Math.round((f/totalActivo)*100):0;
+    const progBar=document.getElementById('dash-prog-bar');
+    const progTxt=document.getElementById('dash-prog-txt');
+    if(progBar) progBar.style.width=pct+'%';
+    if(progTxt) progTxt.textContent=f+' / '+totalActivo;
+
+    // Progreso por cuadrilla hoy
+    const progCuads=document.getElementById('dash-prog-cuads');
+    if(progCuads){
+      try{
+        const eFin=ESTADOS.find(e=>e.nombre==='FINALIZADA');
+        const eAsig=ESTADOS.find(e=>e.nombre==='ASIGNADA');
+        if(eFin&&eAsig){
+          const [cuadFin,cuadAsig]=await Promise.all([
+            sbGet('ordenes_trabajo','?select=grupos_ot(cuadrillas(nombre))&estado_id=eq.'+eFin.id+'&fecha_fin=gte.'+hoy+'T00:00:00&eliminado=eq.false&limit=200'),
+            sbGet('ordenes_trabajo','?select=grupos_ot(cuadrillas(nombre))&estado_id=in.('+[eFin.id,eAsig.id].join(',')+'&eliminado=eq.false&limit=200')
+          ]);
+          const cFin={},cTot={};
+          (cuadFin||[]).forEach(o=>{const n=o.grupos_ot?.cuadrillas?.nombre||'Sin asignar';cFin[n]=(cFin[n]||0)+1;});
+          const cuadFinOTs=await sbGet('ordenes_trabajo','?select=grupos_ot(cuadrillas(nombre))&estado_id=eq.'+eFin.id+'&fecha_fin=gte.'+hoy+'T00:00:00&eliminado=eq.false&limit=200')||[];
+          const cuadNomFin={};
+          cuadFinOTs.forEach(o=>{const n=o.grupos_ot?.cuadrillas?.nombre;if(n)cuadNomFin[n]=(cuadNomFin[n]||0)+1;});
+          progCuads.innerHTML=Object.entries(cuadNomFin).map(([nom,cnt])=>
+            '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;color:#166534">'
+            +'🔧 '+nom+' · <span style="color:#16a34a">'+cnt+' ✓</span></div>'
+          ).join('');
+        }
+      }catch(e){}
+    }
+  }catch(e){console.error('Dashboard error:',e);}
 }
 
 function renderMini(id,ots){
@@ -1570,7 +1647,7 @@ function renderMini(id,ots){
 }
 
 // OTs TABLA
-let OT_SORT='fecha_impresion',OT_SORT_DIR='desc';
+let OT_SORT='fecha_impresion',OT_SORT_DIR='desc',OT_PAGE=0;
 let OT_SORT2='',OT_SORT2_DIR='asc'; // Ordenamiento secundario
 
 function buscarOTs(){
@@ -1815,6 +1892,166 @@ function sortOTs(col){
   }
   OT_PAGE=0;
   renderOTs();
+}
+
+
+// ─── VER DETALLE OT ──────────────────────────────────────────────────────────
+async function verOT(numeroOT, otIdDirecto){
+  const modal=document.getElementById('ot-modal');
+  const body=document.getElementById('ot-modal-body');
+  const footer=document.getElementById('ot-modal-footer');
+  body.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  footer.innerHTML='';
+  abrirModal('ot-modal');
+  try{
+    let ot;
+    if(otIdDirecto){
+      const r=await sbGet('ordenes_trabajo',`?id=eq.${otIdDirecto}&select=*,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
+      ot=r[0];
+    } else {
+      const r=await sbGet('ordenes_trabajo',`?numero_ot=eq.${numeroOT}&select=*,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
+      ot=r[0];
+    }
+    if(!ot){body.innerHTML='<p style="color:#dc2626;padding:1rem">OT no encontrada.</p>';return;}
+
+    const cl=ot.clientes||{};
+    const est=ot.estados_ot?.nombre||'';
+    const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
+    const fmtF=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+
+    // Grupo de OTs del mismo cliente
+    const grupo=ot.grupo_id?await sbGet('ordenes_trabajo',
+      `?grupo_id=eq.${ot.grupo_id}&select=id,numero_ot,tipo_item,tipo_tarea,estados_ot(nombre)&eliminado=eq.false&order=orden_cierre`)||[]:[];
+
+    // Si está finalizada, cargar materiales, servicios y seriales
+    const esFinalizada=(est==='FINALIZADA');
+    let matsUsados=[], servRealiz=[], serialesCliente=[];
+    if(esFinalizada){
+      [matsUsados, servRealiz]=await Promise.all([
+        sbGet('ot_materiales_usados',`?ot_id=eq.${ot.id}&select=cantidad,catalogo_materiales(nombre,unidad,serial_tipo)`)||[],
+        sbGet('ot_servicios_realizados',`?ot_id=eq.${ot.id}&select=cantidad,catalogo_servicios(nombre,categoria)`)||[]
+      ]);
+      if(matsUsados.length){
+        const matIds=[...new Set(matsUsados.map(m=>m.catalogo_materiales?.nombre).filter(Boolean))];
+        if(matIds.length) serialesCliente=await sbGet('stock_seriales',`?ot_id=eq.${ot.id}&select=serial,material_id,catalogo_materiales(nombre)`)||[];
+      }
+    }
+
+    // Historial de estado
+    const histLines=(ot.historial||'').split('\n').filter(Boolean);
+
+    // Construir HTML del body
+    let html='';
+
+    // Header cliente
+    html+='<div class="card" style="margin-bottom:.75rem;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-color:#bae6fd">';
+    html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">';
+    html+='<div>';
+    html+='<div style="font-size:22px;font-weight:900;color:#1e3a5f;letter-spacing:1px">'+fmtCodigo(cl.codigo_gigared)+'</div>';
+    html+='<div style="font-size:16px;font-weight:700;color:#1e293b">'+fmtCli(cl)+'</div>';
+    html+='<div style="font-size:12px;color:#64748b;margin-top:2px">'+dom+(cl.nodo?'  ·  Nodo: <strong>'+cl.nodo+'</strong>':'')+'</div>';
+    if(cl.telefono1) html+='<a href="tel:'+cl.telefono1.replace(/\D/g,'')+'" style="font-size:13px;color:#2563eb;font-weight:600">📞 '+cl.telefono1+'</a>';
+    html+='</div>';
+    html+='<div style="text-align:right">';
+    html+=badgeE(est);
+    html+='<div style="font-size:11px;color:#64748b;margin-top:4px">'+numOT(ot.numero_ot)+'</div>';
+    html+='</div>';
+    html+='</div></div>';
+
+    // Info OT
+    html+='<div class="ot-info-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem;margin-bottom:.75rem">';
+    const infoItem=(label,val)=>'<div class="card" style="padding:.5rem .75rem;background:#f8fafc"><div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:2px">'+label+'</div><div style="font-size:13px;font-weight:600;color:#1e293b">'+val+'</div></div>';
+    html+=infoItem('Tipo',( ot.tipo_item||ot.tipo_tarea||'—').replace(/_/g,' '));
+    html+=infoItem('Cuadrilla',ot.grupos_ot?.cuadrillas?.nombre||'Sin asignar');
+    html+=infoItem('F. Impresión',fmtF(ot.fecha_impresion?.slice(0,10)));
+    if(ot.fecha_asignacion_giga) html+=infoItem('F. Asignación',fmtF(ot.fecha_asignacion_giga));
+    if(ot.grupos_ot?.fecha_trabajo) html+=infoItem('F. Trabajo',fmtF(ot.grupos_ot.fecha_trabajo));
+    if(ot.fecha_fin) html+=infoItem('Finalización',fmtF(ot.fecha_fin?.slice(0,10)));
+    if(ot.tag) html+=infoItem('Precinto(s)',ot.tag);
+    if(ot.equipo_instalado) html+=infoItem('Serial/MAC',ot.equipo_instalado);
+    if(ot.obs_gigared) html+=infoItem('Obs. Gigared',ot.obs_gigared);
+    html+='</div>';
+
+    // Materiales usados (si finalizada)
+    if(esFinalizada&&matsUsados.length){
+      html+='<div class="card" style="margin-bottom:.75rem;border-color:#bbf7d0">';
+      html+='<div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;margin-bottom:.5rem">🔩 Materiales usados</div>';
+      matsUsados.forEach(m=>{
+        const nom=m.catalogo_materiales?.nombre||'?';
+        const uni=m.catalogo_materiales?.unidad||'';
+        const sers=serialesCliente.filter(s=>s.catalogo_materiales?.nombre===nom);
+        html+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f0fdf4;flex-wrap:wrap">';
+        html+='<span style="flex:1;font-size:12px">'+nom+'</span>';
+        html+='<span style="font-weight:700;color:#16a34a;font-size:13px">'+m.cantidad+' '+uni+'</span>';
+        if(sers.length){
+          html+='<div style="width:100%;display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">';
+          sers.forEach(s=>{ html+='<span style="background:#f0fdf4;border:1px solid #bbf7d0;padding:2px 8px;border-radius:6px;font-family:monospace;font-size:11px;color:#166534">'+s.serial+'</span>'; });
+          html+='</div>';
+        }
+        html+='</div>';
+      });
+      html+='</div>';
+    }
+
+    // Mano de obra
+    if(esFinalizada&&servRealiz.length){
+      html+='<div class="card" style="margin-bottom:.75rem;border-color:#bae6fd">';
+      html+='<div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;margin-bottom:.5rem">⚙️ Mano de obra</div>';
+      servRealiz.forEach(s=>{
+        html+='<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f9ff">';
+        html+='<span style="font-size:12px">'+( s.catalogo_servicios?.nombre||'?')+'</span>';
+        html+='<span style="font-weight:700;color:#0369a1">×'+s.cantidad+'</span></div>';
+      });
+      html+='</div>';
+    }
+
+    // Grupo de OTs
+    if(grupo.length>1){
+      html+='<div class="card" style="margin-bottom:.75rem">';
+      html+='<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:.5rem">Grupo · '+grupo.length+' OTs</div>';
+      html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+      grupo.forEach(g=>{
+        const activo=g.id===ot.id;
+        html+='<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;cursor:pointer;background:'+(activo?'#eff6ff':'#f8fafc')+';border:1px solid '+(activo?'#2563eb':'#e2e8f0')+'" onclick="cerrarModal(\'ot-modal\');setTimeout(()=>verOT(\''+g.numero_ot+'\'),150)">';
+        html+='<span style="font-family:monospace;font-size:12px;font-weight:700;color:'+(activo?'#2563eb':'#1e293b')+'">'+numOT(g.numero_ot)+'</span>';
+        html+='<span style="font-size:11px;color:#64748b">'+(g.tipo_item||g.tipo_tarea||'').replace(/_/g,' ')+'</span>';
+        html+=badgeE(g.estados_ot?.nombre||'');
+        html+='</div>';
+      });
+      html+='</div></div>';
+    }
+
+    // Historial
+    if(histLines.length){
+      html+='<div class="card" style="margin-bottom:.75rem">';
+      html+='<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:.5rem">📋 Historial</div>';
+      html+='<div style="max-height:120px;overflow-y:auto">';
+      histLines.slice().reverse().forEach(l=>{
+        html+='<div style="font-size:11px;color:#475569;padding:2px 0;border-bottom:1px solid #f1f5f9">'+l+'</div>';
+      });
+      html+='</div></div>';
+    }
+
+    body.innerHTML=html;
+
+    // Footer botones
+    let btns='';
+    if(ot.pdf_url) btns+='<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="window.open(\''+ot.pdf_url+'\',\'_blank\')">📄 Ver PDF</button>';
+    if(est!=='FINALIZADA'&&est!=='ELIMINADA_SISTEMA'){
+      if(!ot.grupos_ot?.cuadrillas) btns+='<button class="btn btn-primary" onclick="abrirAsignar('+( ot.grupo_id||ot.id)+')">📍 Asignar</button>';
+      btns+='<button class="btn" onclick="abrirCambiarEstado('+ot.id+',\''+est+'\')">↕ Estado</button>';
+      if(est==='ASIGNADA'||est==='EN_PROCESO') btns+='<button class="btn btn-green" onclick="abrirCierre('+ot.id+',\''+ot.numero_ot+'\',\''+(ot.tipo_tarea||'\'')+'")">✓ Cerrar</button>';
+    }
+    if(est==='FINALIZADA'&&(CU.rol==='superadmin'||CU.rol==='admin')){
+      btns+='<button class="btn btn-sm" style="font-size:11px;color:#2563eb;border-color:rgba(37,99,235,.3)" onclick="abrirEditarCierre('+ot.id+')">✏️ Editar cierre</button>';
+      btns+='<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarCierre('+ot.id+',\''+ot.numero_ot+'\','+(ot.grupos_ot?.cuadrilla_id||'null')+','+(ot.grupo_id||'null')+',\''+(ot.fecha_fin||'').slice(0,10)+'\')">🗑️ Eliminar cierre</button>';
+    }
+    btns+='<button class="btn btn-sm" style="font-size:11px;color:#64748b" onclick="editarTipoOT('+ot.id+',\''+(ot.tipo_item||'')+'\',\''+(ot.tipo_tarea||'')+'\')">✏️ Tipo</button>';
+    btns+='<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarOT('+ot.id+')">✏️ Editar OT</button>';
+    btns+='<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarCliente('+cl.id+')">👤 Editar cliente</button>';
+    btns+='<button class="btn btn-sm" style="font-size:11px;color:#dc2626" onclick="eliminarOT('+ot.id+',\''+ot.numero_ot+'\','+(ot.grupo_id||'null')+')">🗑️ Eliminar OT</button>';
+    footer.innerHTML=btns;
+  }catch(e){body.innerHTML='<p style="color:#dc2626;padding:1rem">Error: '+e.message+'</p>';}
 }
 
 // EDITAR TIPO OT
