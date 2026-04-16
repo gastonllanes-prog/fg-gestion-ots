@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v135</title>
+<title>FG Gestión OTs v136</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V135</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V136</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v135</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v136</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -7952,6 +7952,23 @@ function _infCategoria(tipo_tarea, tipo_item){
   return fi[tipo_item]||'Domiciliaria';
 }
 
+
+// ── Helper: agrupar OTs por cliente para informes ──
+function _agruparPorCliente(ots, getFecha){
+  // Devuelve array de {fecha, cl, otsNums, tipos, extra} agrupado por codigo_gigared
+  const mapa={};
+  ots.forEach(o=>{
+    const cl=o.clientes||{};
+    const cod=cl.codigo_gigared||('_'+o.id);
+    if(!mapa[cod]){
+      mapa[cod]={fecha:getFecha(o),cl,nums:[],tipos:new Set(),extra:o};
+    }
+    mapa[cod].nums.push(numOT(o.numero_ot));
+    mapa[cod].tipos.add((o.tipo_item||o.tipo_tarea||'').replace(/_/g,' '));
+  });
+  return Object.values(mapa);
+}
+
 async function generarReporteDevolucionesHTML(){
   const desde=document.getElementById('inf-dev-desde').value;
   const hasta=document.getElementById('inf-dev-hasta').value;
@@ -8007,31 +8024,43 @@ async function generarReporteDevolucionesHTML(){
     let totalGeneral=0;
     Object.keys(grupos).sort().forEach(cat=>{
       const lista=grupos[cat];
-      totalGeneral+=lista.length;
+      // Agrupar por cliente dentro de la categoria
+      const porCli={};
+      lista.forEach(o=>{
+        const cl=o.clientes||{};
+        const cod=cl.codigo_gigared||('_'+o.id);
+        if(!porCli[cod]){
+          const fecha=o.grupos_ot&&o.grupos_ot.fecha_trabajo?fmtD(o.grupos_ot.fecha_trabajo):fmtD(o.created_at&&o.created_at.slice(0,10));
+          porCli[cod]={fecha,cl,nums:[],obs:o.obs_trabajo||''};
+        }
+        porCli[cod].nums.push(numOT(o.numero_ot));
+        if(!porCli[cod].obs&&o.obs_trabajo) porCli[cod].obs=o.obs_trabajo;
+      });
+      const filas=Object.values(porCli);
+      totalGeneral+=filas.length;
       html+='<div class="section-titulo">'+cat+'</div>';
       html+='<table><thead><tr>'
         +'<th style="width:90px">Fecha</th>'
-        +'<th style="width:80px">N° Cliente</th>'
+        +'<th style="width:72px">N° Cliente</th>'
         +'<th>Nombre</th>'
-        +'<th style="width:80px">OTs</th>'
+        +'<th>OTs</th>'
         +'<th>Observaciones</th>'
         +'</tr></thead><tbody>';
-      lista.forEach(o=>{
-        const cl=o.clientes||{};
-        const fecha=o.grupos_ot&&o.grupos_ot.fecha_trabajo?fmtD(o.grupos_ot.fecha_trabajo):fmtD(o.created_at&&o.created_at.slice(0,10));
+      filas.forEach(f=>{
+        const cl=f.cl;
         html+='<tr>'
-          +'<td>'+fecha+'</td>'
+          +'<td>'+f.fecha+'</td>'
           +'<td style="font-family:monospace">'+fmtCodigo(cl.codigo_gigared)+'</td>'
           +'<td style="font-weight:600">'+(cl.apellido||'')+(cl.nombre?', '+cl.nombre:'')+'</td>'
-          +'<td style="font-family:monospace;font-size:10px">'+numOT(o.numero_ot)+'</td>'
-          +'<td>'+(o.obs_trabajo||'—')+'</td>'
+          +'<td style="font-family:monospace;font-size:10px">'+f.nums.join(', ')+'</td>'
+          +'<td>'+(f.obs||'—')+'</td>'
           +'</tr>';
       });
       html+='</tbody></table>';
-      html+='<div class="tot">Cantidad: '+lista.length+'</div>';
+      html+='<div class="tot">Cantidad: '+filas.length+' cliente'+(filas.length!==1?'s':'')+'</div>';
     });
 
-    html+='<div class="tot" style="margin-top:8px;font-size:12px">Total General: '+totalGeneral+' OTs devueltas</div>';
+    html+='<div class="tot" style="margin-top:8px;font-size:12px">Total General: '+totalGeneral+' cliente'+(totalGeneral!==1?'s':'')+' devueltos</div>';
 
     html+='<div class="firma">';
     html+='<div class="firma-box"><div class="firma-line"></div><div style="font-size:10px">FG Conexiones S.R.L.</div><div style="font-size:9px;color:#64748b">Firma y sello empresa</div></div>';
@@ -8071,18 +8100,28 @@ async function generarReporteDevolucionesXLSX(){
     err.textContent='';
 
     const fmtD=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-AR'):'';
-    const rows=[['Fecha','N° Cliente','Nombre','N° OT','Tipo','Categoria','Observacion']];
+    // Agrupar por cliente
+    const porCliXlsx={};
     filtradas.forEach(o=>{
       const cl=o.clientes||{};
-      const fecha=o.grupos_ot&&o.grupos_ot.fecha_trabajo?fmtD(o.grupos_ot.fecha_trabajo):fmtD(o.created_at&&o.created_at.slice(0,10));
+      const cod=cl.codigo_gigared||('_'+o.id);
+      if(!porCliXlsx[cod]){
+        const fecha=o.grupos_ot&&o.grupos_ot.fecha_trabajo?fmtD(o.grupos_ot.fecha_trabajo):fmtD(o.created_at&&o.created_at.slice(0,10));
+        porCliXlsx[cod]={fecha,cl,nums:[],cat:_infCategoria(o.tipo_tarea,o.tipo_item),obs:o.obs_trabajo||''};
+      }
+      porCliXlsx[cod].nums.push(o.numero_ot||'');
+      if(!porCliXlsx[cod].obs&&o.obs_trabajo) porCliXlsx[cod].obs=o.obs_trabajo;
+    });
+    const rows=[['Fecha','N° Cliente','Nombre','OTs','Categoria','Observacion']];
+    Object.values(porCliXlsx).forEach(f=>{
+      const cl=f.cl;
       rows.push([
-        fecha,
+        f.fecha,
         cl.codigo_gigared||'',
         (cl.apellido||'')+(cl.nombre?', '+cl.nombre:''),
-        o.numero_ot||'',
-        (o.tipo_item||o.tipo_tarea||'').replace(/_/g,' '),
-        _infCategoria(o.tipo_tarea,o.tipo_item),
-        o.obs_trabajo||''
+        f.nums.join(', '),
+        f.cat,
+        f.obs
       ]);
     });
     if(typeof XLSX==='undefined'){err.textContent='Error: XLSX no disponible';return;}
@@ -8118,24 +8157,39 @@ async function generarReporteEstado(){
     const fmtD=d=>d?new Date(d.slice(0,10)+'T12:00:00').toLocaleDateString('es-AR'):'—';
     const rango=desde===hasta?fmtD(desde):fmtD(desde)+' al '+fmtD(hasta);
     const css=_cssInforme();
+    // Agrupar por cliente
+    const porCli={};
+    filtradas.forEach(o=>{
+      const cl=o.clientes||{};
+      const cod=cl.codigo_gigared||('_'+o.id);
+      if(!porCli[cod]){
+        const f=o.fecha_impresion||o.created_at||'';
+        porCli[cod]={fecha:fmtD(f),cl,nums:[],tipos:new Set(),
+          estado:(o.estados_ot&&o.estados_ot.nombre||'').replace(/_/g,' '),
+          cuad:(o.grupos_ot&&o.grupos_ot.cuadrillas&&o.grupos_ot.cuadrillas.nombre||'Sin asignar')};
+      }
+      porCli[cod].nums.push(numOT(o.numero_ot));
+      porCli[cod].tipos.add((o.tipo_item||o.tipo_tarea||'').replace(/_/g,' '));
+    });
+    const filas=Object.values(porCli);
     let html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>OTs '+rango+'</title><style>'+css+'</style></head><body>';
     html+='<div class="empresa">FG Conexiones S.R.L.</div>';
     html+='<div class="periodo">OTs '+(estado?estado.replace(/_/g,' '):'todos los estados')+' — '+rango+'</div>';
-    html+='<table><thead><tr><th>Fecha</th><th>N° Cliente</th><th>Nombre</th><th>OT</th><th>Tipo</th><th>Estado</th><th>Cuadrilla</th></tr></thead><tbody>';
-    filtradas.forEach(o=>{
-      const cl=o.clientes||{};
+    html+='<table><thead><tr><th style="width:80px">Fecha</th><th style="width:72px">N° Cliente</th><th>Nombre</th><th>OTs</th><th>Tipos</th><th>Estado</th><th>Cuadrilla</th></tr></thead><tbody>';
+    filas.forEach(f=>{
+      const cl=f.cl;
       html+='<tr>'
-        +'<td>'+fmtD(o.fecha_impresion||o.created_at)+'</td>'
+        +'<td>'+f.fecha+'</td>'
         +'<td style="font-family:monospace">'+fmtCodigo(cl.codigo_gigared)+'</td>'
-        +'<td>'+fmtCli(cl)+'</td>'
-        +'<td style="font-family:monospace">'+numOT(o.numero_ot)+'</td>'
-        +'<td>'+(o.tipo_item||o.tipo_tarea||'').replace(/_/g,' ')+'</td>'
-        +'<td>'+(o.estados_ot&&o.estados_ot.nombre||'—').replace(/_/g,' ')+'</td>'
-        +'<td>'+(o.grupos_ot&&o.grupos_ot.cuadrillas&&o.grupos_ot.cuadrillas.nombre||'Sin asignar')+'</td>'
+        +'<td style="font-weight:600">'+fmtCli(cl)+'</td>'
+        +'<td style="font-family:monospace;font-size:10px">'+f.nums.join(', ')+'</td>'
+        +'<td style="font-size:10px">'+(([...f.tipos]).join(' / '))+'</td>'
+        +'<td>'+f.estado+'</td>'
+        +'<td>'+f.cuad+'</td>'
         +'</tr>';
     });
     html+='</tbody></table>';
-    html+='<div class="tot">Total: '+filtradas.length+' OTs</div>';
+    html+='<div class="tot">Total: '+filas.length+' cliente'+(filas.length!==1?'s':'')+' — '+filtradas.length+' OTs</div>';
     html+='</body></html>';
     const win=window.open('','_blank');win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);
   }catch(e){err.textContent='Error: '+e.message;}
@@ -8176,15 +8230,44 @@ async function generarReporteTipo(){
     html+='<div class="empresa">FG Conexiones S.R.L.</div>';
     html+='<div class="periodo">OTs por Tipo — '+rango+'</div>';
 
-    // Resumen primero
+    // Resumen
     html+='<div class="section-titulo">Resumen por tipo</div>';
-    html+='<table style="max-width:400px"><thead><tr><th>Tipo</th><th>Cantidad</th></tr></thead><tbody>';
-    let tot=0;
+    html+='<table style="max-width:400px"><thead><tr><th>Tipo</th><th>Clientes</th><th>OTs</th></tr></thead><tbody>';
+    let tot=0,totOTs=0;
     Object.keys(porTipo).sort().forEach(t=>{
-      html+='<tr><td>'+(t).replace(/_/g,' ')+'</td><td style="font-weight:700">'+porTipo[t].length+'</td></tr>';
-      tot+=porTipo[t].length;
+      // Contar clientes únicos
+      const cods=new Set(porTipo[t].map(o=>(o.clientes&&o.clientes.codigo_gigared)||('_'+o.id)));
+      html+='<tr><td>'+(t).replace(/_/g,' ')+'</td><td style="font-weight:700">'+cods.size+'</td><td style="color:#64748b">'+porTipo[t].length+'</td></tr>';
+      tot+=cods.size; totOTs+=porTipo[t].length;
     });
-    html+='<tr class="tot"><td>TOTAL</td><td>'+tot+'</td></tr></tbody></table>';
+    html+='<tr class="tot"><td>TOTAL</td><td>'+tot+'</td><td>'+totOTs+'</td></tr></tbody></table>';
+
+    // Detalle por tipo con clientes agrupados
+    Object.keys(porTipo).sort().forEach(t=>{
+      const lista=porTipo[t];
+      const porCli={};
+      lista.forEach(o=>{
+        const cl=o.clientes||{};
+        const cod=cl.codigo_gigared||('_'+o.id);
+        if(!porCli[cod]){
+          const f=o.fecha_impresion||o.created_at||'';
+          porCli[cod]={fecha:fmtD(f),cl,nums:[]};
+        }
+        porCli[cod].nums.push(numOT(o.numero_ot));
+      });
+      const filas=Object.values(porCli);
+      html+='<div class="section-titulo">'+(t).replace(/_/g,' ')+' ('+filas.length+' cliente'+(filas.length!==1?'s':'')+')</div>';
+      html+='<table><thead><tr><th style="width:80px">Fecha</th><th style="width:72px">N° Cliente</th><th>Nombre</th><th>OTs</th></tr></thead><tbody>';
+      filas.forEach(f=>{
+        html+='<tr>'
+          +'<td>'+f.fecha+'</td>'
+          +'<td style="font-family:monospace">'+fmtCodigo(f.cl.codigo_gigared)+'</td>'
+          +'<td style="font-weight:600">'+fmtCli(f.cl)+'</td>'
+          +'<td style="font-family:monospace;font-size:10px">'+f.nums.join(', ')+'</td>'
+          +'</tr>';
+      });
+      html+='</tbody></table>';
+    });
 
     html+='</body></html>';
     const win=window.open('','_blank');win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);
@@ -8223,22 +8306,35 @@ async function generarReporteFinalizadas(){
     let html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Finalizadas '+rango+'</title><style>'+css+'</style></head><body>';
     html+='<div class="empresa">FG Conexiones S.R.L.</div>';
     html+='<div class="periodo">OTs Finalizadas — '+rango+'</div>';
-    html+='<table><thead><tr><th>Fecha</th><th>N° Cliente</th><th>Nombre</th><th>OT</th><th>Tipo</th><th>Cuadrilla</th><th>Precinto</th></tr></thead><tbody>';
+    // Agrupar por cliente
+    const porCliFin={};
     filtradas.forEach(o=>{
       const cl=o.clientes||{};
-      const fecha=o.grupos_ot&&o.grupos_ot.fecha_trabajo?fmtD(o.grupos_ot.fecha_trabajo):'—';
+      const cod=cl.codigo_gigared||('_'+o.id);
+      if(!porCliFin[cod]){
+        const fecha=o.grupos_ot&&o.grupos_ot.fecha_trabajo?fmtD(o.grupos_ot.fecha_trabajo):'—';
+        porCliFin[cod]={fecha,cl,nums:[],tipos:new Set(),precintos:[],
+          cuad:(o.grupos_ot&&o.grupos_ot.cuadrillas&&o.grupos_ot.cuadrillas.nombre||'—')};
+      }
+      porCliFin[cod].nums.push(numOT(o.numero_ot));
+      porCliFin[cod].tipos.add((o.tipo_item||o.tipo_tarea||'').replace(/_/g,' '));
+      if(o.tag) porCliFin[cod].precintos.push(o.tag);
+    });
+    const filasFin=Object.values(porCliFin);
+    html+='<table><thead><tr><th style="width:80px">Fecha</th><th style="width:72px">N° Cliente</th><th>Nombre</th><th>OTs</th><th>Tipos</th><th>Cuadrilla</th><th>Precinto(s)</th></tr></thead><tbody>';
+    filasFin.forEach(f=>{
       html+='<tr>'
-        +'<td>'+fecha+'</td>'
-        +'<td style="font-family:monospace">'+fmtCodigo(cl.codigo_gigared)+'</td>'
-        +'<td>'+fmtCli(cl)+'</td>'
-        +'<td style="font-family:monospace">'+numOT(o.numero_ot)+'</td>'
-        +'<td>'+(o.tipo_item||o.tipo_tarea||'').replace(/_/g,' ')+'</td>'
-        +'<td>'+(o.grupos_ot&&o.grupos_ot.cuadrillas&&o.grupos_ot.cuadrillas.nombre||'—')+'</td>'
-        +'<td style="font-family:monospace">'+(o.tag||'—')+'</td>'
+        +'<td>'+f.fecha+'</td>'
+        +'<td style="font-family:monospace">'+fmtCodigo(f.cl.codigo_gigared)+'</td>'
+        +'<td style="font-weight:600">'+fmtCli(f.cl)+'</td>'
+        +'<td style="font-family:monospace;font-size:10px">'+f.nums.join(', ')+'</td>'
+        +'<td style="font-size:10px">'+([...f.tipos]).join(' / ')+'</td>'
+        +'<td>'+f.cuad+'</td>'
+        +'<td style="font-family:monospace">'+(f.precintos.join(', ')||'—')+'</td>'
         +'</tr>';
     });
     html+='</tbody></table>';
-    html+='<div class="tot">Total: '+filtradas.length+' OTs finalizadas</div>';
+    html+='<div class="tot">Total: '+filasFin.length+' cliente'+(filasFin.length!==1?'s':'')+' — '+filtradas.length+' OTs finalizadas</div>';
     html+='</body></html>';
     const win=window.open('','_blank');win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);
   }catch(e){err.textContent='Error: '+e.message;}
