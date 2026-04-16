@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v143</title>
+<title>FG Gestión OTs v144</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V143</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V144</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v143</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v144</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -429,6 +429,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <option value="SERVICE">Service</option>
     </select>
     <select class="filter-select" id="ot-fil-cuad" onchange="buscarOTs()"><option value="">Todas las cuadrillas</option></select>
+    <select class="filter-select" id="ot-fil-nodo" onchange="buscarOTs()" style="max-width:130px"><option value="">Todos los nodos</option></select>
   </div>
   <!-- Barra de selección fija — aparece cuando hay checkboxes tildados -->
   <div id="ot-sel-bar" style="display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:12px;padding:.75rem 1.25rem;margin-bottom:1rem;color:#fff">
@@ -1429,6 +1430,13 @@ async function cargarCuadrillas(){
   CUADRILLAS=await sbGet('cuadrillas','?activo=eq.true&order=nombre')||[];
   const sels=[document.getElementById('ot-fil-cuad'),document.getElementById('asig-cuad')];
   CUADRILLAS.forEach(c=>{sels.forEach(s=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;s.appendChild(o);});});
+  // Poblar selector de nodos con los nodos distintos que existen en clientes
+  try{
+    const nodos=await sbGet('clientes','?select=nodo&nodo=neq.null&order=nodo')||[];
+    const nodosUnicos=[...new Set(nodos.map(n=>n.nodo).filter(Boolean))].sort();
+    const selNodo=document.getElementById('ot-fil-nodo');
+    if(selNodo) nodosUnicos.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;selNodo.appendChild(o);});
+  }catch(e){}
 }
 
 function construirMenu(){
@@ -1572,6 +1580,7 @@ function renderMini(id,ots){
 
 // OTs TABLA
 let OT_SORT='fecha_impresion',OT_SORT_DIR='desc';
+let OT_SORT2='',OT_SORT2_DIR='asc'; // Ordenamiento secundario
 
 async function renderOTs(){
   const el=document.getElementById('ot-lista');
@@ -1580,10 +1589,14 @@ async function renderOTs(){
     const tipo=document.getElementById('ot-fil-tipo').value;
     const estFil=document.getElementById('ot-fil-estado').value;
     const q=document.getElementById('ot-search').value.trim().toLowerCase();
-    const orderCol=OT_SORT==='numero_ot'?'numero_ot':OT_SORT==='tipo_tarea'?'tipo_tarea':'fecha_impresion';
-    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)`;
+    const nodoFil=document.getElementById('ot-fil-nodo')?.value||'';
+    // Mapeo de columnas a campos Supabase (solo las que el server puede ordenar)
+    const sortMap={'fecha_impresion':'fecha_impresion','fecha_asignacion_giga':'fecha_asignacion_giga','created_at':'created_at','clientes.apellido':'clientes(apellido)','numero_ot':'numero_ot'};
+    const orderCol=sortMap[OT_SORT]||'fecha_impresion';
+    // El orden secundario y los campos cliente (calle, nodo) se ordenan en memoria
+    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
-    const extraFiltros=(()=>{let f='';if(tipo)f+=`&tipo_tarea=eq.${tipo}`;else if(tipoItem)f+=`&tipo_item=eq.${tipoItem}`;if(OT_FILTRO_FECHA)f+=`&fecha_fin=gte.${OT_FILTRO_FECHA}T00:00:00&fecha_fin=lte.${OT_FILTRO_FECHA}T23:59:59`;if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)f+=`&estado_id=eq.${eObj.id}`;}else{// Sin filtro de estado: excluir ELIMINADA_SISTEMA del listado normal
+    const extraFiltros=(()=>{let f='';if(tipo)f+=`&tipo_tarea=eq.${tipo}`;else if(tipoItem)f+=`&tipo_item=eq.${tipoItem}`;if(OT_FILTRO_FECHA)f+=`&fecha_fin=gte.${OT_FILTRO_FECHA}T00:00:00&fecha_fin=lte.${OT_FILTRO_FECHA}T23:59:59`;if(nodoFil)f+=`&clientes.nodo=eq.${nodoFil}`;if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)f+=`&estado_id=eq.${eObj.id}`;}else{// Sin filtro de estado: excluir ELIMINADA_SISTEMA del listado normal
 const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado_id=neq.${eElim.id}`;}return f;})();
 
     let ots=[];
@@ -1660,27 +1673,75 @@ const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado
     }
     if(!ots.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div>No hay OTs. Importá un PDF para empezar.</div></div>';return;}
     const fmtDT=d=>{if(!d)return'—';try{const dt=new Date(d);return dt.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' '+dt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});}catch(e){return'—';}};
-    const sortIcon=col=>`<span class="sort-icon">${OT_SORT===col?(OT_SORT_DIR==='asc'?'↑':'↓'):'↕'}</span>`;
+
+    // Sort icon muestra primario (grande) y secundario (pequeño gris)
+    const sortIcon=col=>{
+      if(OT_SORT===col) return `<span class="sort-icon">${OT_SORT_DIR==='asc'?'↑':'↓'}</span>`;
+      if(OT_SORT2===col) return `<span class="sort-icon" style="font-size:9px;opacity:.5">${OT_SORT2_DIR==='asc'?'↑':'↓'}</span>`;
+      return `<span class="sort-icon">↕</span>`;
+    };
+
     // Agrupar por cliente
     const cliMap={};
     ots.forEach(o=>{
       const k=o.clientes?.codigo_gigared||('_'+o.id);
-      if(!cliMap[k]){cliMap[k]={cl:o.clientes||{},ots:[],primerFecha:o.fecha_impresion};}
+      if(!cliMap[k]){cliMap[k]={cl:o.clientes||{},ots:[],primerFecha:o.fecha_impresion,primerAsig:o.fecha_asignacion_giga,primerCreado:o.created_at};}
       cliMap[k].ots.push(o);
     });
+
+    // Ordenamiento en memoria para columnas cliente (calle, nodo) y sort compuesto
+    const getValSort=(entry,sortKey)=>{
+      const cl=entry.cl;
+      if(sortKey==='calle') return (cl.calle||'').toLowerCase();
+      if(sortKey==='calle_num'){
+        const c=(cl.calle||'').toLowerCase();
+        const n=parseInt(cl.numero_domicilio||'0')||0;
+        return c+'_'+String(n).padStart(6,'0');
+      }
+      if(sortKey==='nodo') return (cl.nodo||'').toLowerCase();
+      if(sortKey==='fecha_impresion') return entry.primerFecha||'';
+      if(sortKey==='fecha_asignacion_giga') return entry.primerAsig||'';
+      if(sortKey==='created_at') return entry.primerCreado||'';
+      if(sortKey==='clientes.apellido') return (cl.apellido||'').toLowerCase();
+      return '';
+    };
+
+    // Los sorts de cliente se hacen en memoria
+    const clienteSorts=['calle','calle_num','nodo'];
+    let grupos=Object.values(cliMap);
+    if(clienteSorts.includes(OT_SORT)||clienteSorts.includes(OT_SORT2)){
+      grupos.sort((a,b)=>{
+        const v1a=getValSort(a,OT_SORT),v1b=getValSort(b,OT_SORT);
+        if(v1a!==v1b) return OT_SORT_DIR==='asc'?(v1a<v1b?-1:1):(v1a>v1b?-1:1);
+        if(OT_SORT2){
+          const v2a=getValSort(a,OT_SORT2),v2b=getValSort(b,OT_SORT2);
+          if(v2a!==v2b) return OT_SORT2_DIR==='asc'?(v2a<v2b?-1:1):(v2a>v2b?-1:1);
+        }
+        return 0;
+      });
+    } else if(OT_SORT2&&clienteSorts.includes(OT_SORT2)){
+      // Solo el secundario es de cliente
+      grupos.sort((a,b)=>{
+        const v2a=getValSort(a,OT_SORT2),v2b=getValSort(b,OT_SORT2);
+        if(v2a!==v2b) return OT_SORT2_DIR==='asc'?(v2a<v2b?-1:1):(v2a>v2b?-1:1);
+        return 0;
+      });
+    }
     el.innerHTML=`<div class="ot-table-wrap"><table class="ot-table">
       <thead><tr>
         <th style="width:32px"><input type="checkbox" id="ot-sel-all" onchange="toggleSelAll(this)" style="cursor:pointer"/></th>
         <th>N° Cliente</th>
-        <th onclick="sortOTs('clientes.apellido')" class="${OT_SORT==='clientes.apellido'?'sorted':''}">Nombre ${sortIcon('clientes.apellido')}</th>
-        <th>Dirección</th>
-        <th>Nodo</th>
+        <th onclick="sortOTs('clientes.apellido')" class="${OT_SORT==='clientes.apellido'||OT_SORT2==='clientes.apellido'?'sorted':''}">Nombre ${sortIcon('clientes.apellido')}</th>
+        <th onclick="sortOTs('calle_num')" style="cursor:pointer" class="${OT_SORT==='calle_num'||OT_SORT2==='calle_num'?'sorted':''}">Dirección ${sortIcon('calle_num')}</th>
+        <th onclick="sortOTs('nodo')" style="cursor:pointer" class="${OT_SORT==='nodo'||OT_SORT2==='nodo'?'sorted':''}">Nodo ${sortIcon('nodo')}</th>
         <th>Teléfono</th>
         <th>OTs</th>
-        <th onclick="sortOTs('fecha_impresion')" class="${OT_SORT==='fecha_impresion'?'sorted':''}">F. Impresión ${sortIcon('fecha_impresion')}</th>
+        <th onclick="sortOTs('fecha_impresion')" class="${OT_SORT==='fecha_impresion'||OT_SORT2==='fecha_impresion'?'sorted':''}">F. Impresión ${sortIcon('fecha_impresion')}</th>
+        <th onclick="sortOTs('fecha_asignacion_giga')" class="${OT_SORT==='fecha_asignacion_giga'||OT_SORT2==='fecha_asignacion_giga'?'sorted':''}">F. Asignación ${sortIcon('fecha_asignacion_giga')}</th>
+        <th onclick="sortOTs('created_at')" class="${OT_SORT==='created_at'||OT_SORT2==='created_at'?'sorted':''}">F. Carga ${sortIcon('created_at')}</th>
         <th></th>
       </tr></thead>
-      <tbody>${Object.values(cliMap).map(({cl,ots:cOts,primerFecha})=>{
+      <tbody>${grupos.map(({cl,ots:cOts,primerFecha,primerAsig,primerCreado})=>{
         const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
         const tieneRep=cOts.some(o=>o.tipo_tarea==='REPARACION');
         const pendientes=cOts.filter(o=>!['FINALIZADA','DEVUELTA_GIGARED','NO_REALIZADA','ELIMINADA_SISTEMA'].includes(o.estados_ot?.nombre));
@@ -1704,6 +1765,8 @@ const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado
             ${cOts.length>1?`<div style="font-size:10px;color:#94a3b8;margin-top:2px">${cOts.length} OTs · ${cOts.map(o=>`<span style="cursor:pointer;color:#2563eb" onclick="event.stopPropagation();verOT('${o.numero_ot}')">${numOT(o.numero_ot)}</span>`).join(', ')}</div>`:''}
           </td>
           <td style="font-size:11px;color:#64748b;white-space:nowrap">${fmtDT(primerFecha)}</td>
+          <td style="font-size:11px;color:#64748b;white-space:nowrap">${primerAsig?new Date(primerAsig+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</td>
+          <td style="font-size:11px;color:#64748b;white-space:nowrap">${primerCreado?new Date(primerCreado).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</td>
           <td onclick="event.stopPropagation()">
             ${grupoId&&pendientes.length?`<button class="btn btn-sm btn-primary" style="white-space:nowrap;font-size:11px" onclick="abrirAsignarGrupo([${grupoId}],[${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}])">📍 Asignar</button>`:''}
           </td>
@@ -1714,165 +1777,27 @@ const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
 
-function sortOTs(col){if(OT_SORT===col)OT_SORT_DIR=OT_SORT_DIR==='asc'?'desc':'asc';else{OT_SORT=col;OT_SORT_DIR='desc';}OT_PAGE=0;renderOTs();}
-let bTimer=null;
-function buscarOTs(){
-  // Si el usuario cambia el filtro manualmente, limpiar el filtro de fecha
-  OT_FILTRO_FECHA='';clearTimeout(bTimer);bTimer=setTimeout(()=>{OT_PAGE=0;renderOTs();},300);}
-function cargarMasOTs(){OT_PAGE++;renderOTs();}
-
-async function verOT(num){
-  if(!num)return;
-  abrirModal('ot-modal');
-  const body=document.getElementById('ot-modal-body');
-  const footer=document.getElementById('ot-modal-footer');
-  body.innerHTML='<div class="loading"><span class="spinner"></span></div>';footer.innerHTML='';
-  try{
-    const ots=await sbGet('ordenes_trabajo',`?numero_ot=eq.${num}&select=*,clientes(*),estados_ot(*),grupos_ot(*,cuadrillas(*))`)||[];
-    if(!ots.length){body.innerHTML='<p>OT no encontrada</p>';return;}
-    const ot=ots[0];
-    const items=await sbGet('ot_items_contratados',`?ot_id=eq.${ot.id}`)||[];
-    let grupo=[];
-    if(ot.grupo_id)grupo=await sbGet('ordenes_trabajo',`?grupo_id=eq.${ot.grupo_id}&select=id,numero_ot,tipo_item,estados_ot(nombre)&order=orden_cierre&eliminado=eq.false`)||[];
-    // Para OTs finalizadas: traer materiales usados, seriales y mano de obra
-    let matsUsados=[], servRealiz=[], serialesCliente=[];
-    const esFinalizada=(ot.estados_ot?.nombre==='FINALIZADA');
-    if(esFinalizada){
-      [matsUsados, servRealiz]=await Promise.all([
-        sbGet('ot_materiales_usados',`?ot_id=eq.${ot.id}&select=cantidad,catalogo_materiales(nombre,unidad,serial_tipo)`)||[],
-        sbGet('ot_servicios_realizados',`?ot_id=eq.${ot.id}&select=cantidad,catalogo_servicios(nombre,categoria)`)||[]
-      ]);
-      // Seriales entregados al cliente (INDIVIDUAL y CORRELATIVO)
-      const matsConSerial=(matsUsados||[]).filter(m=>m.catalogo_materiales?.serial_tipo==='INDIVIDUAL'||m.catalogo_materiales?.serial_tipo==='CORRELATIVO');
-      if(matsConSerial.length){
-        const matIds=[...new Set(matsConSerial.map(m=>m.catalogo_materiales?.id||0).filter(Boolean))];
-        serialesCliente=await sbGet('stock_seriales',`?ubicacion=eq.CLIENTE&material_id=in.(${matIds.join(',')})&select=serial,material_id,catalogo_materiales(nombre)&order=material_id`)||[];
-      }
-    }
-    const cl=ot.clientes||{};
-    const esRep=ot.tipo_tarea==='REPARACION';
-    const domCalle=cl.calle||'';
-    const domNum=cl.numero_domicilio||'';
-    const domObs=cl.obs_domicilio||'';
-    let domHtml='';
-    if(domCalle){
-      domHtml=`<div style="font-weight:600">${domCalle}${domNum?' <span style="color:#64748b">N° '+domNum+'</span>':''}</div>`;
-      if(domObs)domHtml+=`<div style="font-size:12px;color:#64748b;margin-top:2px">${domObs}</div>`;
-      if(cl.barrio)domHtml+=`<div style="font-size:11px;color:#94a3b8;margin-top:1px">${cl.barrio}</div>`;
-    }else{
-      domHtml=`<div style="font-weight:600">${cl.domicilio||'—'}</div>`;
-      if(cl.barrio)domHtml+=`<div style="font-size:11px;color:#94a3b8;margin-top:1px">${cl.barrio}</div>`;
-    }
-    body.innerHTML=`
-      <div class="ot-detail-header${esRep?' rep-header':''}">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.5rem">
-          <div style="font-size:24px;font-weight:900;color:${esRep?'#ea580c':'#2563eb'}">${fmtCodigo(cl.codigo_gigared)}</div>
-          ${badgeE(ot.estados_ot?.nombre||'')}
-        </div>
-        <div style="font-size:15px;font-weight:700;margin-bottom:.25rem">${fmtCli(cl)}</div>
-        <div style="font-size:13px;color:#64748b;margin-bottom:.35rem">
-          <div id="grupo-pills-${ot.grupo_id}" style="display:inline-flex;flex-wrap:wrap;gap:4px">
-            ${grupo.map((g,gi)=>{
-              const cBg=g.estados_ot?.nombre==='FINALIZADA'?'rgba(22,163,74,.12)':g.estados_ot?.nombre==='DEVUELTA_GIGARED'?'rgba(220,38,38,.1)':'rgba(37,99,235,.1)';
-              const cTx=g.estados_ot?.nombre==='FINALIZADA'?'#15803d':g.estados_ot?.nombre==='DEVUELTA_GIGARED'?'#dc2626':'#2563eb';
-              return '<span draggable="true" data-ot-id="'+g.id+'" data-grupo-id="'+ot.grupo_id+'" data-idx="'+gi+'"'
-                +' onmousedown="this.style.opacity=\'.7\'"'
-                +' onmouseup="this.style.opacity=\'1\'"'
-                +' ondragstart="dragPillStart(event,this)"'
-                +' ondragover="event.preventDefault();dragPillOver(event,this)"'
-                +' ondrop="dragPillDrop(event,this)"'
-                +' ondragend="dragPillEnd(event,this)"'
-                +' style="background:'+cBg+';color:'+cTx+';font-weight:700;padding:3px 10px;border-radius:6px;font-size:12px;cursor:grab;user-select:none;border:1.5px dashed transparent;transition:all .15s"'
-                +' title="Arrastrar para reordenar">'+numOT(g.numero_ot)+' <span style="font-size:10px;opacity:.7">'+(g.tipo_item||'').replace(/_/g,' ')+'</span></span>';
-            }).join('')}
-          </div>
-        </div>
-        <div style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px">
-          ${badgeItem(ot.tipo_item,ot.tipo_tarea)}
-          ${ot.codigo_cliente_real?`<span style="font-size:11px;color:#dc2626;font-weight:700;background:rgba(220,38,38,.08);padding:2px 8px;border-radius:6px">Ex-cliente: ${ot.codigo_cliente_real}</span>`:''}
-        </div>
-      </div>
-      ${esRep&&(ot.sintoma_reportado||ot.obs_trabajo)?`
-        <div class="rep-info-box">
-          ${ot.sintoma_reportado?`<div style="margin-bottom:.35rem"><strong>🔧 Tarea:</strong> ${ot.sintoma_reportado}</div>`:''}
-          ${ot.obs_trabajo?`<div><strong>📋 Obs:</strong> ${ot.obs_trabajo}</div>`:''}
-        </div>`:''}
-      ${esFinalizada&&(ot.tag||ot.equipo_instalado)?`
-        <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1.5px solid #bfdbfe;border-radius:12px;padding:.875rem 1rem;margin-bottom:1rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center">
-          ${ot.tag?`<div><div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📌 Precinto(s)</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#5b21b6">${ot.tag}</div></div>`:''}
-          ${ot.equipo_instalado?`<div><div style="font-size:10px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📱 Serial(es)</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#1d4ed8">${ot.equipo_instalado}</div></div>`:''}
-        </div>`:''}
-      <div class="ot-info-grid">
-        <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Domicilio</div><div class="ot-info-val">${domHtml}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Tel 1</div><div class="ot-info-val"><a href="tel:${(cl.telefono1||'').replace(/\D/g,'')}" style="color:#2563eb">${cl.telefono1||'—'}</a></div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Tel 2</div><div class="ot-info-val"><a href="tel:${(cl.telefono2||'').replace(/\D/g,'')}" style="color:#2563eb">${cl.telefono2||'—'}</a></div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Nodo</div><div class="ot-info-val">${cl.nodo||'—'}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${cl.localidad||'—'}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val" style="color:${ot.tag?'#7c3aed':'#94a3b8'};font-weight:700">${ot.tag||'—'}</div></div>
-        ${ot.equipo_instalado?`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">📱 Equipo(s) instalado(s)</div><div class="ot-info-val" style="font-family:monospace;font-size:13px;font-weight:700;color:#2563eb;letter-spacing:.05em">${ot.equipo_instalado}</div></div>`:''}
-        <div class="ot-info-item"><div class="ot-info-label">Emisión Gigared</div><div class="ot-info-val">${fmtF(ot.fecha_emision)}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Asignación Gigared</div><div class="ot-info-val">${fmtF(ot.fecha_asignacion_giga)}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">F. Impresión Gigared</div><div class="ot-info-val" style="font-weight:700">${ot.fecha_impresion?new Date(ot.fecha_impresion).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Cargado al sistema</div><div class="ot-info-val">${fmtF(ot.created_at?.slice(0,10))}</div></div>
-        ${ot.grupos_ot?.cuadrillas?`
-          <div class="ot-info-item"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val">🔧 ${ot.grupos_ot.cuadrillas.nombre}</div></div>
-          <div class="ot-info-item"><div class="ot-info-label">Fecha trabajo</div><div class="ot-info-val">${fmtF(ot.fecha_trabajo)}</div></div>
-          <div class="ot-info-item"><div class="ot-info-label">Finalización</div><div class="ot-info-val">${fmtF(ot.fecha_fin?.slice(0,10))}</div></div>
-        `:`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val" style="color:#94a3b8">Sin asignar</div></div>`}
-      </div>
-      ${ot.obs_gigared?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#92400e"><strong>${esRep?'Servicios contratados':'Obs Gigared'}:</strong> ${ot.obs_gigared}</div>`:''}
-      ${ot.grupos_ot?.observaciones?`<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem">
-        <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">📋 Historial de la OT</div>
-        ${ot.grupos_ot.observaciones.split('\n').filter(Boolean).map(l=>`<div style="font-size:12px;color:#1e3a5f;padding:3px 0;border-bottom:1px solid #e0f2fe">${l}</div>`).join('')}
-      </div>`:''}
-      ${items.length?`<div class="card" style="margin-bottom:.75rem"><div class="card-title">${esRep?'Servicios (referencia)':'Items contratados'}</div>${items.map(i=>`<div class="row"><span>${i.descripcion}</span><span style="font-weight:700">x${i.cantidad}</span></div>`).join('')}</div>`:''}
-      ${esFinalizada?`
-        ${matsUsados&&matsUsados.length?`<div class="card" style="margin-bottom:.75rem;border-color:#bbf7d0">
-          <div class="card-title" style="color:#16a34a">🔩 Materiales usados</div>
-          ${matsUsados.map(m=>{
-            const nom=m.catalogo_materiales?.nombre||'?';
-            const uni=m.catalogo_materiales?.unidad||'';
-            const tipo=m.catalogo_materiales?.serial_tipo||'NINGUNO';
-            const serDeMat=(serialesCliente||[]).filter(s=>s.catalogo_materiales?.nombre===nom);
-            return `<div class="row" style="flex-wrap:wrap;gap:4px">
-              <span>${nom}</span>
-              <span style="font-weight:700;color:#16a34a">${m.cantidad} ${uni}</span>
-              ${serDeMat.length?`<div style="width:100%;display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">
-                ${serDeMat.map(s=>`<span style="background:#f0fdf4;border:1px solid #bbf7d0;padding:2px 8px;border-radius:6px;font-family:monospace;font-size:11px;color:#166534">${s.serial}</span>`).join('')}
-              </div>`:''}
-            </div>`;
-          }).join('')}
-        </div>`:''}
-        ${servRealiz&&servRealiz.length?`<div class="card" style="margin-bottom:.75rem;border-color:#bae6fd">
-          <div class="card-title" style="color:#0369a1">⚙️ Mano de obra</div>
-          ${servRealiz.map(s=>`<div class="row">
-            <span>${s.catalogo_servicios?.nombre||'?'}</span>
-            <span style="font-weight:700;color:#0369a1">x${s.cantidad}</span>
-          </div>`).join('')}
-        </div>`:''}
-      `:''}
-      ${grupo.length>=1?`<div class="card"><div class="card-title">Grupo · ${grupo.length} OT${grupo.length>1?'s':''}</div>${grupo.map(g=>`<div class="ot-grupo-item" style="cursor:pointer" onclick="cerrarModal('ot-modal');setTimeout(()=>verOT('${g.numero_ot}'),200)"><div class="ot-grupo-num">${numOT(g.numero_ot)}</div><div class="ot-grupo-tipo">${g.tipo_item||'—'}</div>${badgeE(g.estados_ot?.nombre||'')}</div>`).join('')}</div>`:''}
-    `;
-    const est=ot.estados_ot?.nombre||'';
-    let btns='';
-    // Botón PDF siempre visible si existe
-    if(ot.pdf_url) btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="window.open('${ot.pdf_url}','_blank')">📄 Ver PDF</button>`;
-    if(est!=='FINALIZADA'&&est!=='ELIMINADA_SISTEMA'){
-      if(!ot.grupos_ot?.cuadrillas)btns+=`<button class="btn btn-primary" onclick="abrirAsignar(${ot.grupo_id||ot.id})">📍 Asignar</button>`;
-      btns+=`<button class="btn" onclick="abrirCambiarEstado(${ot.id},'${est}')">↕ Estado</button>`;
-      if(est==='ASIGNADA'||est==='EN_PROCESO')btns+=`<button class="btn btn-green" onclick="abrirCierre(${ot.id},'${ot.numero_ot}','${ot.tipo_tarea||''}')">✓ Cerrar</button>`;
-    }
-    if(est==='FINALIZADA'&&(CU.rol==='superadmin'||CU.rol==='admin')){
-      btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb;border-color:rgba(37,99,235,.3)" onclick="abrirEditarCierre(${ot.id})">✏️ Editar cierre</button>`;
-      btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarCierre(${ot.id},'${ot.numero_ot}',${ot.grupos_ot?.cuadrilla_id||'null'},${ot.grupo_id||'null'},'${(ot.fecha_fin||'').slice(0,10)}')">🗑️ Eliminar cierre</button>`;
-    }
-    btns+=`<button class="btn btn-sm" style="margin-left:auto;font-size:11px;color:#64748b" onclick="editarTipoOT(${ot.id},'${ot.tipo_item||''}','${ot.tipo_tarea||''}')">✏️ Tipo</button>`;
-    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarOT(${ot.id})">✏️ Editar OT</button>`;
-    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarCliente(${cl.id})">👤 Editar cliente</button>`;
-    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626" onclick="eliminarOT(${ot.id},'${ot.numero_ot}',${ot.grupo_id||'null'})">🗑️ Eliminar OT</button>`;
-    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626" onclick="eliminarCliente(${cl.id},'${(cl.apellido||'')+' '+(cl.nombre||'')}')">🗑️ Eliminar cliente</button>`;
-    footer.innerHTML=btns;
-  }catch(e){body.innerHTML=`<p style="color:#dc2626">${e.message}</p>`;}
+function sortOTs(col){
+  OT_FILTRO_FECHA='';
+  if(OT_SORT===col){
+    // Mismo primario: invertir dirección
+    OT_SORT_DIR=OT_SORT_DIR==='asc'?'desc':'asc';
+  } else if(OT_SORT2===col){
+    // Era secundario: invertir dirección secundaria
+    OT_SORT2_DIR=OT_SORT2_DIR==='asc'?'desc':'asc';
+  } else if(OT_SORT){
+    // Hay primario y clickeamos otro: el primario pasa a secundario
+    OT_SORT2=OT_SORT;
+    OT_SORT2_DIR=OT_SORT_DIR;
+    OT_SORT=col;
+    OT_SORT_DIR='asc';
+  } else {
+    OT_SORT=col;
+    OT_SORT_DIR='asc';
+    OT_SORT2='';
+  }
+  OT_PAGE=0;
+  renderOTs();
 }
 
 // EDITAR TIPO OT
