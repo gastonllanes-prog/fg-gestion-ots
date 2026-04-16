@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v138</title>
+<title>FG Gestión OTs v139</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V138</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V139</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v138</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v139</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -3676,7 +3676,7 @@ async function abrirEditarCierre(otId){
     const [matsUsados, servsReal, serialesCli, catalogoMats, catalogoServs]=await Promise.all([
       sbGet('ot_materiales_usados','?ot_id=eq.'+otId+'&select=id,material_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo)'),
       sbGet('ot_servicios_realizados','?ot_id=eq.'+otId+'&select=id,servicio_id,cantidad,catalogo_servicios(id,nombre)'),
-      sbGet('stock_seriales','?ubicacion=eq.CLIENTE&select=id,serial,material_id,catalogo_materiales(id,nombre)'),
+      sbGet('stock_seriales','?ot_id=eq.'+otId+'&select=id,serial,material_id,catalogo_materiales(id,nombre,serial_tipo)'),
       sbGet('catalogo_materiales','?activo=eq.true&order=orden_display'),
       sbGet('catalogo_servicios','?activo=eq.true&order=orden_display')
     ]);
@@ -3685,17 +3685,10 @@ async function abrirEditarCierre(otId){
       otId, cuadId,
       matsOrig: matsUsados||[],
       servsOrig: servsReal||[],
-      serialesOrig: (serialesCli||[]).filter(s=>{
-        // Solo los seriales de materiales que estaban en esta OT
-        const matIds=new Set((matsUsados||[]).map(m=>m.material_id));
-        return matIds.has(s.material_id);
-      }),
+      serialesOrig: serialesCli||[],
       mats: JSON.parse(JSON.stringify(matsUsados||[])),
       servs: JSON.parse(JSON.stringify(servsReal||[])),
-      seriales: (serialesCli||[]).filter(s=>{
-        const matIds=new Set((matsUsados||[]).map(m=>m.material_id));
-        return matIds.has(s.material_id);
-      }).map(s=>({...s,_eliminar:false})),
+      seriales: (serialesCli||[]).map(s=>({...s,_eliminar:false})),
       catalogoMats: catalogoMats||[],
       catalogoServs: catalogoServs||[]
     };
@@ -3885,8 +3878,9 @@ async function confirmarEditarCierre(){
           }
         } else {
           // No estaba en bolso: crear y marcar como CLIENTE
-          await sbPost('stock_seriales',{material_id:s.material_id,serial:s.serial,ubicacion:'CLIENTE'});
+          await sbPost('stock_seriales',{material_id:s.material_id,serial:s.serial,ubicacion:'CLIENTE',ot_id:otId});
         }
+        await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+s.serial,{ot_id:otId});
         await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:s.material_id,cuadrilla_id:cuadId?parseInt(cuadId):null,cantidad:-1,obs:'Serial agregado - edicion cierre OT '+otId+' - serial: '+s.serial});
       }
     }
@@ -3926,7 +3920,7 @@ async function eliminarCierre(otId, numOT_str, cuadId){
     const [matsUsados, servsReal, serialesCli, ePend]=await Promise.all([
       sbGet('ot_materiales_usados','?ot_id=eq.'+otId+'&select=id,material_id,cantidad'),
       sbGet('ot_servicios_realizados','?ot_id=eq.'+otId+'&select=id'),
-      sbGet('stock_seriales','?ubicacion=eq.CLIENTE'),
+      sbGet('stock_seriales','?ot_id=eq.'+otId),
       Promise.resolve(ESTADOS.find(e=>e.nombre==='PENDIENTE'))
     ]);
 
@@ -3939,8 +3933,7 @@ async function eliminarCierre(otId, numOT_str, cuadId){
         await sbPost('movimientos_stock',{tipo_movimiento:'DEVOLUCION',material_id:m.material_id,cuadrilla_id:parseInt(cuadId),cantidad:m.cantidad,obs:'Eliminacion cierre OT '+otId});
       }
       // Devolver seriales al bolso
-      const matIds=new Set((matsUsados||[]).map(m=>m.material_id));
-      const sersOT=(serialesCli||[]).filter(s=>matIds.has(s.material_id));
+      const sersOT=serialesCli||[];
       for(const s of sersOT){
         await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+s.serial,{ubicacion:'CUADRILLA_'+cuadId});
         const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id)||[];
@@ -4959,7 +4952,7 @@ async function confirmarWizardCierre(){
           // INDIVIDUAL: usar serial del serialesFinales
           for(const [mid,serial] of Object.entries(serFin)){
             if(!serial)continue;
-            await sbPatch('stock_seriales',`?material_id=eq.${mid}&serial=eq.${serial}`,{ubicacion:'CLIENTE'});
+            await sbPatch('stock_seriales',`?material_id=eq.${mid}&serial=eq.${serial}`,{ubicacion:'CLIENTE',ot_id:otId});
             const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${mid}`)||[];
             if(sc.length) await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${mid}`,{cantidad:Math.max(0,(sc[0].cantidad||0)-1)});
             await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:parseInt(mid),cuadrilla_id:parseInt(cuadId),cantidad:-1,obs:'OT '+otId+' serial: '+serial});
@@ -4969,7 +4962,7 @@ async function confirmarWizardCierre(){
             if(!cant)continue;
             const sers=(WIZ.corrSels[mid]||[]).slice(0,cant);
             const sersAUsar=sers.length>=cant?sers:WIZ.serialesMap[mid]?.slice(0,cant)||[];
-            for(const s of sersAUsar) await sbPatch('stock_seriales',`?material_id=eq.${mid}&serial=eq.${s}`,{ubicacion:'CLIENTE'});
+            for(const s of sersAUsar) await sbPatch('stock_seriales',`?material_id=eq.${mid}&serial=eq.${s}`,{ubicacion:'CLIENTE',ot_id:otId});
             const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${mid}`)||[];
             if(sc.length) await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${mid}`,{cantidad:Math.max(0,(sc[0].cantidad||0)-cant)});
             if(sersAUsar.length) await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:parseInt(mid),cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs:'OT '+otId+' precintos: '+sersAUsar.join(',')});
