@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v133</title>
+<title>FG Gestión OTs v134</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V133</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V134</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v133</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v134</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -783,16 +783,16 @@ tr:hover td{background:rgba(37,99,235,.02)}
 </div>
 
 <!-- MODAL ESTADO -->
-<div class="modal-overlay hidden" id="estado-modal">
+<div class="modal-overlay hidden" id="cambio-estado-modal">
   <div class="modal">
-    <div class="modal-title">Cambiar estado <button class="modal-close" onclick="cerrarModal('estado-modal')">✕</button></div>
+    <div class="modal-title">Cambiar estado <button class="modal-close" onclick="cerrarModal('cambio-estado-modal')">✕</button></div>
     <div id="estado-info" style="margin-bottom:1rem"></div>
     <div class="fg"><label>Nuevo estado</label><select id="est-nuevo" onchange="cargarMotivos(this.value)"></select></div>
     <div class="fg"><label>Motivo</label><select id="est-motivo"><option value="">Sin motivo</option></select></div>
     <div class="fg"><label>Observación</label><input id="est-obs" placeholder="Opcional..."/></div>
     <div class="modal-footer">
-      <button class="btn btn-primary" style="flex:2" onclick="guardarEstado()">Guardar</button>
-      <button class="btn" onclick="cerrarModal('estado-modal')">Cancelar</button>
+      <button class="btn btn-primary" style="flex:2" onclick="guardarCambioEstado()">Guardar</button>
+      <button class="btn" onclick="cerrarModal('cambio-estado-modal')">Cancelar</button>
     </div>
     <p class="err-msg" id="est-err"></p>
   </div>
@@ -1116,6 +1116,27 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="modal-footer">
       <button class="btn btn-primary" style="flex:2" onclick="guardarMotivoDev()">Guardar</button>
       <button class="btn" onclick="cerrarModal('motivo-dev-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AGREGAR SERIAL EN WIZARD -->
+<div class="modal-overlay hidden" id="agregar-serial-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title">➕ Agregar serial al bolso <button class="modal-close" onclick="cerrarModal('agregar-serial-modal')">✕</button></div>
+    <div style="background:#eff6ff;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#1e40af">
+      <strong id="aser-mat-nombre">Material</strong><br>
+      <span style="font-size:12px;opacity:.8">El sistema buscará el serial en depósito. Si no existe, lo registrará como entrada.</span>
+    </div>
+    <div class="fg">
+      <label>Serial / MAC</label>
+      <input id="aser-serial" placeholder="Escaneá o ingresá el serial..." style="font-family:monospace;font-size:15px;letter-spacing:.05em"
+        oninput="this.value=this.value.toUpperCase().replace(/[:\-]/g,'')"/>
+    </div>
+    <p class="err-msg" id="aser-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="confirmarAgregarSerialWiz()">✓ Agregar al bolso</button>
+      <button class="btn" onclick="cerrarModal('agregar-serial-modal')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1697,17 +1718,17 @@ async function verOT(num){
         <div style="font-size:13px;color:#64748b;margin-bottom:.35rem">
           <div id="grupo-pills-${ot.grupo_id}" style="display:inline-flex;flex-wrap:wrap;gap:4px">
             ${grupo.map((g,gi)=>{
-              const colorBg=g.estados_ot?.nombre==='FINALIZADA'?'rgba(22,163,74,.12)':g.estados_ot?.nombre==='DEVUELTA_GIGARED'?'rgba(220,38,38,.1)':'rgba(37,99,235,.1)';
-              const colorTxt=g.estados_ot?.nombre==='FINALIZADA'?'#15803d':g.estados_ot?.nombre==='DEVUELTA_GIGARED'?'#dc2626':'#2563eb';
-              return `<span draggable="true" data-ot-id="${g.id}" data-grupo-id="${ot.grupo_id}" data-idx="${gi}"
-                onmousedown="this.style.opacity='.7'"
-                onmouseup="this.style.opacity='1'"
-                ondragstart="dragPillStart(event,this)"
-                ondragover="event.preventDefault();dragPillOver(event,this)"
-                ondrop="dragPillDrop(event,this)"
-                ondragend="dragPillEnd(event,this)"
-                style="background:${colorBg};color:${colorTxt};font-weight:700;padding:3px 10px;border-radius:6px;font-size:12px;cursor:grab;user-select:none;border:1.5px dashed transparent;transition:all .15s"
-                title="Arrastrar para reordenar">${numOT(g.numero_ot)} <span style="font-size:10px;opacity:.7">${(g.tipo_item||'').replace(/_/g,' ')}</span></span>`;
+              const cBg=g.estados_ot?.nombre==='FINALIZADA'?'rgba(22,163,74,.12)':g.estados_ot?.nombre==='DEVUELTA_GIGARED'?'rgba(220,38,38,.1)':'rgba(37,99,235,.1)';
+              const cTx=g.estados_ot?.nombre==='FINALIZADA'?'#15803d':g.estados_ot?.nombre==='DEVUELTA_GIGARED'?'#dc2626':'#2563eb';
+              return '<span draggable="true" data-ot-id="'+g.id+'" data-grupo-id="'+ot.grupo_id+'" data-idx="'+gi+'"'
+                +' onmousedown="this.style.opacity=\'.7\'"'
+                +' onmouseup="this.style.opacity=\'1\'"'
+                +' ondragstart="dragPillStart(event,this)"'
+                +' ondragover="event.preventDefault();dragPillOver(event,this)"'
+                +' ondrop="dragPillDrop(event,this)"'
+                +' ondragend="dragPillEnd(event,this)"'
+                +' style="background:'+cBg+';color:'+cTx+';font-weight:700;padding:3px 10px;border-radius:6px;font-size:12px;cursor:grab;user-select:none;border:1.5px dashed transparent;transition:all .15s"'
+                +' title="Arrastrar para reordenar">'+numOT(g.numero_ot)+' <span style="font-size:10px;opacity:.7">'+(g.tipo_item||'').replace(/_/g,' ')+'</span></span>';
             }).join('')}
           </div>
         </div>
@@ -2645,13 +2666,13 @@ async function abrirCambiarEstado(otId,estAct){
   document.getElementById('estado-info').innerHTML=`<div style="background:#eff6ff;border-radius:10px;padding:.5rem 1rem;font-size:13px;color:#1e40af">Estado actual: <strong>${estAct}</strong></div>`;
   document.getElementById('est-obs').value='';document.getElementById('est-err').textContent='';
   await cargarMotivos(ESTADOS[0]?.id);
-  abrirModal('estado-modal');
+  abrirModal('cambio-estado-modal');
 }
 async function cargarMotivos(eid){
   const sel=document.getElementById('est-motivo');sel.innerHTML='<option value="">Sin motivo</option>';
   try{const m=await sbGet('motivos_estado',`?estado_ot_id=eq.${eid}&activo=eq.true`)||[];m.forEach(mo=>{const o=document.createElement('option');o.value=mo.id;o.textContent=mo.descripcion;sel.appendChild(o);});}catch(e){}
 }
-async function guardarEstado(){
+async function guardarCambioEstado(){
   const sel=document.getElementById('est-nuevo');const otId=sel.dataset.otId;
   const eid=parseInt(sel.value);const mid=document.getElementById('est-motivo').value;
   const obs=document.getElementById('est-obs').value.trim();const err=document.getElementById('est-err');
@@ -2659,7 +2680,7 @@ async function guardarEstado(){
     const ot=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id&eliminado=eq.false`)||[];
     await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eid});
     await sbPost('historial_estados_ot',{ot_id:parseInt(otId),estado_anterior_id:ot[0]?.estado_id,estado_nuevo_id:eid,motivo_id:mid?parseInt(mid):null,observacion:obs||null,usuario_id:CU.id});
-    cerrarModal('estado-modal');cerrarModal('ot-modal');renderOTs();
+    cerrarModal('cambio-estado-modal');cerrarModal('ot-modal');renderOTs();
   }catch(e){err.textContent='Error: '+e.message;}
 }
 
@@ -3280,7 +3301,7 @@ async function cambiarEstadoGrupo(grupoId, nuevoEstado){
 }
 
 async function abrirReasignarDesdeAsignadas(grupoId){
-  const g=await sbGet('grupos_ot','?id=eq.&eliminado=eq.false'+grupoId+'&select=id,cuadrillas(nombre),ordenes_trabajo(tipo_tarea,clientes(codigo_gigared,apellido,nombre))').then(d=>d?.[0]);
+  const g=await sbGet('grupos_ot',`?id=eq.${grupoId}&eliminado=eq.false&select=id,cuadrillas(nombre),ordenes_trabajo(tipo_tarea,clientes(codigo_gigared,apellido,nombre))`).then(d=>d?.[0]);
   if(!g)return;
   const ots=g.ordenes_trabajo||[];
   const cl=ots[0]?.clientes;
@@ -3576,6 +3597,82 @@ async function guardarAsignacion(){
 }
 
 // CIERRE
+// ═══ P1: AGREGAR SERIAL FALTANTE DESDE WIZARD ═══
+let _aserMatId=null, _aserMatNombre='';
+
+function abrirAgregarSerialWiz(matId, matNombre){
+  _aserMatId=matId;
+  _aserMatNombre=matNombre;
+  document.getElementById('aser-mat-nombre').textContent=matNombre;
+  document.getElementById('aser-serial').value='';
+  document.getElementById('aser-err').textContent='';
+  abrirModal('agregar-serial-modal');
+  setTimeout(()=>document.getElementById('aser-serial').focus(),200);
+}
+
+async function confirmarAgregarSerialWiz(){
+  const serial=document.getElementById('aser-serial').value.trim().toLowerCase().replace(/[:\-]/g,'');
+  const err=document.getElementById('aser-err');
+  if(!serial){err.textContent='Ingresá el serial';return;}
+  
+  const matId=_aserMatId;
+  const cuadId=WIZ.cuadId;
+  if(!cuadId){err.textContent='Error: no hay cuadrilla asignada';return;}
+  
+  err.textContent='Buscando en depósito...';
+  
+  try{
+    // 1. Verificar si el serial ya está en el bolso de esta cuadrilla
+    const yaEnBolso=await sbGet('stock_seriales',`?material_id=eq.${matId}&serial=eq.${serial}&ubicacion=eq.CUADRILLA_${cuadId}`)||[];
+    if(yaEnBolso.length){
+      err.textContent='⚠️ Este serial ya está en el bolso de '+WIZ.cuadNombre;
+      return;
+    }
+
+    // 2. Buscar en depósito
+    const enDeposito=await sbGet('stock_seriales',`?material_id=eq.${matId}&serial=eq.${serial}&ubicacion=eq.DEPOSITO`)||[];
+    
+    if(!enDeposito.length){
+      // No está en depósito → preguntar si ingresarlo
+      const ok=confirm('El serial '+serial+' no está en el depósito.\n\n¿Registrarlo como entrada al depósito y asignarlo a '+WIZ.cuadNombre+'?');
+      if(!ok){err.textContent='Operación cancelada';return;}
+      
+      // Entrada al depósito
+      await sbPost('stock_seriales',{material_id:matId,serial,ubicacion:'DEPOSITO'});
+      await sbPost('movimientos_stock',{tipo_movimiento:'ENTRADA_DEPOSITO',material_id:matId,cantidad:1,cuadrilla_id:parseInt(cuadId),obs:'Ingreso emergencia wizard — serial '+serial});
+      // Actualizar cantidad deposito
+      const sd=await sbGet('stock_deposito','?material_id=eq.'+matId)||[];
+      if(sd.length) await sbPatch('stock_deposito','?material_id=eq.'+matId,{cantidad:(sd[0].cantidad||0)+1,updated_at:new Date().toISOString()});
+      else await sbPost('stock_deposito',{material_id:matId,cantidad:1});
+    }
+    
+    // 3. Mover de depósito a cuadrilla
+    await sbPatch('stock_seriales',`?material_id=eq.${matId}&serial=eq.${serial}`,{ubicacion:'CUADRILLA_'+cuadId});
+    
+    // 4. Actualizar stock_cuadrillas
+    const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${matId}`)||[];
+    if(sc.length) await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${matId}`,{cantidad:(sc[0].cantidad||0)+1});
+    else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:matId,cantidad:1});
+    
+    // 5. Actualizar stock_deposito (restar 1)
+    const sd2=await sbGet('stock_deposito','?material_id=eq.'+matId)||[];
+    if(sd2.length) await sbPatch('stock_deposito','?material_id=eq.'+matId,{cantidad:Math.max(0,(sd2[0].cantidad||0)-1),updated_at:new Date().toISOString()});
+    
+    // 6. Movimiento stock
+    await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:matId,cuadrilla_id:parseInt(cuadId),cantidad:-1,obs:'Asignado desde wizard cierre — serial '+serial});
+    
+    // 7. Actualizar WIZ.serialesMap y WIZ.scMap en memoria
+    if(!WIZ.serialesMap[matId]) WIZ.serialesMap[matId]=[];
+    WIZ.serialesMap[matId].push(serial);
+    WIZ.scMap[matId]=(WIZ.scMap[matId]||0)+1;
+    
+    cerrarModal('agregar-serial-modal');
+    // Re-renderizar el paso de seriales para mostrar el nuevo serial
+    renderWizPaso();
+    
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
 // ═══ DRAG & DROP PARA REORDENAR PILLS DE GRUPO ═══
 let _dragPillSrc=null;
 function dragPillStart(e,el){_dragPillSrc=el;e.dataTransfer.effectAllowed='move';}
@@ -3802,16 +3899,24 @@ function renderWizPaso(){
         const tipoOT=(ot.tipo_item||ot.tipo_tarea||'').replace(/_/g,' ');
         const selec=WIZ.serialesFinales[ot.id][mid]||null;
         if(!sers.length){
-          // Sin seriales individuales cargados — solo registrar la cantidad
-          return `<div class="card" style="margin-bottom:.75rem">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div>
-                <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase">OT ${numOT(ot.numero_ot)} — ${tipoOT}</div>
-                <div style="font-size:13px;font-weight:700">${mat.nombre} × ${cant}</div>
-              </div>
-              <span style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:600">Sin seriales en BD</span>
-            </div>
-          </div>`;
+          // Sin seriales — mostrar botón para agregar (sin template literal anidado)
+          const matNombreEsc=mat.nombre.replace(/'/g,'');
+          return '<div class="card" style="margin-bottom:.75rem;border:2px solid #fed7aa">'
+            +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+            +'<div>'
+            +'<div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase">OT '+numOT(ot.numero_ot)+' — '+tipoOT+'</div>'
+            +'<div style="font-size:13px;font-weight:700">'+mat.nombre+' × '+cant+'</div>'
+            +'</div>'
+            +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+            +'<span style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:600">Sin seriales en BD</span>'
+            +'<button type="button" onclick="abrirAgregarSerialWiz('+mid+',&quot;'+matNombreEsc+'&quot;)"'
+            +' style="padding:4px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #2563eb;background:#2563eb;color:#fff">'
+            +'➕ Agregar serial'
+            +'</button>'
+            +'</div>'
+            +'</div>'
+            +'<div id="seriales-agregados-'+ot.id+'-'+mid+'" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"></div>'
+            +'</div>';
         }
         return `<div class="card" style="margin-bottom:.75rem">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
@@ -3863,19 +3968,33 @@ function renderWizPaso(){
 
   // Equipos INDIVIDUAL — ordenados por prioridad
   const EQUIPO_ORDEN=['onu','cable modem mta','cable modem','decodificador','smartcard','tv box','cámara indoor','cámara outdoor','router'];
-  const matsEquipo=WIZ.catalogoMats
+  // Deduplicar por nombre (puede haber duplicados en el catálogo)
+  const _matsEquipoRaw=WIZ.catalogoMats
     .filter(m=>m.serial_tipo==='INDIVIDUAL')
     .sort((a,b)=>{
       const ai=EQUIPO_ORDEN.findIndex(k=>a.nombre.toLowerCase().includes(k));
       const bi=EQUIPO_ORDEN.findIndex(k=>b.nombre.toLowerCase().includes(k));
       return (ai<0?99:ai)-(bi<0?99:bi);
     });
+  const _matsEquipoNombresVistos=new Set();
+  const matsEquipo=_matsEquipoRaw.filter(m=>{
+    const k=m.nombre.toLowerCase().trim();
+    if(_matsEquipoNombresVistos.has(k))return false;
+    _matsEquipoNombresVistos.add(k);
+    return true;
+  });
   const equipoNames=new Set(matsEquipo.map(m=>m.nombre.toLowerCase().trim()));
 
-  // Materiales regulares — excluir los que ya aparecen en equipos (deduplicar)
-  const matsNorm=WIZ.catalogoMats.filter(m=>
-    m.serial_tipo==='NINGUNO' && !equipoNames.has(m.nombre.toLowerCase().trim())
-  );
+  // Materiales regulares — excluir equipos y deduplicar por nombre
+  const _matsNormNombresVistos=new Set();
+  const matsNorm=WIZ.catalogoMats.filter(m=>{
+    if(m.serial_tipo!=='NINGUNO')return false;
+    if(equipoNames.has(m.nombre.toLowerCase().trim()))return false;
+    const k=m.nombre.toLowerCase().trim();
+    if(_matsNormNombresVistos.has(k))return false;
+    _matsNormNombresVistos.add(k);
+    return true;
+  });
 
   // Precintos CORRELATIVO — SOLO en el primer paso, en los demás mostrar como readonly
   const primerPasoIdx=WIZ.pasos.findIndex(pa=>pa.accion==='CERRAR');
@@ -4103,8 +4222,40 @@ function toggleCorrSel(pasIdx, mid, serial, maxCant){ // Alias por compatibilida
   toggleCorrSelFin(mid,serial,maxCant);
 }
 
-function marcarDevueltaWiz(){
-  WIZ.pasos[WIZ.paso].accion='DEVUELTA';
+async function marcarDevueltaWiz(){
+  const p=WIZ.pasos[WIZ.paso];
+  if(p.accion==='DEVUELTA'){
+    // Ya está marcada como devuelta — cancelar
+    p.accion='CERRAR';
+    renderWizPaso();
+    return;
+  }
+  // Cargar motivos predefinidos y mostrar selector
+  let motivos=[];
+  try{ motivos=await sbGet('motivos_devolucion','?activo=eq.true&order=orden,descripcion')||[]; }catch(e){}
+  
+  // Construir listado de opciones
+  const opcs=motivos.map(m=>'• '+m.descripcion).join('\n');
+  const numeradas=motivos.map((m,i)=>(i+1)+'. '+m.descripcion).join('\n');
+  
+  // Usar prompt con sugerencias
+  const sugerencia=motivos.length
+    ? 'Motivos predefinidos:\n'+numeradas+'\n\n(Escribí el número o el motivo completo)'
+    : 'Describí el motivo de la devolución:';
+  
+  const motivo=prompt(sugerencia);
+  if(motivo===null) return; // Canceló
+  
+  // Resolver si es número → usar descripción predefinida
+  const num=parseInt(motivo);
+  const motivoFinal=(num>=1&&num<=motivos.length)
+    ? motivos[num-1].descripcion
+    : motivo.trim();
+  
+  if(!motivoFinal){ alert('Ingresá un motivo para la devolución.'); return; }
+  
+  p.accion='DEVUELTA';
+  p.obs=motivoFinal;
   renderWizPaso();
 }
 
@@ -4169,6 +4320,14 @@ function _guardarInputsPasoActual(){
 }
 
 async function confirmarWizardCierre(){
+  // P8: Confirmar antes de cerrar
+  const otsCerrar=WIZ.pasos.filter(p=>p.accion==='CERRAR'&&p.ot).length;
+  const otsDevueltas=WIZ.pasos.filter(p=>p.accion==='DEVUELTA'&&p.ot).length;
+  let msg='¿Confirmar el cierre de '+otsCerrar+' OT'+(otsCerrar!==1?'s':'')+' de '+WIZ.cuadNombre+'?';
+  if(otsDevueltas) msg+='\n'+otsDevueltas+' OT'+(otsDevueltas!==1?'s':'')+' serán devueltas a Gigared.';
+  msg+='\n\nEsta acción no se puede deshacer fácilmente.';
+  if(!confirm(msg)) return;
+
   // Guardar inputs del paso actual
   _guardarInputsPasoActual();
 
@@ -5060,6 +5219,49 @@ function acActualizarContador(matId, total){
   cnt.textContent='A cargar: '+total+' · Cargados: '+cargados+(faltan>0?' · Faltan: '+faltan:' ✅');
 }
 
+// ─── P5: Helpers Autocompletar editable ───
+function acQuitarMaterial(matId){
+  const row=document.getElementById('ac-row-'+matId);
+  if(row){row.style.opacity='.4';row.style.pointerEvents='none';const inp=document.getElementById('ac-qty-'+matId);if(inp)inp.value=0;}
+}
+function acActualizarTotal(matId,actual,cantPaq,unidad,nombrePaq){
+  const inp=document.getElementById('ac-qty-'+matId);
+  const totalEl=document.getElementById('ac-total-'+matId);
+  if(!inp||!totalEl)return;
+  const cant=parseInt(inp.value)||0;
+  totalEl.textContent='= '+(actual+cant)+' '+unidad;
+}
+function acQuitarSerial(matId,serial){
+  // Marcar serial para exclusión en AUTOCOMPLETE_PENDING
+  const item=AUTOCOMPLETE_PENDING?.conSerial?.find(x=>x.mat.id===matId);
+  if(!item)return;
+  item.yaEnBolso=(item.yaEnBolso||[]).filter(s=>s!==serial);
+  // Remover el chip del DOM
+  const bolsoEl=document.getElementById('ac-bolso-'+matId);
+  if(bolsoEl){
+    const chips=[...bolsoEl.querySelectorAll('span')];
+    chips.forEach(c=>{if(c.textContent.trim().startsWith(serial))c.remove();});
+  }
+  // Actualizar contador
+  const cntEl=document.getElementById('ac-cnt-'+matId);
+  if(cntEl&&item){
+    const faltan=Math.max(0,item.cant-item.yaEnBolso.length);
+    cntEl.innerHTML='A cargar: '+item.cant+' · Tiene: '+item.yaEnBolso.length+' · <span style="color:'+(faltan>0?'#dc2626':'#16a34a')+'">Faltan: '+faltan+'</span>';
+    // Mostrar textarea si ahora faltan
+    if(faltan>0&&!document.getElementById('ac-serial-'+matId)){
+      const bolsoParent=document.getElementById('ac-bolso-'+matId)?.parentElement;
+      if(bolsoParent){
+        const ta=document.createElement('textarea');
+        ta.id='ac-serial-'+matId; ta.rows=2;
+        ta.placeholder='Escaneá o pegá '+faltan+' serial(es) (uno por línea)...';
+        ta.style.cssText='width:100%;padding:6px 8px;border:1px solid #fed7aa;border-radius:8px;font-family:monospace;font-size:12px;resize:vertical;margin-top:4px';
+        ta.oninput=()=>acActualizarContador(matId,faltan);
+        bolsoParent.appendChild(ta);
+      }
+    }
+  }
+}
+
 async function autocompletarCuadrilla(){
   const cuadId=document.getElementById('cuad-selector').value;
   const cuadNombre=document.getElementById('cuad-selector').selectedOptions[0]?.text||'';
@@ -5088,28 +5290,35 @@ async function autocompletarCuadrilla(){
   if(!sinSerial.length&&!conSerial.length&&!corrSerial.length){
     alert('✅ El stock de '+cuadNombre+' está completo.');return;
   }
+  // Cargar seriales ya en el bolso para cada equipo con serial
+  for(const x of conSerial){
+    const sers=await sbGet('stock_seriales',`?material_id=eq.${x.mat.id}&ubicacion=eq.CUADRILLA_${cuadId}&order=serial`)||[];
+    x.yaEnBolso=sers.map(s=>s.serial);
+  }
   // Mostrar modal de confirmación bonito
   AUTOCOMPLETE_PENDING={cuadId,cuadNombre,sinSerial,conSerial,corrSerial};
   const modal=document.getElementById('autocomplete-modal');
   document.getElementById('ac-modal-titulo').textContent='⚡ Autocompletar — '+cuadNombre;
   let html='';
   if(sinSerial.length){
-    html+='<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Materiales sin serial</div>';
+    html+='<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Materiales sin serial <span style="font-weight:400;font-style:italic">(editá la cantidad o quitá lo que no va)</span></div>';
     html+=sinSerial.map(x=>{
-      const color=x.mat.serial_tipo==='CORRELATIVO'?'#7c3aed':'#2563eb';
       const esPaq=x.esPaq;
       const cantPaq=x.mat.cant_por_paquete||1;
-      const paqCount=esPaq?Math.round(x.cant/cantPaq):0;
-      const paqLabel=esPaq&&paqCount>0?' ('+paqCount+' '+x.mat.nombre_paquete+')'  :'';
-      const llegara=x.actual+x.cant;
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .875rem;background:#f8fafc;border-radius:10px;margin-bottom:.4rem">
-        <div style="font-weight:600;font-size:13px">${x.mat.nombre}</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-          <span style="font-size:12px;color:#94a3b8">Tiene: ${x.actual}</span>
-          <span style="font-size:16px">→</span>
-          <span style="font-size:14px;font-weight:800;color:${color}">+${x.cant} ${x.mat.unidad}${paqLabel}</span>
-          <span style="font-size:11px;color:#16a34a;font-weight:600">= ${llegara}</span>
+      return `<div id="ac-row-${x.mat.id}" style="display:flex;align-items:center;gap:8px;padding:.5rem .875rem;background:#f8fafc;border-radius:10px;margin-bottom:.4rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div style="font-weight:600;font-size:13px">${x.mat.nombre}</div>
+          <div style="font-size:11px;color:#94a3b8">Tiene: ${x.actual} ${x.mat.unidad}</div>
         </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:12px;color:#64748b">+</span>
+          <input type="number" id="ac-qty-${x.mat.id}" value="${x.cant}" min="0"
+            style="width:70px;padding:5px 8px;border:2px solid #2563eb;border-radius:8px;font-size:14px;font-weight:700;text-align:center"
+            oninput="acActualizarTotal(${x.mat.id},${x.actual},${cantPaq},'${x.mat.unidad}','${x.mat.nombre_paquete||''}')"/>
+          <span id="ac-total-${x.mat.id}" style="font-size:12px;color:#16a34a;font-weight:600;min-width:50px">= ${x.actual+x.cant}</span>
+        </div>
+        <button type="button" onclick="acQuitarMaterial(${x.mat.id})"
+          style="padding:4px 10px;border-radius:8px;border:1px solid #dc2626;color:#dc2626;background:none;font-size:12px;cursor:pointer;font-weight:700">✕</button>
       </div>`;
     }).join('');
   }
@@ -5140,16 +5349,30 @@ async function autocompletarCuadrilla(){
   }
   if(conSerial.length){
     html+='<div style="font-size:11px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .5rem">Equipos con serial — requieren escaneo</div>';
-    html+=conSerial.map(x=>`
-      <div style="padding:.6rem .875rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;margin-bottom:.4rem">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+    html+=conSerial.map(x=>{
+      // Seriales ya en el bolso de la cuadrilla (de WIZ.scMap o de AC_SERIALES_YA no disponible aquí — usar campo de AC)
+      const yaEnBolso=x.yaEnBolso||[];
+      const totalNecesita=x.cant;
+      const yaTiene=yaEnBolso.length;
+      const faltan=Math.max(0,totalNecesita-yaTiene);
+      const bolsoHtml=yaEnBolso.length
+        ? yaEnBolso.map(s=>`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:2px 8px;font-family:monospace;font-size:11px;font-weight:700;color:#166534">
+            ${s}
+            <button type="button" onclick="acQuitarSerial(${x.mat.id},'${s}')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:13px;line-height:1;padding:0">×</button>
+          </span>`).join('')
+        : '';
+      return `<div style="padding:.6rem .875rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;margin-bottom:.4rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;flex-wrap:wrap;gap:4px">
           <span style="font-weight:600;font-size:13px">📱 ${x.mat.nombre}</span>
-          <span id="ac-cnt-${x.mat.id}" style="font-size:13px;font-weight:700;color:#ea580c">A cargar: ${x.cant} · Faltan: ${x.cant}</span>
+          <span id="ac-cnt-${x.mat.id}" style="font-size:12px;font-weight:700;color:#ea580c">A cargar: ${totalNecesita} · Tiene: ${yaTiene} · <span style="color:${faltan>0?'#dc2626':'#16a34a'}">Faltan: ${faltan}</span></span>
         </div>
-        <textarea id="ac-serial-${x.mat.id}" rows="2" placeholder="Escaneá o pegá los seriales (uno por línea)..."
+        ${bolsoHtml?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.4rem" id="ac-bolso-${x.mat.id}">${bolsoHtml}</div>`:`<div id="ac-bolso-${x.mat.id}"></div>`}
+        ${faltan>0?`<textarea id="ac-serial-${x.mat.id}" rows="2" placeholder="Escaneá o pegá ${faltan} serial(es) (uno por línea)..."
           style="width:100%;padding:6px 8px;border:1px solid #fed7aa;border-radius:8px;font-family:monospace;font-size:12px;resize:vertical"
-          oninput="acActualizarContador(${x.mat.id},${x.cant})"></textarea>
-      </div>`).join('');
+          oninput="acActualizarContador(${x.mat.id},${faltan})"></textarea>`
+        :`<div style="font-size:12px;color:#16a34a;font-weight:600;padding:4px 0">✓ Cantidad completa en bolso</div>`}
+      </div>`;
+    }).join('');
   }
   document.getElementById('ac-modal-body').innerHTML=html;
   // Limpiar cache de seriales
@@ -5164,25 +5387,35 @@ async function confirmarAutocompletado(){
   if(!cuadId)return;
   const err=document.getElementById('ac-modal-err');
   err.textContent='';
-  // Validar seriales — lee del cache (guardado en oninput) con fallback al DOM
+  // P5: Leer cantidades editadas del DOM para sinSerial
+  const sinSerialEditado=(sinSerial||[]).map(item=>{
+    const qty=parseInt(document.getElementById('ac-qty-'+item.mat.id)?.value)||0;
+    return {...item,cant:qty};
+  }).filter(x=>x.cant>0);
+
+  // Validar seriales — leer nuevos del DOM + respetar los ya en bolso (yaEnBolso)
   const serialesPorMat={};
   for(const item of conSerial||[]){
-    // Leer del cache primero, fallback al DOM
+    const yaEnBolso=item.yaEnBolso||[];
+    const faltan=Math.max(0,item.cant-yaEnBolso.length);
     const rawCache=AC_SERIALES_CACHE[item.mat.id]||'';
     const rawDom=(document.getElementById('ac-serial-'+item.mat.id)?.value||'');
     const txt=(rawCache||rawDom).trim();
-    const seriales=txt.split('\n').map(s=>s.trim().toUpperCase().replace(/[:\-]/g,'')).filter(Boolean);
-    if(!seriales.length){
-      err.textContent=item.mat.nombre+': no ingresaste ningún serial';return;
+    const nuevos=txt?txt.split('\n').map(s=>s.trim().toUpperCase().replace(/[:\-]/g,'')).filter(Boolean):[];
+    // Si no hay textarea visible (ya tiene todos), nuevos puede estar vacío
+    if(faltan>0&&!nuevos.length){
+      err.textContent=item.mat.nombre+': ingresá los '+faltan+' seriales faltantes';return;
     }
-    if(seriales.length!==item.cant){
-      const ok=confirm(item.mat.nombre+': se esperaban '+item.cant+' seriales pero ingresaste '+seriales.length+'. ¿Continuar igualmente?');
+    if(faltan>0&&nuevos.length!==faltan){
+      const ok=confirm(item.mat.nombre+': se necesitaban '+faltan+' seriales nuevos pero ingresaste '+nuevos.length+'. ¿Continuar igualmente?');
       if(!ok){err.textContent='Corregí los seriales de '+item.mat.nombre;return;}
     }
-    const macReg=/^[0-9A-Fa-f]{12}$/;
-    const inv=seriales.filter(s=>!macReg.test(s));
-    if(inv.length){err.textContent='Seriales inválidos en '+item.mat.nombre+': '+inv[0];return;}
-    serialesPorMat[item.mat.id]=seriales.map(s=>s.toLowerCase());
+    if(nuevos.length){
+      const macReg=/^[0-9A-Fa-f]{12}$/;
+      const inv=nuevos.filter(s=>!macReg.test(s));
+      if(inv.length){err.textContent='Seriales inválidos en '+item.mat.nombre+': '+inv[0];return;}
+    }
+    serialesPorMat[item.mat.id]={nuevos:nuevos.map(s=>s.toLowerCase()),yaEnBolso};
   }
   // Validar correlativos
   const corrPorMat={};
@@ -5196,8 +5429,8 @@ async function confirmarAutocompletado(){
   err.textContent='Guardando...';
   const sinStock=[];
   try{
-    // Asignar sin serial
-    for(const item of sinSerial||[]){
+    // Asignar sin serial (con cantidades editadas del DOM)
+    for(const item of sinSerialEditado||[]){
       const sd=await sbGet('stock_deposito','?material_id=eq.'+item.mat.id)||[];
       const dep=sd[0]?.cantidad||0;
       const cant=Math.min(item.cant,dep);
@@ -5235,10 +5468,11 @@ async function confirmarAutocompletado(){
       else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:item.mat.id,cantidad:cantReal});
       await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:item.mat.id,cuadrilla_id:parseInt(cuadId),cantidad:-cantReal,obs:'Precintos '+inicio+' al '+fin});
     }
-    // Asignar con serial
+    // Asignar con serial (solo los nuevos; los yaEnBolso ya están asignados)
     for(const item of conSerial||[]){
-      const seriales=serialesPorMat[item.mat.id]||[];
-      if(!seriales.length)continue;
+      const {nuevos=[],yaEnBolso=[]}=serialesPorMat[item.mat.id]||{};
+      const seriales=nuevos;
+      if(!seriales.length)continue; // Solo nuevos a agregar
       const cant=seriales.length;
       const enDepArr=await sbGet('stock_seriales','?material_id=eq.'+item.mat.id+'&ubicacion=eq.DEPOSITO&serial=in.('+seriales.join(',')+')')||[];
       const enDepSet=new Set(enDepArr.map(e=>e.serial.toLowerCase()));
@@ -6436,7 +6670,15 @@ async function renderConfig(tab){
         +'</tbody></table></div>';
     }
     else if(tab==='motivos-dev'){
-      const d=await sbGet('motivos_devolucion','?order=orden,descripcion')||[];
+      let d=[];
+      try{ d=await sbGet('motivos_devolucion','?order=orden,descripcion')||[]; }
+      catch(e){
+        el.innerHTML='<div class="card" style="border:2px solid #fde68a;background:#fffbeb">'
+          +'<div style="font-size:14px;font-weight:700;color:#92400e;margin-bottom:.5rem">⚠️ Tabla no encontrada</div>'
+          +'<div style="font-size:13px;color:#78350f">Ejecutá el SQL <strong>motivos_devolucion_v133.sql</strong> en Supabase para crear esta tabla.</div>'
+          +'</div>';
+        return;
+      }
       el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
         +'<div style="font-size:12px;color:#64748b">'+d.length+' motivos de devolución</div>'
         +'<button class="btn btn-sm btn-primary" onclick="abrirModalMotivoDev()">+ Nuevo motivo</button></div>'
