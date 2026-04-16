@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v136</title>
+<title>FG Gestión OTs v138</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V136</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V138</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v136</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v138</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1159,6 +1159,19 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
 </div>
 
+<!-- MODAL EDITAR CIERRE -->
+<div class="modal-overlay hidden" id="editar-cierre-modal">
+  <div class="modal" style="max-width:680px;max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="ec-titulo">Editar cierre <button class="modal-close" onclick="cerrarModal('editar-cierre-modal')">✕</button></div>
+    <div id="ec-body"></div>
+    <p class="err-msg" id="ec-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="confirmarEditarCierre()">✓ Guardar cambios</button>
+      <button class="btn" onclick="cerrarModal('editar-cierre-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL AGREGAR SERIAL EN WIZARD -->
 <div class="modal-overlay hidden" id="agregar-serial-modal">
   <div class="modal" style="max-width:480px">
@@ -1846,6 +1859,10 @@ async function verOT(num){
       if(!ot.grupos_ot?.cuadrillas)btns+=`<button class="btn btn-primary" onclick="abrirAsignar(${ot.grupo_id||ot.id})">📍 Asignar</button>`;
       btns+=`<button class="btn" onclick="abrirCambiarEstado(${ot.id},'${est}')">↕ Estado</button>`;
       if(est==='ASIGNADA'||est==='EN_PROCESO')btns+=`<button class="btn btn-green" onclick="abrirCierre(${ot.id},'${ot.numero_ot}','${ot.tipo_tarea||''}')">✓ Cerrar</button>`;
+    }
+    if(est==='FINALIZADA'&&(CU.rol==='superadmin'||CU.rol==='admin')){
+      btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb;border-color:rgba(37,99,235,.3)" onclick="abrirEditarCierre(${ot.id})">✏️ Editar cierre</button>`;
+      btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarCierre(${ot.id},'${ot.numero_ot}',${ot.grupos_ot?.cuadrilla_id||'null'})">🗑️ Eliminar cierre</button>`;
     }
     btns+=`<button class="btn btn-sm" style="margin-left:auto;font-size:11px;color:#64748b" onclick="editarTipoOT(${ot.id},'${ot.tipo_item||''}','${ot.tipo_tarea||''}')">✏️ Tipo</button>`;
     btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarOT(${ot.id})">✏️ Editar OT</button>`;
@@ -3637,6 +3654,322 @@ async function guardarAsignacion(){
 }
 
 // CIERRE
+
+// ═══ P2: EDITAR / ELIMINAR CIERRE ═══
+let EC={otId:null, cuadId:null, matsOrig:[], servsOrig:[], serialesOrig:[], mats:[], servs:[], seriales:[]};
+
+async function abrirEditarCierre(otId){
+  const err=document.getElementById('ec-err');
+  document.getElementById('ec-body').innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  document.getElementById('ec-err').textContent='';
+  abrirModal('editar-cierre-modal');
+
+  try{
+    // Cargar datos de la OT
+    const ot=(await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=id,numero_ot,tipo_item,tipo_tarea,grupos_ot(cuadrilla_id),clientes(apellido,nombre,codigo_gigared)&eliminado=eq.false'))||[];
+    const otData=ot[0];
+    if(!otData){document.getElementById('ec-body').innerHTML='<p style="color:#dc2626">OT no encontrada</p>';return;}
+    const cuadId=otData.grupos_ot?.cuadrilla_id;
+    const cl=otData.clientes||{};
+
+    // Cargar materiales, servicios, seriales actuales en paralelo
+    const [matsUsados, servsReal, serialesCli, catalogoMats, catalogoServs]=await Promise.all([
+      sbGet('ot_materiales_usados','?ot_id=eq.'+otId+'&select=id,material_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo)'),
+      sbGet('ot_servicios_realizados','?ot_id=eq.'+otId+'&select=id,servicio_id,cantidad,catalogo_servicios(id,nombre)'),
+      sbGet('stock_seriales','?ubicacion=eq.CLIENTE&select=id,serial,material_id,catalogo_materiales(id,nombre)'),
+      sbGet('catalogo_materiales','?activo=eq.true&order=orden_display'),
+      sbGet('catalogo_servicios','?activo=eq.true&order=orden_display')
+    ]);
+
+    EC={
+      otId, cuadId,
+      matsOrig: matsUsados||[],
+      servsOrig: servsReal||[],
+      serialesOrig: (serialesCli||[]).filter(s=>{
+        // Solo los seriales de materiales que estaban en esta OT
+        const matIds=new Set((matsUsados||[]).map(m=>m.material_id));
+        return matIds.has(s.material_id);
+      }),
+      mats: JSON.parse(JSON.stringify(matsUsados||[])),
+      servs: JSON.parse(JSON.stringify(servsReal||[])),
+      seriales: (serialesCli||[]).filter(s=>{
+        const matIds=new Set((matsUsados||[]).map(m=>m.material_id));
+        return matIds.has(s.material_id);
+      }).map(s=>({...s,_eliminar:false})),
+      catalogoMats: catalogoMats||[],
+      catalogoServs: catalogoServs||[]
+    };
+
+    document.getElementById('ec-titulo').childNodes[0].textContent=
+      'Editar cierre — OT '+numOT(otData.numero_ot)+' — '+fmtCli(cl)+' ';
+
+    renderEditarCierre();
+  }catch(e){
+    document.getElementById('ec-body').innerHTML='<p style="color:#dc2626">Error: '+e.message+'</p>';
+  }
+}
+
+function renderEditarCierre(){
+  let html='';
+
+  // ── Materiales usados ──
+  html+='<div style="font-size:12px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">🔩 Materiales usados</div>';
+  EC.mats.forEach((m,i)=>{
+    if(m._eliminar)return;
+    const nom=m.catalogo_materiales?.nombre||'?';
+    const uni=m.catalogo_materiales?.unidad||'';
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border2)">'
+      +'<span style="flex:1;font-size:12px">'+nom+'</span>'
+      +'<input type="number" min="0" value="'+m.cantidad+'" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"'
+        +' onchange="EC.mats['+i+'].cantidad=parseInt(this.value)||0"/>'
+      +'<span style="font-size:11px;color:#64748b">'+uni+'</span>'
+      +'<button type="button" onclick="EC.mats['+i+']._eliminar=true;renderEditarCierre()"'
+        +' style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;line-height:1;padding:0 4px">×</button>'
+      +'</div>';
+  });
+  // Agregar material nuevo
+  html+='<div style="margin-top:.5rem">'
+    +'<select id="ec-new-mat" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;max-width:250px">'
+    +'<option value="">+ Agregar material...</option>'
+    +EC.catalogoMats.filter(m=>m.serial_tipo==='NINGUNO').map(m=>'<option value="'+m.id+'">'+m.nombre+'</option>').join('')
+    +'</select>'
+    +'<button type="button" onclick="ecAgregarMat()" style="margin-left:6px;padding:6px 12px;border:1px solid #2563eb;color:#2563eb;background:none;border-radius:8px;font-size:12px;cursor:pointer">Agregar</button>'
+    +'</div>';
+
+  // ── Seriales/MACs ──
+  const matsConSerial=EC.mats.filter(m=>!m._eliminar&&(m.catalogo_materiales?.serial_tipo==='INDIVIDUAL'||m.catalogo_materiales?.serial_tipo==='CORRELATIVO'));
+  if(matsConSerial.length||EC.seriales.filter(s=>!s._eliminar).length){
+    html+='<div style="font-size:12px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .5rem">📱 Seriales / MACs</div>';
+    EC.seriales.filter(s=>!s._eliminar).forEach((s,i)=>{
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border2)">'
+        +'<span style="font-size:11px;color:#64748b;min-width:80px">'+(s.catalogo_materiales?.nombre||'?')+'</span>'
+        +'<span style="font-family:monospace;font-size:12px;font-weight:700;flex:1">'+s.serial+'</span>'
+        +'<button type="button" onclick="EC.seriales['+i+']._eliminar=true;renderEditarCierre()"'
+          +' style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;line-height:1;padding:0 4px" title="Quitar serial (vuelve al bolso)">×</button>'
+        +'</div>';
+    });
+    // Agregar serial nuevo
+    html+='<div style="margin-top:.5rem;display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+      +'<select id="ec-new-ser-mat" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;max-width:200px">'
+      +'<option value="">Material...</option>'
+      +EC.catalogoMats.filter(m=>m.serial_tipo==='INDIVIDUAL').map(m=>'<option value="'+m.id+'" data-nom="'+m.nombre+'">'+m.nombre+'</option>').join('')
+      +'</select>'
+      +'<input id="ec-new-ser-val" placeholder="Serial / MAC" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:monospace;width:160px"/>'
+      +'<button type="button" onclick="ecAgregarSerial()" style="padding:6px 12px;border:1px solid #2563eb;color:#2563eb;background:none;border-radius:8px;font-size:12px;cursor:pointer">Agregar</button>'
+      +'</div>';
+  }
+
+  // ── Mano de obra ──
+  html+='<div style="font-size:12px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .5rem">⚙️ Mano de obra</div>';
+  EC.servs.forEach((s,i)=>{
+    if(s._eliminar)return;
+    const nom=s.catalogo_servicios?.nombre||'?';
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border2)">'
+      +'<span style="flex:1;font-size:12px">'+nom+'</span>'
+      +'<input type="number" min="0" value="'+s.cantidad+'" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"'
+        +' onchange="EC.servs['+i+'].cantidad=parseInt(this.value)||0"/>'
+      +'<button type="button" onclick="EC.servs['+i+']._eliminar=true;renderEditarCierre()"'
+        +' style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;line-height:1;padding:0 4px">×</button>'
+      +'</div>';
+  });
+  html+='<div style="margin-top:.5rem">'
+    +'<select id="ec-new-serv" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;max-width:280px">'
+    +'<option value="">+ Agregar servicio...</option>'
+    +EC.catalogoServs.map(s=>'<option value="'+s.id+'">'+s.nombre+'</option>').join('')
+    +'</select>'
+    +'<button type="button" onclick="ecAgregarServ()" style="margin-left:6px;padding:6px 12px;border:1px solid #2563eb;color:#2563eb;background:none;border-radius:8px;font-size:12px;cursor:pointer">Agregar</button>'
+    +'</div>';
+
+  document.getElementById('ec-body').innerHTML=html;
+}
+
+function ecAgregarMat(){
+  const sel=document.getElementById('ec-new-mat');
+  const matId=parseInt(sel.value);
+  if(!matId)return;
+  const mat=EC.catalogoMats.find(m=>m.id===matId);
+  if(!mat)return;
+  const existe=EC.mats.find(m=>m.material_id===matId&&!m._eliminar);
+  if(existe){existe.cantidad++;renderEditarCierre();return;}
+  EC.mats.push({material_id:matId,cantidad:1,catalogo_materiales:{id:matId,nombre:mat.nombre,unidad:mat.unidad,serial_tipo:mat.serial_tipo},_nuevo:true});
+  sel.value='';
+  renderEditarCierre();
+}
+
+function ecAgregarSerial(){
+  const sel=document.getElementById('ec-new-ser-mat');
+  const inp=document.getElementById('ec-new-ser-val');
+  const matId=parseInt(sel.value);
+  const serial=inp.value.trim().toLowerCase().replace(/[:.-]/g,'').replace(/-/g,'');
+  if(!matId||!serial){alert('Selecciona el material e ingresa el serial');return;}
+  const mat=EC.catalogoMats.find(m=>m.id===matId);
+  if(!mat)return;
+  EC.seriales.push({material_id:matId,serial,catalogo_materiales:{id:matId,nombre:mat.nombre},_nuevo:true});
+  inp.value='';sel.value='';
+  renderEditarCierre();
+}
+
+function ecAgregarServ(){
+  const sel=document.getElementById('ec-new-serv');
+  const servId=parseInt(sel.value);
+  if(!servId)return;
+  const serv=EC.catalogoServs.find(s=>s.id===servId);
+  if(!serv)return;
+  const existe=EC.servs.find(s=>s.servicio_id===servId&&!s._eliminar);
+  if(existe){existe.cantidad++;renderEditarCierre();return;}
+  EC.servs.push({servicio_id:servId,cantidad:1,catalogo_servicios:{id:servId,nombre:serv.nombre},_nuevo:true});
+  sel.value='';
+  renderEditarCierre();
+}
+
+async function confirmarEditarCierre(){
+  const err=document.getElementById('ec-err');
+  err.textContent='Guardando...';
+  try{
+    const {otId, cuadId, mats, servs, seriales, matsOrig, servsOrig, serialesOrig}=EC;
+
+    // ── MATERIALES: eliminar los marcados, actualizar cantidades, insertar nuevos ──
+    for(const m of mats){
+      if(m._eliminar&&!m._nuevo&&m.id){
+        // Devolver stock a cuadrilla
+        if(cuadId){
+          const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id)||[];
+          if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id,{cantidad:(sc[0].cantidad||0)+m.cantidad});
+          await sbPost('movimientos_stock',{tipo_movimiento:'DEVOLUCION',material_id:m.material_id,cuadrilla_id:parseInt(cuadId),cantidad:m.cantidad,obs:'Edicion cierre OT '+otId});
+        }
+        await sbFetch('ot_materiales_usados','DELETE',null,'?id=eq.'+m.id);
+      } else if(!m._eliminar&&!m._nuevo&&m.id){
+        // Actualizar cantidad — ajustar diferencia en stock
+        const orig=matsOrig.find(o=>o.id===m.id);
+        if(orig&&orig.cantidad!==m.cantidad&&cuadId){
+          const diff=orig.cantidad-m.cantidad; // positivo = sobraron, vuelven al bolso
+          if(diff!==0){
+            const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id)||[];
+            const cantActual=sc[0]?.cantidad||0;
+            await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id,{cantidad:Math.max(0,cantActual+diff)});
+            await sbPost('movimientos_stock',{tipo_movimiento:'AJUSTE_VALIDACION',material_id:m.material_id,cuadrilla_id:parseInt(cuadId),cantidad:diff,obs:'Ajuste edicion cierre OT '+otId});
+          }
+          await sbPatch('ot_materiales_usados','?id=eq.'+m.id,{cantidad:m.cantidad});
+        }
+      } else if(!m._eliminar&&m._nuevo){
+        // Nuevo material — descontar del bolso
+        if(cuadId){
+          const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id)||[];
+          const cantActual=sc[0]?.cantidad||0;
+          if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id,{cantidad:Math.max(0,cantActual-m.cantidad)});
+          await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:m.material_id,cuadrilla_id:parseInt(cuadId),cantidad:-m.cantidad,obs:'Edicion cierre OT '+otId});
+        }
+        await sbPost('ot_materiales_usados',{ot_id:otId,material_id:m.material_id,cantidad:m.cantidad});
+      }
+    }
+
+    // ── SERIALES: los eliminados vuelven al bolso, los nuevos pasan a CLIENTE ──
+    for(const s of seriales){
+      if(s._eliminar&&!s._nuevo){
+        // Volver al bolso de la cuadrilla
+        const loc=cuadId?('CUADRILLA_'+cuadId):'DEPOSITO';
+        await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+s.serial,{ubicacion:loc});
+        if(cuadId){
+          const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id)||[];
+          if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id,{cantidad:(sc[0].cantidad||0)+1});
+          await sbPost('movimientos_stock',{tipo_movimiento:'DEVOLUCION',material_id:s.material_id,cuadrilla_id:parseInt(cuadId),cantidad:1,obs:'Serial devuelto - edicion cierre OT '+otId+' - serial: '+s.serial});
+        }
+      } else if(!s._eliminar&&s._nuevo){
+        // Serial nuevo: buscar en bolso o deposito y mover a CLIENTE
+        const enBolso=cuadId?await sbGet('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+s.serial+'&ubicacion=eq.CUADRILLA_'+cuadId)||[]:[];
+        if(enBolso.length){
+          await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+s.serial,{ubicacion:'CLIENTE'});
+          if(cuadId){
+            const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id)||[];
+            if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id,{cantidad:Math.max(0,(sc[0].cantidad||0)-1)});
+          }
+        } else {
+          // No estaba en bolso: crear y marcar como CLIENTE
+          await sbPost('stock_seriales',{material_id:s.material_id,serial:s.serial,ubicacion:'CLIENTE'});
+        }
+        await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:s.material_id,cuadrilla_id:cuadId?parseInt(cuadId):null,cantidad:-1,obs:'Serial agregado - edicion cierre OT '+otId+' - serial: '+s.serial});
+      }
+    }
+
+    // ── SERVICIOS/MO: eliminar, actualizar, insertar ──
+    for(const s of servs){
+      if(s._eliminar&&!s._nuevo&&s.id){
+        await sbFetch('ot_servicios_realizados','DELETE',null,'?id=eq.'+s.id);
+      } else if(!s._eliminar&&!s._nuevo&&s.id){
+        const orig=servsOrig.find(o=>o.id===s.id);
+        if(orig&&orig.cantidad!==s.cantidad) await sbPatch('ot_servicios_realizados','?id=eq.'+s.id,{cantidad:s.cantidad});
+      } else if(!s._eliminar&&s._nuevo){
+        await sbPost('ot_servicios_realizados',{ot_id:otId,servicio_id:s.servicio_id,cantidad:s.cantidad});
+      }
+    }
+
+    // Actualizar equipo_instalado y tag en la OT con los seriales actuales
+    const serialesFinales=EC.seriales.filter(s=>!s._eliminar).map(s=>s.serial).join(', ');
+    await sbPatch('ordenes_trabajo','?id=eq.'+otId,{
+      equipo_instalado:serialesFinales||null,
+      updated_at:new Date().toISOString()
+    });
+
+    cerrarModal('editar-cierre-modal');
+    alert('Cierre actualizado correctamente.');
+    // Recargar el modal de la OT
+    const modalBody=document.getElementById('ot-modal-body');
+    if(modalBody) verOT(null, otId);
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+async function eliminarCierre(otId, numOT_str, cuadId){
+  if(!confirm('Eliminar el cierre de OT '+numOT_str+'?\n\nEsto:\n- Devuelve TODOS los materiales y seriales al bolso de la cuadrilla\n- Cambia el estado de la OT a PENDIENTE\n\nEsta accion no se puede deshacer.'))return;
+
+  try{
+    // Cargar todo lo del cierre
+    const [matsUsados, servsReal, serialesCli, ePend]=await Promise.all([
+      sbGet('ot_materiales_usados','?ot_id=eq.'+otId+'&select=id,material_id,cantidad'),
+      sbGet('ot_servicios_realizados','?ot_id=eq.'+otId+'&select=id'),
+      sbGet('stock_seriales','?ubicacion=eq.CLIENTE'),
+      Promise.resolve(ESTADOS.find(e=>e.nombre==='PENDIENTE'))
+    ]);
+
+    // Devolver materiales al bolso
+    if(cuadId){
+      for(const m of (matsUsados||[])){
+        const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id)||[];
+        if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id,{cantidad:(sc[0].cantidad||0)+m.cantidad});
+        else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:m.material_id,cantidad:m.cantidad});
+        await sbPost('movimientos_stock',{tipo_movimiento:'DEVOLUCION',material_id:m.material_id,cuadrilla_id:parseInt(cuadId),cantidad:m.cantidad,obs:'Eliminacion cierre OT '+otId});
+      }
+      // Devolver seriales al bolso
+      const matIds=new Set((matsUsados||[]).map(m=>m.material_id));
+      const sersOT=(serialesCli||[]).filter(s=>matIds.has(s.material_id));
+      for(const s of sersOT){
+        await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+s.serial,{ubicacion:'CUADRILLA_'+cuadId});
+        const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id)||[];
+        if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id,{cantidad:(sc[0].cantidad||0)+1});
+        await sbPost('movimientos_stock',{tipo_movimiento:'DEVOLUCION',material_id:s.material_id,cuadrilla_id:parseInt(cuadId),cantidad:1,obs:'Eliminacion cierre - serial: '+s.serial});
+      }
+    }
+
+    // Borrar registros del cierre
+    if((matsUsados||[]).length) await sbFetch('ot_materiales_usados','DELETE',null,'?ot_id=eq.'+otId);
+    if((servsReal||[]).length) await sbFetch('ot_servicios_realizados','DELETE',null,'?ot_id=eq.'+otId);
+
+    // Resetear OT a PENDIENTE
+    if(ePend) await sbPatch('ordenes_trabajo','?id=eq.'+otId,{
+      estado_id:ePend.id,
+      equipo_instalado:null,
+      tag:null,
+      fecha_cierre:null,
+      obs_cierre:null
+    });
+
+    await sbPost('historial_estados_ot',{ot_id:otId,estado_nuevo_id:ePend?.id,observacion:'Cierre eliminado por '+CU.nombre,usuario_id:CU.id});
+
+    cerrarModal('ot-modal');
+    alert('Cierre eliminado. La OT volvio a PENDIENTE.');
+    renderOTs();
+  }catch(e){alert('Error al eliminar cierre: '+e.message);}
+}
+
 // ═══ WIZARD DEVOLUCION MASIVA DESDE OTs ═══
 let DEV_WIZ={pasos:[],paso:0};
 
@@ -5508,64 +5841,60 @@ async function autocompletarCuadrilla(){
   const cuadId=document.getElementById('cuad-selector').value;
   const cuadNombre=document.getElementById('cuad-selector').selectedOptions[0]?.text||'';
   if(!cuadId){alert('Seleccioná una cuadrilla primero');return;}
-  const mats=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
-  const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[];
-  const autocfg=await sbGet('autocomplete_config','?activo=eq.true')||[];
-  const scMap={};sc.forEach(s=>{scMap[s.material_id]=s.cantidad||0;});
-  const cfgMap={};autocfg.forEach(c=>{cfgMap[c.material_id]=c;});
-  const sinSerial=[], conSerial=[], corrSerial=[];
-  for(const m of mats){
+
+  const [mats, sc, autocfg] = await Promise.all([
+    sbGet('catalogo_materiales','?activo=eq.true&order=orden_display'),
+    sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId),
+    sbGet('autocomplete_config','?activo=eq.true')
+  ]);
+  const scMap={};(sc||[]).forEach(s=>{scMap[s.material_id]=s.cantidad||0;});
+  const cfgMap={};(autocfg||[]).forEach(c=>{cfgMap[c.material_id]=c;});
+
+  // Arrays separados: sugeridos (debajo del mínimo) y extras (el resto con qty=0)
+  const sinSerial=[], sinSerialExtra=[];
+  const conSerial=[], conSerialExtra=[];
+  const corrSerial=[];
+
+  for(const m of (mats||[])){
     const cfg=cfgMap[m.id];
-    if(!cfg||!cfg.activo)continue;
     const actual=scMap[m.id]||0;
-    const minimo=cfg.minimo_trigger||0;
-    if(actual<minimo){
-      const esPaq=(m.cant_por_paquete||1)>1;
-      // Con paquete (bobinas/bolsas): agrega cantidad fija configurada
-      // Sin paquete (unidades): completa hasta el mínimo
-      const cant=esPaq?(cfg.cantidad_reponer||1):(minimo-actual);
-      if(m.serial_tipo==='CORRELATIVO') corrSerial.push({mat:m,cant,actual,minimo});
-      else if(m.serial_tipo==='NINGUNO') sinSerial.push({mat:m,cant,actual,minimo,esPaq});
-      else conSerial.push({mat:m,cant,actual,minimo,esPaq});
+
+    if(cfg&&cfg.activo){
+      const minimo=cfg.minimo_trigger||0;
+      if(actual<minimo){
+        // Material sugerido: está debajo del mínimo
+        const esPaq=(m.cant_por_paquete||1)>1;
+        const cant=esPaq?(cfg.cantidad_reponer||1):(minimo-actual);
+        if(m.serial_tipo==='CORRELATIVO') corrSerial.push({mat:m,cant,actual,minimo});
+        else if(m.serial_tipo==='NINGUNO') sinSerial.push({mat:m,cant,actual,minimo,esPaq});
+        else conSerial.push({mat:m,cant,actual,minimo,esPaq,yaEnBolso:[]});
+        continue;
+      }
     }
+    // Material extra: está OK o no tiene config — mostrar con qty=0 para agregar manualmente
+    const esPaq=(m.cant_por_paquete||1)>1;
+    if(m.serial_tipo==='NINGUNO') sinSerialExtra.push({mat:m,cant:0,actual,esPaq});
+    else if(m.serial_tipo==='INDIVIDUAL') conSerialExtra.push({mat:m,cant:0,actual,yaEnBolso:[]});
+    // CORRELATIVO extra: no mostrar (se agrega por autocompletar cuando baja del mínimo)
   }
-  if(!sinSerial.length&&!conSerial.length&&!corrSerial.length){
-    alert('✅ El stock de '+cuadNombre+' está completo.');return;
-  }
-  // Cargar seriales ya en el bolso para cada equipo con serial
-  for(const x of conSerial){
+
+  // Cargar seriales en bolso para equipos con serial (sugeridos y extras)
+  const todosConSerial=[...conSerial,...conSerialExtra];
+  await Promise.all(todosConSerial.map(async x=>{
     const sers=await sbGet('stock_seriales',`?material_id=eq.${x.mat.id}&ubicacion=eq.CUADRILLA_${cuadId}&order=serial`)||[];
     x.yaEnBolso=sers.map(s=>s.serial);
-  }
-  // Mostrar modal de confirmación bonito
-  AUTOCOMPLETE_PENDING={cuadId,cuadNombre,sinSerial,conSerial,corrSerial};
-  const modal=document.getElementById('autocomplete-modal');
+    // Fix: la cantidad sugerida no puede ser menor que lo que ya tiene
+    if(x.cant>0) x.cant=Math.max(0, x.cant-x.yaEnBolso.length);
+  }));
+
+  AUTOCOMPLETE_PENDING={cuadId,cuadNombre,sinSerial,sinSerialExtra,conSerial,conSerialExtra,corrSerial};
   document.getElementById('ac-modal-titulo').textContent='⚡ Autocompletar — '+cuadNombre;
+
   let html='';
-  if(sinSerial.length){
-    html+='<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Materiales sin serial <span style="font-weight:400;font-style:italic">(editá la cantidad o quitá lo que no va)</span></div>';
-    html+=sinSerial.map(x=>{
-      const esPaq=x.esPaq;
-      const cantPaq=x.mat.cant_por_paquete||1;
-      return `<div id="ac-row-${x.mat.id}" style="display:flex;align-items:center;gap:8px;padding:.5rem .875rem;background:#f8fafc;border-radius:10px;margin-bottom:.4rem;flex-wrap:wrap">
-        <div style="flex:1;min-width:120px">
-          <div style="font-weight:600;font-size:13px">${x.mat.nombre}</div>
-          <div style="font-size:11px;color:#94a3b8">Tiene: ${x.actual} ${x.mat.unidad}</div>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <span style="font-size:12px;color:#64748b">+</span>
-          <input type="number" id="ac-qty-${x.mat.id}" value="${x.cant}" min="0"
-            style="width:70px;padding:5px 8px;border:2px solid #2563eb;border-radius:8px;font-size:14px;font-weight:700;text-align:center"
-            oninput="acActualizarTotal(${x.mat.id},${x.actual},${cantPaq},'${x.mat.unidad}','${x.mat.nombre_paquete||''}')"/>
-          <span id="ac-total-${x.mat.id}" style="font-size:12px;color:#16a34a;font-weight:600;min-width:50px">= ${x.actual+x.cant}</span>
-        </div>
-        <button type="button" onclick="acQuitarMaterial(${x.mat.id})"
-          style="padding:4px 10px;border-radius:8px;border:1px solid #dc2626;color:#dc2626;background:none;font-size:12px;cursor:pointer;font-weight:700">✕</button>
-      </div>`;
-    }).join('');
-  }
+
+  // ── SECCIÓN 1: Precintos Telecrafter (siempre primero si hay) ──
   if(corrSerial.length){
-    html+='<div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .5rem">📌 Precintos Telecrafter — ingresá número inicial</div>';
+    html+='<div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">📌 Precintos Telecrafter — ingresá número inicial</div>';
     html+=corrSerial.map(x=>`
       <div style="padding:.75rem .875rem;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;margin-bottom:.4rem">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
@@ -5589,52 +5918,72 @@ async function autocompletarCuadrilla(){
         </div>
       </div>`).join('');
   }
-  if(conSerial.length){
-    html+='<div style="font-size:11px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .5rem">Equipos con serial <span style="font-weight:400;font-style:italic">(editá la cantidad o quitá los que no van)</span></div>';
-    html+=conSerial.map(x=>{
+
+  // ── SECCIÓN 2: Materiales sin serial sugeridos ──
+  const todaSinSerial=[...sinSerial,...sinSerialExtra];
+  if(todaSinSerial.length){
+    html+='<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin:.75rem 0 .5rem">Materiales sin serial <span style="font-weight:400;font-style:italic">(editá la cantidad)</span></div>';
+    html+=todaSinSerial.map(x=>{
+      const esPaq=x.esPaq;
+      const cantPaq=x.mat.cant_por_paquete||1;
+      const esSugerido=x.cant>0;
+      const bg=esSugerido?'#f8fafc':'#fafafa';
+      const border=esSugerido?'2px solid #e2e8f0':'1px dashed #e2e8f0';
+      return '<div id="ac-row-'+x.mat.id+'" style="display:flex;align-items:center;gap:8px;padding:.5rem .875rem;background:'+bg+';border:'+border+';border-radius:10px;margin-bottom:.4rem;flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:120px">'
+          +'<div style="font-weight:600;font-size:13px">'+x.mat.nombre+'</div>'
+          +'<div style="font-size:11px;color:#94a3b8">Tiene: '+x.actual+' '+x.mat.unidad+(esSugerido?' <span style="color:#ea580c;font-weight:700">↑ bajo mínimo</span>':'')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center">'
+          +'<span style="font-size:12px;color:#64748b">+</span>'
+          +'<input type="number" id="ac-qty-'+x.mat.id+'" value="'+x.cant+'" min="0"'
+            +' style="width:70px;padding:5px 8px;border:2px solid '+(esSugerido?'#2563eb':'#e2e8f0')+';border-radius:8px;font-size:14px;font-weight:700;text-align:center"'
+            +' oninput="acActualizarTotal('+x.mat.id+','+x.actual+','+cantPaq+',\''+x.mat.unidad+'\',\''+(x.mat.nombre_paquete||'')+'\')"/>'
+          +'<span id="ac-total-'+x.mat.id+'" style="font-size:12px;color:#16a34a;font-weight:600;min-width:50px">= '+(x.actual+x.cant)+'</span>'
+        +'</div>'
+        +'<button type="button" onclick="acQuitarMaterial('+x.mat.id+')"'
+          +' style="padding:4px 10px;border-radius:8px;border:1px solid #dc2626;color:#dc2626;background:none;font-size:12px;cursor:pointer;font-weight:700">✕</button>'
+        +'</div>';
+    }).join('');
+  }
+
+  // ── SECCIÓN 3: Equipos con serial ──
+  const todosConSerial2=[...conSerial,...conSerialExtra];
+  if(todosConSerial2.length){
+    html+='<div style="font-size:11px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:.05em;margin:.75rem 0 .5rem">Equipos con serial <span style="font-weight:400;font-style:italic">(editá la cantidad)</span></div>';
+    html+=todosConSerial2.map(x=>{
       const yaEnBolso=x.yaEnBolso||[];
-      const totalNecesita=x.cant;
+      const totalNecesita=x.cant; // ya descontados los que tiene en bolso
       const yaTiene=yaEnBolso.length;
-      const faltan=Math.max(0,totalNecesita-yaTiene);
-      const bolsoHtml=yaEnBolso.length
-        ? yaEnBolso.map(s=>`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:2px 8px;font-family:monospace;font-size:11px;font-weight:700;color:#166534">
-            ${s}
-            <button type="button" onclick="acQuitarSerial(${x.mat.id},'${s}')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:13px;line-height:1;padding:0">×</button>
-          </span>`).join('')
-        : '';
-      // Construir HTML con concatenación para evitar template literals anidados
-      const cntId='ac-cnt-'+x.mat.id;
-      const bolsoId='ac-bolso-'+x.mat.id;
-      const serialId='ac-serial-'+x.mat.id;
-      const cantId='ac-eq-cant-'+x.mat.id;
-      let html2='<div style="padding:.6rem .875rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;margin-bottom:.4rem">';
-      // Fila header: nombre + input cantidad + contador
+      const faltan=totalNecesita; // cant ya es el neto a agregar
+      const esSugerido=(x.minimo!=null); // tiene config
+      const bolsoHtml=yaEnBolso.map(s=>'<span style="display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:2px 8px;font-family:monospace;font-size:11px;font-weight:700;color:#166534">'
+        +s+'<button type="button" onclick="acQuitarSerial('+x.mat.id+',\''+s+'\')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:13px;line-height:1;padding:0">×</button></span>').join('');
+
+      let html2='<div style="padding:.6rem .875rem;background:'+(esSugerido?'#fff7ed':'#fafafa')+';border:'+(esSugerido?'1px solid #fed7aa':'1px dashed #e2e8f0')+';border-radius:10px;margin-bottom:.4rem">';
       html2+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:.4rem;flex-wrap:wrap">';
-      html2+='<span style="font-weight:600;font-size:13px;flex:1">📱 '+x.mat.nombre+'</span>';
+      html2+='<span style="font-weight:600;font-size:13px;flex:1">📱 '+x.mat.nombre+(esSugerido?' <span style="font-size:10px;color:#ea580c;font-weight:700">↑ bajo mínimo</span>':'')+'</span>';
       html2+='<div style="display:flex;align-items:center;gap:6px">';
       html2+='<span style="font-size:12px;color:#64748b">A cargar:</span>';
-      html2+='<input type="number" id="'+cantId+'" value="'+totalNecesita+'" min="'+(yaTiene)+'" style="width:65px;padding:4px 6px;border:2px solid #ea580c;border-radius:8px;font-size:13px;font-weight:700;text-align:center" oninput="acActualizarCantEq('+x.mat.id+','+yaTiene+')">';
-      html2+='<span id="'+cntId+'" style="font-size:12px;font-weight:700;color:'+(faltan>0?'#dc2626':'#16a34a')+'">Tiene: '+yaTiene+' · Faltan: '+faltan+'</span>';
+      html2+='<input type="number" id="ac-eq-cant-'+x.mat.id+'" value="'+faltan+'" min="0" style="width:65px;padding:4px 6px;border:2px solid #ea580c;border-radius:8px;font-size:13px;font-weight:700;text-align:center" oninput="acActualizarCantEq('+x.mat.id+','+yaTiene+')">';
+      html2+='<span id="ac-cnt-'+x.mat.id+'" style="font-size:12px;font-weight:700;color:'+(faltan>0?'#dc2626':'#16a34a')+'">Tiene: '+yaTiene+' · Faltan: '+faltan+'</span>';
       html2+='<button type="button" onclick="acQuitarEquipo('+x.mat.id+')" style="padding:3px 8px;border-radius:6px;border:1px solid #dc2626;color:#dc2626;background:none;font-size:11px;cursor:pointer;font-weight:700">✕</button>';
       html2+='</div></div>';
-      // Chips MACs ya en bolso
-      html2+='<div id="'+bolsoId+'" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:'+( yaEnBolso.length?'.4rem':'0')+'">';
-      html2+=bolsoHtml;
-      html2+='</div>';
-      // Textarea para nuevos seriales
+      if(bolsoHtml) html2+='<div id="ac-bolso-'+x.mat.id+'" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.4rem">'+bolsoHtml+'</div>';
+      else html2+='<div id="ac-bolso-'+x.mat.id+'"></div>';
       if(faltan>0){
-        html2+='<textarea id="'+serialId+'" rows="2" placeholder="Escaneá o pegá '+faltan+' serial(es) (uno por línea)..."';
+        html2+='<textarea id="ac-serial-'+x.mat.id+'" rows="2" placeholder="Escaneá o pegá '+faltan+' serial(es) (uno por línea)..."';
         html2+=' style="width:100%;padding:6px 8px;border:1px solid #fed7aa;border-radius:8px;font-family:monospace;font-size:12px;resize:vertical"';
         html2+=' oninput="acActualizarContador('+x.mat.id+','+faltan+')"></textarea>';
-      } else {
+      }else{
         html2+='<div style="font-size:12px;color:#16a34a;font-weight:600;padding:4px 0">✓ Cantidad completa en bolso</div>';
       }
       html2+='</div>';
       return html2;
     }).join('');
   }
+
   document.getElementById('ac-modal-body').innerHTML=html;
-  // Limpiar cache de seriales
   Object.keys(AC_SERIALES_CACHE).forEach(k=>delete AC_SERIALES_CACHE[k]);
   abrirModal('autocomplete-modal');
 }
@@ -5642,19 +5991,22 @@ async function autocompletarCuadrilla(){
 let AUTOCOMPLETE_PENDING=null;
 
 async function confirmarAutocompletado(){
-  const {cuadId,sinSerial,conSerial,corrSerial}=AUTOCOMPLETE_PENDING||{};
+  const {cuadId,sinSerial,sinSerialExtra,conSerial,conSerialExtra,corrSerial}=AUTOCOMPLETE_PENDING||{};
   if(!cuadId)return;
   const err=document.getElementById('ac-modal-err');
   err.textContent='';
-  // P5: Leer cantidades editadas del DOM para sinSerial
-  const sinSerialEditado=(sinSerial||[]).map(item=>{
+  // Combinar sugeridos + extras para procesamiento
+  const todaSinSerial=[...(sinSerial||[]),...(sinSerialExtra||[])];
+  const todaConSerial=[...(conSerial||[]),...(conSerialExtra||[])];
+  // P5: Leer cantidades editadas del DOM
+  const sinSerialEditado=todaSinSerial.map(item=>{
     const qty=parseInt(document.getElementById('ac-qty-'+item.mat.id)?.value)||0;
     return {...item,cant:qty};
   }).filter(x=>x.cant>0);
 
   // Validar seriales — leer nuevos del DOM + respetar los ya en bolso (yaEnBolso)
   const serialesPorMat={};
-  for(const item of (conSerial||[]).filter(x=>x.cant>0)){
+  for(const item of todaConSerial.filter(x=>x.cant>0)){
     const yaEnBolso=item.yaEnBolso||[];
     const faltan=Math.max(0,item.cant-yaEnBolso.length);
     const rawCache=AC_SERIALES_CACHE[item.mat.id]||'';
@@ -5728,7 +6080,7 @@ async function confirmarAutocompletado(){
       await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:item.mat.id,cuadrilla_id:parseInt(cuadId),cantidad:-cantReal,obs:'Precintos '+inicio+' al '+fin});
     }
     // Asignar con serial (solo los nuevos; los yaEnBolso ya están asignados)
-    for(const item of (conSerial||[]).filter(x=>x.cant>0)){
+    for(const item of todaConSerial.filter(x=>x.cant>0)){
       const {nuevos=[],yaEnBolso=[]}=serialesPorMat[item.mat.id]||{};
       const seriales=nuevos;
       if(!seriales.length)continue; // Solo nuevos a agregar
