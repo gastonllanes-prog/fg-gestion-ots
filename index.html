@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v149</title>
+<title>FG Gestión OTs v150</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V149</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V150</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v149</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v150</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1897,7 +1897,6 @@ function sortOTs(col){
 
 // ─── VER DETALLE OT ──────────────────────────────────────────────────────────
 async function verOT(numeroOT, otIdDirecto){
-  const modal=document.getElementById('ot-modal');
   const body=document.getElementById('ot-modal-body');
   const footer=document.getElementById('ot-modal-footer');
   body.innerHTML='<div class="loading"><span class="spinner"></span></div>';
@@ -1906,25 +1905,26 @@ async function verOT(numeroOT, otIdDirecto){
   try{
     let ot;
     if(otIdDirecto){
-      const r=await sbGet('ordenes_trabajo',`?id=eq.${otIdDirecto}&select=*,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
+      const r=await sbGet('ordenes_trabajo',`?id=eq.${otIdDirecto}&select=*,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
       ot=r[0];
     } else {
-      const r=await sbGet('ordenes_trabajo',`?numero_ot=eq.${numeroOT}&select=*,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
+      const r=await sbGet('ordenes_trabajo',`?numero_ot=eq.${numeroOT}&select=*,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
       ot=r[0];
     }
     if(!ot){body.innerHTML='<p style="color:#dc2626;padding:1rem">OT no encontrada.</p>';return;}
 
     const cl=ot.clientes||{};
     const est=ot.estados_ot?.nombre||'';
-    const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
+    const esRep=ot.tipo_tarea==='REPARACION';
+    const esFinalizada=est==='FINALIZADA';
     const fmtF=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
 
-    // Grupo de OTs del mismo cliente
     const grupo=ot.grupo_id?await sbGet('ordenes_trabajo',
       `?grupo_id=eq.${ot.grupo_id}&select=id,numero_ot,tipo_item,tipo_tarea,estados_ot(nombre)&eliminado=eq.false&order=orden_cierre`)||[]:[];
 
-    // Si está finalizada, cargar materiales, servicios y seriales
-    const esFinalizada=(est==='FINALIZADA');
+    let items=[];
+    try{items=await sbGet('ot_items',`?ot_id=eq.${ot.id}&select=descripcion,cantidad`)||[];}catch(e){}
+
     let matsUsados=[], servRealiz=[], serialesCliente=[];
     if(esFinalizada){
       [matsUsados, servRealiz]=await Promise.all([
@@ -1932,129 +1932,107 @@ async function verOT(numeroOT, otIdDirecto){
         sbGet('ot_servicios_realizados',`?ot_id=eq.${ot.id}&select=cantidad,catalogo_servicios(nombre,categoria)`)||[]
       ]);
       if(matsUsados.length){
-        const matIds=[...new Set(matsUsados.map(m=>m.catalogo_materiales?.nombre).filter(Boolean))];
-        if(matIds.length) serialesCliente=await sbGet('stock_seriales',`?ot_id=eq.${ot.id}&select=serial,material_id,catalogo_materiales(nombre)`)||[];
+        serialesCliente=await sbGet('stock_seriales',`?ot_id=eq.${ot.id}&select=serial,material_id,catalogo_materiales(nombre)`)||[];
       }
     }
 
-    // Historial de estado
-    const histLines=(ot.historial||'').split('\n').filter(Boolean);
+    const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
+    const domHtml=`<span style="font-weight:600">${dom}</span>${cl.barrio?' · '+cl.barrio:''}${cl.localidad?' · '+cl.localidad:''}`;
 
-    // Construir HTML del body
-    let html='';
-
-    // Header cliente
-    html+='<div class="card" style="margin-bottom:.75rem;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-color:#bae6fd">';
-    html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">';
-    html+='<div>';
-    html+='<div style="font-size:22px;font-weight:900;color:#1e3a5f;letter-spacing:1px">'+fmtCodigo(cl.codigo_gigared)+'</div>';
-    html+='<div style="font-size:16px;font-weight:700;color:#1e293b">'+fmtCli(cl)+'</div>';
-    html+='<div style="font-size:12px;color:#64748b;margin-top:2px">'+dom+(cl.nodo?'  ·  Nodo: <strong>'+cl.nodo+'</strong>':'')+'</div>';
-    if(cl.telefono1) html+='<a href="tel:'+cl.telefono1.replace(/\D/g,'')+'" style="font-size:13px;color:#2563eb;font-weight:600">📞 '+cl.telefono1+'</a>';
-    html+='</div>';
-    html+='<div style="text-align:right">';
-    html+=badgeE(est);
-    html+='<div style="font-size:11px;color:#64748b;margin-top:4px">'+numOT(ot.numero_ot)+'</div>';
-    html+='</div>';
-    html+='</div></div>';
-
-    // Info OT
-    html+='<div class="ot-info-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem;margin-bottom:.75rem">';
-    const infoItem=(label,val)=>'<div class="card" style="padding:.5rem .75rem;background:#f8fafc"><div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:2px">'+label+'</div><div style="font-size:13px;font-weight:600;color:#1e293b">'+val+'</div></div>';
-    html+=infoItem('Tipo',( ot.tipo_item||ot.tipo_tarea||'—').replace(/_/g,' '));
-    html+=infoItem('Cuadrilla',ot.grupos_ot?.cuadrillas?.nombre||'Sin asignar');
-    html+=infoItem('F. Impresión',fmtF(ot.fecha_impresion?.slice(0,10)));
-    if(ot.fecha_asignacion_giga) html+=infoItem('F. Asignación',fmtF(ot.fecha_asignacion_giga));
-    if(ot.grupos_ot?.fecha_trabajo) html+=infoItem('F. Trabajo',fmtF(ot.grupos_ot.fecha_trabajo));
-    if(ot.fecha_fin) html+=infoItem('Finalización',fmtF(ot.fecha_fin?.slice(0,10)));
-    if(ot.tag) html+=infoItem('Precinto(s)',ot.tag);
-    if(ot.equipo_instalado) html+=infoItem('Serial/MAC',ot.equipo_instalado);
-    if(ot.obs_gigared) html+=infoItem('Obs. Gigared',ot.obs_gigared);
-    html+='</div>';
-
-    // Materiales usados (si finalizada)
-    if(esFinalizada&&matsUsados.length){
-      html+='<div class="card" style="margin-bottom:.75rem;border-color:#bbf7d0">';
-      html+='<div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;margin-bottom:.5rem">🔩 Materiales usados</div>';
-      matsUsados.forEach(m=>{
-        const nom=m.catalogo_materiales?.nombre||'?';
-        const uni=m.catalogo_materiales?.unidad||'';
-        const sers=serialesCliente.filter(s=>s.catalogo_materiales?.nombre===nom);
-        html+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f0fdf4;flex-wrap:wrap">';
-        html+='<span style="flex:1;font-size:12px">'+nom+'</span>';
-        html+='<span style="font-weight:700;color:#16a34a;font-size:13px">'+m.cantidad+' '+uni+'</span>';
-        if(sers.length){
-          html+='<div style="width:100%;display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">';
-          sers.forEach(s=>{ html+='<span style="background:#f0fdf4;border:1px solid #bbf7d0;padding:2px 8px;border-radius:6px;font-family:monospace;font-size:11px;color:#166534">'+s.serial+'</span>'; });
-          html+='</div>';
-        }
-        html+='</div>';
-      });
-      html+='</div>';
-    }
-
-    // Mano de obra
-    if(esFinalizada&&servRealiz.length){
-      html+='<div class="card" style="margin-bottom:.75rem;border-color:#bae6fd">';
-      html+='<div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;margin-bottom:.5rem">⚙️ Mano de obra</div>';
-      servRealiz.forEach(s=>{
-        html+='<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f9ff">';
-        html+='<span style="font-size:12px">'+( s.catalogo_servicios?.nombre||'?')+'</span>';
-        html+='<span style="font-weight:700;color:#0369a1">×'+s.cantidad+'</span></div>';
-      });
-      html+='</div>';
-    }
-
-    // Grupo de OTs
-    if(grupo.length>1){
-      html+='<div class="card" style="margin-bottom:.75rem">';
-      html+='<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:.5rem">Grupo · '+grupo.length+' OTs</div>';
-      html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
-      grupo.forEach(g=>{
-        const activo=g.id===ot.id;
-        html+='<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;cursor:pointer;background:'+(activo?'#eff6ff':'#f8fafc')+';border:1px solid '+(activo?'#2563eb':'#e2e8f0')+'" onclick="cerrarModal(\'ot-modal\');setTimeout(()=>verOT(\''+g.numero_ot+'\'),150)">';
-        html+='<span style="font-family:monospace;font-size:12px;font-weight:700;color:'+(activo?'#2563eb':'#1e293b')+'">'+numOT(g.numero_ot)+'</span>';
-        html+='<span style="font-size:11px;color:#64748b">'+(g.tipo_item||g.tipo_tarea||'').replace(/_/g,' ')+'</span>';
-        html+=badgeE(g.estados_ot?.nombre||'');
-        html+='</div>';
-      });
-      html+='</div></div>';
-    }
-
-    // Historial
-    if(histLines.length){
-      html+='<div class="card" style="margin-bottom:.75rem">';
-      html+='<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:.5rem">📋 Historial</div>';
-      html+='<div style="max-height:120px;overflow-y:auto">';
-      histLines.slice().reverse().forEach(l=>{
-        html+='<div style="font-size:11px;color:#475569;padding:2px 0;border-bottom:1px solid #f1f5f9">'+l+'</div>';
-      });
-      html+='</div></div>';
-    }
-
+    let html=`
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <div style="font-size:28px;font-weight:900;color:#1e3a5f;letter-spacing:1px">${fmtCodigo(cl.codigo_gigared)}</div>
+          <div style="font-size:17px;font-weight:800;color:#1e293b;margin-top:2px">${fmtCli(cl)}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            ${grupo.length>1?grupo.map(g=>{
+              const activo=g.id===ot.id;
+              return `<span style="background:${activo?'rgba(37,99,235,.1)':'#f1f5f9'};color:${activo?'#2563eb':'#64748b'};font-weight:700;padding:2px 8px;border-radius:6px;cursor:pointer" onclick="cerrarModal('ot-modal');setTimeout(()=>verOT('${g.numero_ot}'),150)">${numOT(g.numero_ot)}</span>`;
+            }).join(''):`<span style="font-family:monospace;font-weight:700;font-size:14px;color:#2563eb">${numOT(ot.numero_ot)}</span>`}
+          </div>
+          <div style="font-size:12px;margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            ${badgeItem(ot.tipo_item,ot.tipo_tarea)}
+            ${ot.codigo_cliente_real?`<span style="font-size:11px;color:#dc2626;font-weight:700;background:rgba(220,38,38,.08);padding:2px 8px;border-radius:6px">Ex-cliente: ${ot.codigo_cliente_real}</span>`:''}
+          </div>
+        </div>
+        <div style="text-align:right">${badgeE(est)}</div>
+      </div>
+      ${esRep&&(ot.sintoma_reportado||ot.obs_trabajo)?`
+        <div class="rep-info-box">
+          ${ot.sintoma_reportado?`<div style="margin-bottom:.35rem"><strong>🔧 Tarea:</strong> ${ot.sintoma_reportado}</div>`:''}
+          ${ot.obs_trabajo?`<div><strong>📋 Obs:</strong> ${ot.obs_trabajo}</div>`:''}
+        </div>`:''}
+      ${esFinalizada&&(ot.tag||ot.equipo_instalado)?`
+        <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1.5px solid #bfdbfe;border-radius:12px;padding:.875rem 1rem;margin-bottom:1rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center">
+          ${ot.tag?`<div><div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📌 Precinto(s)</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#5b21b6">${ot.tag}</div></div>`:''}
+          ${ot.equipo_instalado?`<div><div style="font-size:10px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📱 Serial(es)</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#1d4ed8">${ot.equipo_instalado}</div></div>`:''}
+        </div>`:''}
+      <div class="ot-info-grid">
+        <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Domicilio</div><div class="ot-info-val">${domHtml}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Tel 1</div><div class="ot-info-val"><a href="tel:${(cl.telefono1||'').replace(/\D/g,'')}" style="color:#2563eb">${cl.telefono1||'—'}</a></div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Tel 2</div><div class="ot-info-val"><a href="tel:${(cl.telefono2||'').replace(/\D/g,'')}" style="color:#2563eb">${cl.telefono2||'—'}</a></div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Nodo</div><div class="ot-info-val">${cl.nodo||'—'}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${cl.localidad||'—'}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val" style="color:${ot.tag?'#7c3aed':'#94a3b8'};font-weight:700">${ot.tag||'—'}</div></div>
+        ${ot.equipo_instalado?`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">📱 Equipo(s) instalado(s)</div><div class="ot-info-val" style="font-family:monospace;font-size:13px;font-weight:700;color:#2563eb;letter-spacing:.05em">${ot.equipo_instalado}</div></div>`:''}
+        <div class="ot-info-item"><div class="ot-info-label">Emisión Gigared</div><div class="ot-info-val">${fmtF(ot.fecha_emision)}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Asignación Gigared</div><div class="ot-info-val">${fmtF(ot.fecha_asignacion_giga)}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">F. Impresión</div><div class="ot-info-val" style="font-weight:700">${ot.fecha_impresion?new Date(ot.fecha_impresion).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</div></div>
+        <div class="ot-info-item"><div class="ot-info-label">Cargado al sistema</div><div class="ot-info-val">${fmtF(ot.created_at?.slice(0,10))}</div></div>
+        ${ot.grupos_ot?.cuadrillas?`
+          <div class="ot-info-item"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val">🔧 ${ot.grupos_ot.cuadrillas.nombre}</div></div>
+          <div class="ot-info-item"><div class="ot-info-label">Fecha trabajo</div><div class="ot-info-val">${fmtF(ot.grupos_ot.fecha_trabajo)}</div></div>
+          <div class="ot-info-item"><div class="ot-info-label">Finalización</div><div class="ot-info-val">${fmtF(ot.fecha_fin?.slice(0,10))}</div></div>
+        `:`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val" style="color:#94a3b8">Sin asignar</div></div>`}
+      </div>
+      ${ot.obs_gigared?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#92400e"><strong>${esRep?'Servicios contratados':'Obs Gigared'}:</strong> ${ot.obs_gigared}</div>`:''}
+      ${ot.grupos_ot?.observaciones?`<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem">
+        <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">📋 Historial de la OT</div>
+        ${ot.grupos_ot.observaciones.split('\n').filter(Boolean).map(l=>`<div style="font-size:12px;color:#1e3a5f;padding:3px 0;border-bottom:1px solid #e0f2fe">${l}</div>`).join('')}
+      </div>`:''}
+      ${items.length?`<div class="card" style="margin-bottom:.75rem"><div class="card-title">${esRep?'Servicios (referencia)':'Items contratados'}</div>${items.map(i=>`<div class="row"><span>${i.descripcion}</span><span style="font-weight:700">x${i.cantidad}</span></div>`).join('')}</div>`:''}
+      ${esFinalizada?`
+        ${matsUsados&&matsUsados.length?`<div class="card" style="margin-bottom:.75rem;border-color:#bbf7d0">
+          <div class="card-title" style="color:#16a34a">🔩 Materiales usados</div>
+          ${matsUsados.map(m=>{
+            const nom=m.catalogo_materiales?.nombre||'?';
+            const uni=m.catalogo_materiales?.unidad||'';
+            const sers=serialesCliente.filter(s=>s.catalogo_materiales?.nombre===nom);
+            return `<div class="row" style="flex-wrap:wrap;gap:4px">
+              <span>${nom}</span><span style="font-weight:700;color:#16a34a">${m.cantidad} ${uni}</span>
+              ${sers.length?`<div style="width:100%;display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">${sers.map(s=>`<span style="background:#f0fdf4;border:1px solid #bbf7d0;padding:2px 8px;border-radius:6px;font-family:monospace;font-size:11px;color:#166534">${s.serial}</span>`).join('')}</div>`:''}
+            </div>`;
+          }).join('')}
+        </div>`:''}
+        ${servRealiz&&servRealiz.length?`<div class="card" style="margin-bottom:.75rem;border-color:#bae6fd">
+          <div class="card-title" style="color:#0369a1">⚙️ Mano de obra</div>
+          ${servRealiz.map(s=>`<div class="row"><span>${s.catalogo_servicios?.nombre||'?'}</span><span style="font-weight:700;color:#0369a1">x${s.cantidad}</span></div>`).join('')}
+        </div>`:''}
+      `:''}
+      ${grupo.length>=1?`<div class="card"><div class="card-title">Grupo · ${grupo.length} OT${grupo.length>1?'s':''}</div>${grupo.map(g=>`<div class="ot-grupo-item" style="cursor:pointer" onclick="cerrarModal('ot-modal');setTimeout(()=>verOT('${g.numero_ot}'),150)"><div class="ot-grupo-num">${numOT(g.numero_ot)}</div><div class="ot-grupo-tipo">${g.tipo_item||'—'}</div>${badgeE(g.estados_ot?.nombre||'')}</div>`).join('')}</div>`:''}
+    `;
     body.innerHTML=html;
 
-    // Footer botones
     let btns='';
-    if(ot.pdf_url) btns+='<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="window.open(\''+ot.pdf_url+'\',\'_blank\')">📄 Ver PDF</button>';
+    if(ot.pdf_url) btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="window.open('${ot.pdf_url}','_blank')">📄 Ver PDF</button>`;
     if(est!=='FINALIZADA'&&est!=='ELIMINADA_SISTEMA'){
-      if(!ot.grupos_ot?.cuadrillas) btns+='<button class="btn btn-primary" onclick="abrirAsignar('+( ot.grupo_id||ot.id)+')">📍 Asignar</button>';
-      btns+='<button class="btn" onclick="abrirCambiarEstado('+ot.id+',\''+est+'\')">↕ Estado</button>';
-      if(est==='ASIGNADA'||est==='EN_PROCESO') btns+='<button class="btn btn-green" onclick="abrirCierre('+ot.id+',\''+ot.numero_ot+'\',\''+(ot.tipo_tarea||'\'')+'")">✓ Cerrar</button>';
+      if(!ot.grupos_ot?.cuadrillas) btns+=`<button class="btn btn-primary" onclick="abrirAsignar(${ot.grupo_id||ot.id})">📍 Asignar</button>`;
+      btns+=`<button class="btn" onclick="abrirCambiarEstado(${ot.id},'${est}')">↕ Estado</button>`;
+      if(est==='ASIGNADA'||est==='EN_PROCESO') btns+=`<button class="btn btn-green" onclick="abrirCierre(${ot.id},'${ot.numero_ot}','${ot.tipo_tarea||''}')">✓ Cerrar</button>`;
     }
     if(est==='FINALIZADA'&&(CU.rol==='superadmin'||CU.rol==='admin')){
-      btns+='<button class="btn btn-sm" style="font-size:11px;color:#2563eb;border-color:rgba(37,99,235,.3)" onclick="abrirEditarCierre('+ot.id+')">✏️ Editar cierre</button>';
-      btns+='<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarCierre('+ot.id+',\''+ot.numero_ot+'\','+(ot.grupos_ot?.cuadrilla_id||'null')+','+(ot.grupo_id||'null')+',\''+(ot.fecha_fin||'').slice(0,10)+'\')">🗑️ Eliminar cierre</button>';
+      btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb;border-color:rgba(37,99,235,.3)" onclick="abrirEditarCierre(${ot.id})">✏️ Editar cierre</button>`;
+      btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarCierre(${ot.id},'${ot.numero_ot}',${ot.grupos_ot?.cuadrilla_id||'null'},${ot.grupo_id||'null'},'${(ot.fecha_fin||'').slice(0,10)}')">🗑️ Eliminar cierre</button>`;
     }
-    btns+='<button class="btn btn-sm" style="font-size:11px;color:#64748b" onclick="editarTipoOT('+ot.id+',\''+(ot.tipo_item||'')+'\',\''+(ot.tipo_tarea||'')+'\')">✏️ Tipo</button>';
-    btns+='<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarOT('+ot.id+')">✏️ Editar OT</button>';
-    btns+='<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarCliente('+cl.id+')">👤 Editar cliente</button>';
-    btns+='<button class="btn btn-sm" style="font-size:11px;color:#dc2626" onclick="eliminarOT('+ot.id+',\''+ot.numero_ot+'\','+(ot.grupo_id||'null')+')">🗑️ Eliminar OT</button>';
+    btns+=`<button class="btn btn-sm" style="margin-left:auto;font-size:11px;color:#64748b" onclick="editarTipoOT(${ot.id},'${ot.tipo_item||''}','${ot.tipo_tarea||''}')">✏️ Tipo</button>`;
+    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarOT(${ot.id})">✏️ Editar OT</button>`;
+    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarCliente(${cl.id})">👤 Editar cliente</button>`;
+    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626" onclick="eliminarOT(${ot.id},'${ot.numero_ot}',${ot.grupo_id||'null'})">🗑️ Eliminar OT</button>`;
     footer.innerHTML=btns;
-  }catch(e){body.innerHTML='<p style="color:#dc2626;padding:1rem">Error: '+e.message+'</p>';}
+  }catch(e){body.innerHTML=`<p style="color:#dc2626;padding:1rem">Error: ${e.message}</p>`;}
 }
 
-// EDITAR TIPO OT
+
 async function editarTipoOT(otId, tipoItemActual, tipoTareaActual){
   const TIPOS=[
     {v:'BASICA',l:'📶 Básica'},
