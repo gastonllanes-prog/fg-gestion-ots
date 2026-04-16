@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v132</title>
+<title>FG Gestión OTs v133</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V132</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V133</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v132</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v133</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -630,6 +630,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="ntab" onclick="cfgTab('autocomplete',this)">Autocompletado</div>
     <div class="ntab" onclick="cfgTab('servicios',this)">Servicios</div>
     <div class="ntab" id="cfg-tab-usuarios" style="display:none" onclick="cfgTab('usuarios',this)">Usuarios</div>
+    <div class="ntab" onclick="cfgTab('motivos-dev',this)">Mot. Devolución</div>
   </div>
   <div id="cfg-estados"><div class="loading"><span class="spinner"></span></div></div>
   <div id="cfg-motivos" style="display:none"></div>
@@ -639,6 +640,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div id="cfg-mat-config" style="display:none"></div>
   <div id="cfg-servicios" style="display:none"></div>
   <div id="cfg-usuarios" style="display:none"></div>
+  <div id="cfg-motivos-dev" style="display:none"></div>
 </div>
 
   </div>
@@ -1097,6 +1099,23 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="modal-footer">
       <button class="btn btn-primary" style="flex:2" onclick="guardarMotivo()">Guardar</button>
       <button class="btn" onclick="cerrarModal('motivo-modal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ABM MOTIVO DEVOLUCIÓN -->
+<div class="modal-overlay hidden" id="motivo-dev-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title" id="motivo-dev-modal-title">Motivo de Devolución <button class="modal-close" onclick="cerrarModal('motivo-dev-modal')">✕</button></div>
+    <input type="hidden" id="motivo-dev-id"/>
+    <div class="fg"><label>Descripción</label><input id="motivo-dev-desc" placeholder="Ej: Fuera de nodo"/></div>
+    <div class="fg"><label>Activo</label>
+      <select id="motivo-dev-activo"><option value="true">Sí</option><option value="false">No</option></select>
+    </div>
+    <p class="err-msg" id="motivo-dev-err"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="guardarMotivoDev()">Guardar</button>
+      <button class="btn" onclick="cerrarModal('motivo-dev-modal')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1638,7 +1657,7 @@ async function verOT(num){
     const ot=ots[0];
     const items=await sbGet('ot_items_contratados',`?ot_id=eq.${ot.id}`)||[];
     let grupo=[];
-    if(ot.grupo_id)grupo=await sbGet('ordenes_trabajo',`?grupo_id=eq.${ot.grupo_id}&select=numero_ot,tipo_item,estados_ot(nombre)&order=orden_cierre&eliminado=eq.false`)||[];
+    if(ot.grupo_id)grupo=await sbGet('ordenes_trabajo',`?grupo_id=eq.${ot.grupo_id}&select=id,numero_ot,tipo_item,estados_ot(nombre)&order=orden_cierre&eliminado=eq.false`)||[];
     // Para OTs finalizadas: traer materiales usados, seriales y mano de obra
     let matsUsados=[], servRealiz=[], serialesCliente=[];
     const esFinalizada=(ot.estados_ot?.nombre==='FINALIZADA');
@@ -1676,7 +1695,21 @@ async function verOT(num){
         </div>
         <div style="font-size:15px;font-weight:700;margin-bottom:.25rem">${fmtCli(cl)}</div>
         <div style="font-size:13px;color:#64748b;margin-bottom:.35rem">
-          ${grupo.map(g=>`<span style="background:rgba(37,99,235,.1);color:#2563eb;font-weight:700;padding:2px 8px;border-radius:6px;margin-right:4px;font-size:12px">${numOT(g.numero_ot)}</span>`).join('')}
+          <div id="grupo-pills-${ot.grupo_id}" style="display:inline-flex;flex-wrap:wrap;gap:4px">
+            ${grupo.map((g,gi)=>{
+              const colorBg=g.estados_ot?.nombre==='FINALIZADA'?'rgba(22,163,74,.12)':g.estados_ot?.nombre==='DEVUELTA_GIGARED'?'rgba(220,38,38,.1)':'rgba(37,99,235,.1)';
+              const colorTxt=g.estados_ot?.nombre==='FINALIZADA'?'#15803d':g.estados_ot?.nombre==='DEVUELTA_GIGARED'?'#dc2626':'#2563eb';
+              return `<span draggable="true" data-ot-id="${g.id}" data-grupo-id="${ot.grupo_id}" data-idx="${gi}"
+                onmousedown="this.style.opacity='.7'"
+                onmouseup="this.style.opacity='1'"
+                ondragstart="dragPillStart(event,this)"
+                ondragover="event.preventDefault();dragPillOver(event,this)"
+                ondrop="dragPillDrop(event,this)"
+                ondragend="dragPillEnd(event,this)"
+                style="background:${colorBg};color:${colorTxt};font-weight:700;padding:3px 10px;border-radius:6px;font-size:12px;cursor:grab;user-select:none;border:1.5px dashed transparent;transition:all .15s"
+                title="Arrastrar para reordenar">${numOT(g.numero_ot)} <span style="font-size:10px;opacity:.7">${(g.tipo_item||'').replace(/_/g,' ')}</span></span>`;
+            }).join('')}
+          </div>
         </div>
         <div style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px">
           ${badgeItem(ot.tipo_item,ot.tipo_tarea)}
@@ -2479,6 +2512,8 @@ async function confirmarImport(){
       } else {
         grupoEsExistente=true; // No tocar el estado del grupo existente
       }
+      // Ordenar OTs del grupo por jerarquía de tipo antes de asignar orden_cierre
+      gr.sort((a,b)=>{const oa=ordenJerarquiaOT(a.tipo_item||''),ob=ordenJerarquiaOT(b.tipo_item||'');if(oa!==ob)return oa-ob;return (a.numero_ot||'').localeCompare(b.numero_ot||'');});
       for(let idx=0;idx<gr.length;idx++){
         const o=gr[idx];
         try{
@@ -3541,6 +3576,54 @@ async function guardarAsignacion(){
 }
 
 // CIERRE
+// ═══ DRAG & DROP PARA REORDENAR PILLS DE GRUPO ═══
+let _dragPillSrc=null;
+function dragPillStart(e,el){_dragPillSrc=el;e.dataTransfer.effectAllowed='move';}
+function dragPillOver(e,el){
+  if(!_dragPillSrc||_dragPillSrc===el)return;
+  e.preventDefault();
+  el.style.borderColor='#2563eb';
+}
+function dragPillDrop(e,el){
+  if(!_dragPillSrc||_dragPillSrc===el)return;
+  e.preventDefault();
+  el.style.borderColor='transparent';
+  const container=el.parentElement;
+  const pills=[...container.children];
+  const srcIdx=pills.indexOf(_dragPillSrc);
+  const tgtIdx=pills.indexOf(el);
+  if(srcIdx<tgtIdx) container.insertBefore(_dragPillSrc,el.nextSibling);
+  else container.insertBefore(_dragPillSrc,el);
+  // Guardar nuevo orden en BD
+  const grupoId=el.getAttribute('data-grupo-id');
+  const nuevoOrden=[...container.children].map(p=>p.getAttribute('data-ot-id')).filter(Boolean);
+  guardarOrdenGrupo(grupoId,nuevoOrden);
+}
+function dragPillEnd(e,el){
+  el.style.opacity='1';
+  el.style.borderColor='transparent';
+  _dragPillSrc=null;
+  // Limpiar resaltado de todos
+  if(el.parentElement) [...el.parentElement.children].forEach(p=>p.style.borderColor='transparent');
+}
+async function guardarOrdenGrupo(grupoId,otIds){
+  try{
+    for(let i=0;i<otIds.length;i++){
+      await sbPatch('ordenes_trabajo','?id=eq.'+otIds[i],{orden_cierre:i});
+    }
+  }catch(e){console.error('Error guardando orden:',e);}
+}
+
+// ═══ JERARQUÍA DE TIPOS DE OT (para ordenamiento automático) ═══
+const OT_JERARQUIA = {
+  'BASICA':1,'CABLEMODEM':2,'ONU':2,'CM_EXISTENTE':2,
+  'BOCA_ADICIONAL':3,'DECODIFICADOR':4,'DECODIFICADOR_ADJ':4,
+  'SMART_CARD':5,'TV_BOX':6,'AGREGA_TV':7,
+  'CAMBIO_TECNOLOGIA':7,'RECONEXION':7,'RECONEXION_EQUIPO':7,
+  'CAMBIO_DOMICILIO':8,'GIGACAM':9,'REPARACION':10,'DESCONEXION':11
+};
+function ordenJerarquiaOT(tipoItem){ return OT_JERARQUIA[tipoItem]||50; }
+
 // ═══ WIZARD DE CIERRE DE OTs ═══
 let WIZ = {
   grupoId:null, cuadId:null, cuadNombre:'',
@@ -3563,6 +3646,8 @@ async function abrirCierreGrupo(grupoId){
     const cuadNombre=g?.cuadrillas?.nombre||'—';
     const todasOTs=(g?.ordenes_trabajo||[]);
     const ots=todasOTs.filter(o=>!['FINALIZADA','DEVUELTA_GIGARED','ELIMINADA_SISTEMA'].includes(o.estados_ot?.nombre));
+    // Ordenar por jerarquía de tipo
+    ots.sort((a,b)=>{const oa=ordenJerarquiaOT(a.tipo_item||''),ob=ordenJerarquiaOT(b.tipo_item||'');if(oa!==ob)return oa-ob;return (a.numero_ot||'').localeCompare(b.numero_ot||'');});
     if(!ots.length){alert('Todas las OTs de este grupo ya están cerradas.');cancelarWizardCierre();return;}
 
     const otIds=todasOTs.map(o=>o.id);
@@ -3795,10 +3880,15 @@ function renderWizPaso(){
   // Precintos CORRELATIVO — SOLO en el primer paso, en los demás mostrar como readonly
   const primerPasoIdx=WIZ.pasos.findIndex(pa=>pa.accion==='CERRAR');
   const esPrimerPaso=WIZ.paso===primerPasoIdx;
-  const matsCorr=WIZ.catalogoMats.filter(m=>
-    m.serial_tipo==='CORRELATIVO' &&
-    ((WIZ.serialesMap[m.id]||[]).length>0||(WIZ.scMap[m.id]||0)>0)
-  );
+  const TIPOS_PRECINTO_OBLIGATORIO=['BASICA','CAMBIO_TECNOLOGIA','CAMBIO_DOMICILIO'];
+  const tipoActual=(p.ot?.tipo_item||p.ot?.tipo_tarea||'');
+  const precintoObligatorio=TIPOS_PRECINTO_OBLIGATORIO.includes(tipoActual);
+  const matsCorr=WIZ.catalogoMats.filter(m=>{
+    if(m.serial_tipo!=='CORRELATIVO')return false;
+    // Siempre mostrar si tipo requiere precinto, aunque no haya stock
+    if(precintoObligatorio&&/telecrafter/i.test(m.nombre))return true;
+    return (WIZ.serialesMap[m.id]||[]).length>0||(WIZ.scMap[m.id]||0)>0;
+  });
   // Cantidad total de precintos ya ingresados en pasos anteriores
   const precintosYaUsados={};
   WIZ.pasos.slice(0,WIZ.paso).forEach(pa=>{
@@ -3824,7 +3914,7 @@ function renderWizPaso(){
   // Precintos
   if(matsCorr.length){
     matsHTML+='<div style="margin-top:.5rem;padding-top:.5rem;border-top:2px solid #ede9fe">'
-      +'<div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Precintos — ingresá cantidad, serial en último paso</div>'
+      +'<div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Precintos — ingresá cantidad, serial en último paso'+(precintoObligatorio?' <span style="color:#dc2626">★ OBLIGATORIO</span>':'')+'</div>'
       +matsCorr.map(m=>{
         const sers=WIZ.serialesMap[m.id]||[];
         const stockQty=WIZ.scMap[m.id]||0;
@@ -4027,6 +4117,21 @@ function pasoWiz(dir){
   if(dir>0&&p.accion==='DEVUELTA'&&!p.obs.trim()){
     document.getElementById('wiz-err').textContent='Ingresá el motivo de la devolución.';
     return;
+  }
+  // Validar precinto obligatorio en BASICA, CAMBIO_TECNOLOGIA, CAMBIO_DOMICILIO
+  if(dir>0&&p.accion==='CERRAR'){
+    const tipoOt=(p.ot?.tipo_item||p.ot?.tipo_tarea||'');
+    const TIPOS_PREC_OBL=['BASICA','CAMBIO_TECNOLOGIA','CAMBIO_DOMICILIO'];
+    if(TIPOS_PREC_OBL.includes(tipoOt)){
+      const matPrec=WIZ.catalogoMats.find(m=>m.serial_tipo==='CORRELATIVO'&&/telecrafter/i.test(m.nombre));
+      if(matPrec){
+        const cantPrec=p.corrCant[matPrec.id]||0;
+        if(!cantPrec){
+          document.getElementById('wiz-err').textContent='⚠️ El Precinto Telecrafter es obligatorio para '+tipoOt.replace(/_/g,' ')+'. Ingresá la cantidad.';
+          return;
+        }
+      }
+    }
   }
   document.getElementById('wiz-err').textContent='';
 
@@ -6196,7 +6301,7 @@ async function renderEquipos(){
 
 // CONFIG
 async function renderConfig(tab){
-  document.querySelectorAll('#cfg-estados,#cfg-motivos,#cfg-materiales,#cfg-autocomplete,#cfg-servicios,#cfg-usuarios').forEach(d=>d.style.display='none');
+  document.querySelectorAll('#cfg-estados,#cfg-motivos,#cfg-materiales,#cfg-autocomplete,#cfg-servicios,#cfg-usuarios,#cfg-motivos-dev,#cfg-tipos-ot,#cfg-mat-config').forEach(d=>d.style.display='none');
   const el=document.getElementById('cfg-'+tab);el.style.display='';
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
@@ -6330,6 +6435,23 @@ async function renderConfig(tab){
           +'</tr>').join('')
         +'</tbody></table></div>';
     }
+    else if(tab==='motivos-dev'){
+      const d=await sbGet('motivos_devolucion','?order=orden,descripcion')||[];
+      el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
+        +'<div style="font-size:12px;color:#64748b">'+d.length+' motivos de devolución</div>'
+        +'<button class="btn btn-sm btn-primary" onclick="abrirModalMotivoDev()">+ Nuevo motivo</button></div>'
+        +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+        +'<th>Descripción</th><th>Estado</th><th></th></tr></thead><tbody>'
+        +d.map(m=>'<tr>'
+          +'<td style="font-weight:600;font-size:13px">'+m.descripcion+'</td>'
+          +'<td><span class="badge '+(m.activo?'b-green':'b-gray')+'">'+(m.activo?'Activo':'Inactivo')+'</span></td>'
+          +'<td style="display:flex;gap:4px">'
+            +'<button class="btn btn-sm" onclick="abrirModalMotivoDev('+JSON.stringify(m).replace(/"/g,"'").replace(/'/g,"&#39;")+')" style="font-size:11px">✏️</button>'
+            +'<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarMotivoDev('+m.id+','+JSON.stringify(m.descripcion).replace(/"/g,"'")+')">🗑️</button>'
+          +'</td>'
+          +'</tr>').join('')
+        +'</tbody></table></div>';
+    }
     else if(tab==='usuarios'&&CU.rol==='superadmin'){
       const d=await sbGet('usuarios','?order=nombre')||[];
       el.innerHTML='<div style="margin-bottom:.75rem;text-align:right"><button class="btn btn-sm btn-primary" onclick="abrirModalUsuario()">+ Nuevo usuario</button></div>'
@@ -6339,6 +6461,37 @@ async function renderConfig(tab){
     }
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
+// ─── ABM MOTIVOS DE DEVOLUCIÓN ───
+function abrirModalMotivoDev(m){
+  document.getElementById('motivo-dev-id').value=m?.id||'';
+  document.getElementById('motivo-dev-desc').value=m?.descripcion||'';
+  document.getElementById('motivo-dev-activo').value=m?.activo===false?'false':'true';
+  document.getElementById('motivo-dev-err').textContent='';
+  document.getElementById('motivo-dev-modal-title').textContent=(m?.id?'Editar':'Nuevo')+' Motivo de Devolución';
+  abrirModal('motivo-dev-modal');
+}
+async function guardarMotivoDev(){
+  const id=document.getElementById('motivo-dev-id').value;
+  const desc=document.getElementById('motivo-dev-desc').value.trim();
+  const activo=document.getElementById('motivo-dev-activo').value==='true';
+  const err=document.getElementById('motivo-dev-err');
+  if(!desc){err.textContent='Ingresá una descripción';return;}
+  try{
+    const data={descripcion:desc,activo};
+    if(id) await sbPatch('motivos_devolucion','?id=eq.'+id,data);
+    else await sbPost('motivos_devolucion',data);
+    cerrarModal('motivo-dev-modal');
+    renderConfig('motivos-dev');
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+async function eliminarMotivoDev(id,desc){
+  if(!confirm('¿Eliminar el motivo "'+desc+'"?'))return;
+  try{
+    await sbFetch('motivos_devolucion','DELETE',null,'?id=eq.'+id);
+    renderConfig('motivos-dev');
+  }catch(e){alert('No se puede eliminar: '+e.message);}
+}
+
 function cfgTab(tab,el){document.querySelectorAll('#cfg-nav .ntab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderConfig(tab);}
 
 // ─── IMPRESIÓN ENTREGA MATERIALES ───
