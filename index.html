@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v142</title>
+<title>FG Gestión OTs v143</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V142</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V143</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v142</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v143</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1864,7 +1864,7 @@ async function verOT(num){
     }
     if(est==='FINALIZADA'&&(CU.rol==='superadmin'||CU.rol==='admin')){
       btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb;border-color:rgba(37,99,235,.3)" onclick="abrirEditarCierre(${ot.id})">✏️ Editar cierre</button>`;
-      btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarCierre(${ot.id},'${ot.numero_ot}',${ot.grupos_ot?.cuadrilla_id||'null'})">🗑️ Eliminar cierre</button>`;
+      btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarCierre(${ot.id},'${ot.numero_ot}',${ot.grupos_ot?.cuadrilla_id||'null'},${ot.grupo_id||'null'},'${(ot.fecha_fin||'').slice(0,10)}')">🗑️ Eliminar cierre</button>`;
     }
     btns+=`<button class="btn btn-sm" style="margin-left:auto;font-size:11px;color:#64748b" onclick="editarTipoOT(${ot.id},'${ot.tipo_item||''}','${ot.tipo_tarea||''}')">✏️ Tipo</button>`;
     btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarOT(${ot.id})">✏️ Editar OT</button>`;
@@ -3925,53 +3925,77 @@ async function confirmarEditarCierre(){
   }catch(e){err.textContent='Error: '+e.message;}
 }
 
-async function eliminarCierre(otId, numOT_str, cuadId){
-  if(!confirm('Eliminar el cierre de OT '+numOT_str+'?\n\nEsto:\n- Devuelve TODOS los materiales y seriales al bolso de la cuadrilla\n- Cambia el estado de la OT a PENDIENTE\n\nEsta accion no se puede deshacer.'))return;
+async function eliminarCierre(otId, numOT_str, cuadId, grupoId, fechaFin){
+  // Construir lista de OTs del mismo grupo cerradas el mismo día
+  let otsAEliminar=[otId];
+  let infoGrupo='';
+  if(grupoId&&fechaFin){
+    try{
+      const otsDia=await sbGet('ordenes_trabajo',
+        '?grupo_id=eq.'+grupoId
+        +'&estado_id=eq.'+(ESTADOS.find(e=>e.nombre==='FINALIZADA')?.id||0)
+        +'&fecha_fin=gte.'+fechaFin+'T00:00:00&fecha_fin=lte.'+fechaFin+'T23:59:59'
+        +'&select=id,numero_ot,tipo_item&eliminado=eq.false'
+      )||[];
+      if(otsDia.length>1){
+        otsAEliminar=otsDia.map(o=>o.id);
+        const nums=otsDia.map(o=>numOT(o.numero_ot)).join(', ');
+        infoGrupo='\n\nSe van a resetear '+otsDia.length+' OTs del grupo: '+nums;
+      }
+    }catch(e){}
+  }
+
+  if(!confirm('Eliminar el cierre de OT '+numOT_str+'?'+infoGrupo+'\n\nEsto:\n- Devuelve TODOS los materiales y seriales al bolso de la cuadrilla\n- Cambia el estado de las OTs a PENDIENTE\n\nEsta accion no se puede deshacer.'))return;
 
   try{
-    // Cargar todo lo del cierre
-    const [matsUsados, servsReal, serialesCli, ePend]=await Promise.all([
-      sbGet('ot_materiales_usados','?ot_id=eq.'+otId+'&select=id,material_id,cantidad'),
-      sbGet('ot_servicios_realizados','?ot_id=eq.'+otId+'&select=id'),
-      sbGet('stock_seriales','?ot_id=eq.'+otId),
-      Promise.resolve(ESTADOS.find(e=>e.nombre==='PENDIENTE'))
-    ]);
+    const ePend=ESTADOS.find(e=>e.nombre==='PENDIENTE');
 
-    // Devolver materiales al bolso
-    if(cuadId){
-      for(const m of (matsUsados||[])){
-        const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id)||[];
-        if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id,{cantidad:(sc[0].cantidad||0)+m.cantidad});
-        else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:m.material_id,cantidad:m.cantidad});
-        await sbPost('movimientos_stock',{tipo_movimiento:'DEVOLUCION',material_id:m.material_id,cuadrilla_id:parseInt(cuadId),cantidad:m.cantidad,obs:'Eliminacion cierre OT '+otId});
+    for(const id of otsAEliminar){
+      // Cargar todo lo del cierre de esta OT
+      const [matsUsados, servsReal, serialesCli]=await Promise.all([
+        sbGet('ot_materiales_usados','?ot_id=eq.'+id+'&select=id,material_id,cantidad'),
+        sbGet('ot_servicios_realizados','?ot_id=eq.'+id+'&select=id'),
+        sbGet('stock_seriales','?ot_id=eq.'+id)
+      ]);
+
+      // Devolver materiales al bolso
+      if(cuadId){
+        for(const m of (matsUsados||[])){
+          const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id)||[];
+          if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.material_id,{cantidad:(sc[0].cantidad||0)+m.cantidad});
+          else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:m.material_id,cantidad:m.cantidad});
+          await sbPost('movimientos_stock',{tipo_movimiento:'DEVOLUCION',material_id:m.material_id,cuadrilla_id:parseInt(cuadId),cantidad:m.cantidad,obs:'Eliminacion cierre OT '+id});
+        }
+        // Devolver seriales al bolso
+        for(const s of (serialesCli||[])){
+          await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+s.serial,{ubicacion:'CUADRILLA_'+cuadId,ot_id:null});
+          const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id)||[];
+          if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id,{cantidad:(sc[0].cantidad||0)+1});
+          await sbPost('movimientos_stock',{tipo_movimiento:'DEVOLUCION',material_id:s.material_id,cuadrilla_id:parseInt(cuadId),cantidad:1,obs:'Eliminacion cierre serial: '+s.serial});
+        }
       }
-      // Devolver seriales al bolso
-      const sersOT=serialesCli||[];
-      for(const s of sersOT){
-        await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+s.serial,{ubicacion:'CUADRILLA_'+cuadId});
-        const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id)||[];
-        if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id,{cantidad:(sc[0].cantidad||0)+1});
-        await sbPost('movimientos_stock',{tipo_movimiento:'DEVOLUCION',material_id:s.material_id,cuadrilla_id:parseInt(cuadId),cantidad:1,obs:'Eliminacion cierre - serial: '+s.serial});
-      }
+
+      // Borrar registros del cierre
+      if((matsUsados||[]).length) await sbFetch('ot_materiales_usados','DELETE',null,'?ot_id=eq.'+id);
+      if((servsReal||[]).length) await sbFetch('ot_servicios_realizados','DELETE',null,'?ot_id=eq.'+id);
+
+      // Resetear OT a PENDIENTE
+      if(ePend) await sbPatch('ordenes_trabajo','?id=eq.'+id,{
+        estado_id:ePend.id,
+        equipo_instalado:null,
+        tag:null,
+        fecha_cierre:null,
+        obs_cierre:null,
+        fecha_fin:null
+      });
+      await sbPost('historial_estados_ot',{ot_id:id,estado_nuevo_id:ePend?.id,observacion:'Cierre eliminado por '+CU.nombre+' (grupo)',usuario_id:CU.id});
     }
 
-    // Borrar registros del cierre
-    if((matsUsados||[]).length) await sbFetch('ot_materiales_usados','DELETE',null,'?ot_id=eq.'+otId);
-    if((servsReal||[]).length) await sbFetch('ot_servicios_realizados','DELETE',null,'?ot_id=eq.'+otId);
-
-    // Resetear OT a PENDIENTE
-    if(ePend) await sbPatch('ordenes_trabajo','?id=eq.'+otId,{
-      estado_id:ePend.id,
-      equipo_instalado:null,
-      tag:null,
-      fecha_cierre:null,
-      obs_cierre:null
-    });
-
-    await sbPost('historial_estados_ot',{ot_id:otId,estado_nuevo_id:ePend?.id,observacion:'Cierre eliminado por '+CU.nombre,usuario_id:CU.id});
+    // Resetear estado del grupo a PENDIENTE
+    if(grupoId&&ePend) await sbPatch('grupos_ot','?id=eq.'+grupoId,{estado_id:ePend.id});
 
     cerrarModal('ot-modal');
-    alert('Cierre eliminado. La OT volvio a PENDIENTE.');
+    alert('Cierre eliminado. '+(otsAEliminar.length>1?otsAEliminar.length+' OTs volvieron':'La OT volvio')+' a PENDIENTE.');
     renderOTs();
   }catch(e){alert('Error al eliminar cierre: '+e.message);}
 }
