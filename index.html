@@ -444,6 +444,23 @@ tr:hover td{background:rgba(37,99,235,.02)}
 </div>
 
 <!-- ═══ WIZARD DEVOLUCIÓN MASIVA ═══ -->
+<div id="s-informes" style="display:none">
+  <div class="ph">
+    <div class="ph-icon" style="background:#eff6ff;color:#2563eb">📑</div>
+    <div><div class="ph-title">Informes</div><div class="ph-sub">Reportes del sistema</div></div>
+  </div>
+  <div class="nav" id="inf-nav">
+    <div class="ntab active" onclick="infTab('devoluciones',this)">Devoluciones</div>
+    <div class="ntab" onclick="infTab('ots-estado',this)">OTs por estado</div>
+    <div class="ntab" onclick="infTab('ots-tipo',this)">OTs por tipo</div>
+    <div class="ntab" onclick="infTab('finalizadas',this)">Finalizadas</div>
+  </div>
+  <div id="inf-devoluciones"></div>
+  <div id="inf-ots-estado" style="display:none"></div>
+  <div id="inf-ots-tipo" style="display:none"></div>
+  <div id="inf-finalizadas" style="display:none"></div>
+</div>
+
 <div id="s-devolucion-wizard" style="display:none">
   <div class="ph">
     <button class="btn btn-sm" onclick="cancelarDevolucionWiz()" style="margin-right:8px">← Cancelar</button>
@@ -1409,6 +1426,7 @@ function construirMenu(){
     {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},
     {id:'tecnicos',icon:'👷',label:'Técnicos'},
     {sec:'Stock'},{id:'stock-cuad',icon:'🔧',label:'Stock Cuadrillas'},{id:'stock',icon:'📦',label:'Stock Depósito'},
+    {sec:'Informes'},{id:'informes',icon:'📑',label:'Informes'},
   ];
   if(CU.rol==='superadmin'||CU.rol==='admin')items.push({sec:'Sistema'},{id:'config',icon:'⚙️',label:'Configuración'});
   nav.innerHTML='';
@@ -1424,9 +1442,9 @@ function irA(sec){
   const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
   document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
-  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',liquidacion:'Liquidación diaria',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
+  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',liquidacion:'Liquidación diaria',informes:'Informes',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
   closeSidebar();
-  const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,liquidacion:()=>abrirReporteGigaredSeccion(),clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
+  const fn={dashboard:renderDashboard,ots:()=>{OT_PAGE=0;renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
 }
 
@@ -7819,6 +7837,460 @@ window.onload=()=>{
     if(cu){CU=JSON.parse(cu);iniciarApp().catch(e=>{console.warn('Error restaurando sesión:',e);localStorage.removeItem('cu');CU=null;});}
   }catch(e){localStorage.removeItem('cu');CU=null;}
 };
+// ═══ MODULO INFORMES ═══
+function infTab(tab, el){
+  document.querySelectorAll('#inf-nav .ntab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('#inf-devoluciones,#inf-ots-estado,#inf-ots-tipo,#inf-finalizadas').forEach(d=>d.style.display='none');
+  document.getElementById('inf-'+tab).style.display='';
+  renderInfTab(tab);
+}
+
+async function renderInformes(){
+  document.getElementById('inf-ots-estado').style.display='none';
+  document.getElementById('inf-ots-tipo').style.display='none';
+  document.getElementById('inf-finalizadas').style.display='none';
+  document.getElementById('inf-devoluciones').style.display='';
+  document.querySelectorAll('#inf-nav .ntab').forEach((t,i)=>{t.classList.toggle('active',i===0);});
+  renderInfTab('devoluciones');
+}
+
+function renderInfTab(tab){
+  const el=document.getElementById('inf-'+tab);
+  const hoy=new Date().toISOString().slice(0,10);
+  const hace7=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
+
+  if(tab==='devoluciones'){
+    el.innerHTML='<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem;max-width:560px">'
+      +'<div style="font-size:14px;font-weight:700;color:#1e3a5f;margin-bottom:1rem">Reporte de Devoluciones a Gigared</div>'
+      +'<div class="form-2col">'
+        +'<div class="fg" style="margin-bottom:.75rem"><label>Desde</label><input type="date" id="inf-dev-desde" value="'+hace7+'" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px"/></div>'
+        +'<div class="fg" style="margin-bottom:.75rem"><label>Hasta</label><input type="date" id="inf-dev-hasta" value="'+hoy+'" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px"/></div>'
+      +'</div>'
+      +'<p class="err-msg" id="inf-dev-err"></p>'
+      +'<div style="display:flex;gap:8px;margin-top:.25rem">'
+        +'<button class="btn btn-primary" style="flex:1;padding:11px" onclick="generarReporteDevolucionesHTML()">🖨️ Imprimir</button>'
+        +'<button class="btn" style="flex:1;padding:11px" onclick="generarReporteDevolucionesXLSX()">📊 Excel</button>'
+      +'</div>'
+    +'</div>';
+  }
+  else if(tab==='ots-estado'){
+    el.innerHTML='<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem;max-width:560px">'
+      +'<div style="font-size:14px;font-weight:700;color:#1e3a5f;margin-bottom:1rem">OTs por Estado entre Fechas</div>'
+      +'<div class="form-2col">'
+        +'<div class="fg" style="margin-bottom:.75rem"><label>Desde</label><input type="date" id="inf-est-desde" value="'+hace7+'" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px"/></div>'
+        +'<div class="fg" style="margin-bottom:.75rem"><label>Hasta</label><input type="date" id="inf-est-hasta" value="'+hoy+'" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px"/></div>'
+      +'</div>'
+      +'<div class="fg" style="margin-bottom:.75rem"><label>Estado</label>'
+        +'<select id="inf-est-estado" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit">'
+          +'<option value="">Todos los estados</option>'
+          +'<option value="PENDIENTE">Pendiente</option>'
+          +'<option value="ASIGNADA">Asignada</option>'
+          +'<option value="FINALIZADA">Finalizada</option>'
+          +'<option value="DEVUELTA_GIGARED">Devuelta a Gigared</option>'
+          +'<option value="A_REPROGRAMAR">A reprogramar</option>'
+          +'<option value="NO_REALIZADA">No realizada</option>'
+        +'</select>'
+      +'</div>'
+      +'<p class="err-msg" id="inf-est-err"></p>'
+      +'<button class="btn btn-primary" style="width:100%;padding:11px" onclick="generarReporteEstado()">🖨️ Generar reporte</button>'
+    +'</div>';
+  }
+  else if(tab==='ots-tipo'){
+    el.innerHTML='<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem;max-width:560px">'
+      +'<div style="font-size:14px;font-weight:700;color:#1e3a5f;margin-bottom:1rem">OTs por Tipo entre Fechas</div>'
+      +'<div class="form-2col">'
+        +'<div class="fg" style="margin-bottom:.75rem"><label>Desde</label><input type="date" id="inf-tipo-desde" value="'+hace7+'" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px"/></div>'
+        +'<div class="fg" style="margin-bottom:.75rem"><label>Hasta</label><input type="date" id="inf-tipo-hasta" value="'+hoy+'" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px"/></div>'
+      +'</div>'
+      +'<p class="err-msg" id="inf-tipo-err"></p>'
+      +'<button class="btn btn-primary" style="width:100%;padding:11px" onclick="generarReporteTipo()">🖨️ Generar reporte</button>'
+    +'</div>';
+  }
+  else if(tab==='finalizadas'){
+    el.innerHTML='<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem;max-width:560px">'
+      +'<div style="font-size:14px;font-weight:700;color:#1e3a5f;margin-bottom:1rem">OTs Finalizadas entre Fechas</div>'
+      +'<div class="form-2col">'
+        +'<div class="fg" style="margin-bottom:.75rem"><label>Desde</label><input type="date" id="inf-fin-desde" value="'+hace7+'" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px"/></div>'
+        +'<div class="fg" style="margin-bottom:.75rem"><label>Hasta</label><input type="date" id="inf-fin-hasta" value="'+hoy+'" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px"/></div>'
+      +'</div>'
+      +'<p class="err-msg" id="inf-fin-err"></p>'
+      +'<div style="display:flex;gap:8px;margin-top:.25rem">'
+        +'<button class="btn btn-primary" style="flex:1;padding:11px" onclick="generarReporteFinalizadas()">🖨️ Imprimir</button>'
+        +'<button class="btn" style="flex:1;padding:11px" onclick="generarReporteFinalizadasXLSX()">📊 Excel</button>'
+      +'</div>'
+    +'</div>';
+  }
+}
+
+// ── REPORTE DEVOLUCIONES (P7) ──
+function _cssInforme(){
+  return 'body{font-family:Arial,sans-serif;font-size:11px;color:#1e293b;margin:0;padding:12px}'
+    +'.empresa{font-size:13px;font-weight:700}.empresa-sub{font-size:10px;color:#64748b;margin-bottom:4px}'
+    +'.periodo{font-size:11px;margin-bottom:12px;padding:4px 8px;background:#f1f5f9;border-radius:4px;display:inline-block}'
+    +'.section-titulo{font-size:12px;font-weight:700;background:#1e3a5f;color:#fff;padding:4px 10px;margin:12px 0 4px}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:8px}'
+    +'th{background:#f8fafc;padding:5px 8px;text-align:left;border:1px solid #e2e8f0;font-size:10px}'
+    +'td{padding:5px 8px;border:1px solid #e2e8f0;vertical-align:top;font-size:11px}'
+    +'.tot{font-weight:700;background:#f8fafc;font-size:11px}'
+    +'.firma{margin-top:40px;border-top:1px solid #94a3b8;padding-top:8px;display:flex;justify-content:space-between}'
+    +'.firma-box{text-align:center;width:180px}'
+    +'.firma-line{border-top:1px solid #1e293b;margin-bottom:4px;margin-top:30px}'
+    +'@media print{body{padding:6px}}';
+}
+
+// Mapeo tipo_tarea / tipo_item a categoria para agrupar en el reporte
+function _infCategoria(tipo_tarea, tipo_item){
+  if(tipo_tarea==='DESCONECTAR') return 'Desconexion';
+  if(tipo_tarea==='REPARACION') return 'Reparacion';
+  if(tipo_tarea==='CAMBIO_DOMICILIO') return 'Cambio de Domicilio';
+  const fi={'BASICA':'Domiciliaria','ONU':'Domiciliaria','CABLEMODEM':'Domiciliaria',
+    'CM_EXISTENTE':'Domiciliaria','BOCA_ADICIONAL':'Domiciliaria','AGREGA_TV':'Domiciliaria',
+    'CAMBIO_TECNOLOGIA':'Acceso a Fibra','DECODIFICADOR':'Decodificador','DECODIFICADOR_ADJ':'Decodificador',
+    'SMART_CARD':'Decodificador','TV_BOX':'TV Box','GIGACAM':'Camara','RECONEXION':'Reconexion',
+    'RECONEXION_EQUIPO':'Reconexion'};
+  return fi[tipo_item]||'Domiciliaria';
+}
+
+async function generarReporteDevolucionesHTML(){
+  const desde=document.getElementById('inf-dev-desde').value;
+  const hasta=document.getElementById('inf-dev-hasta').value;
+  const err=document.getElementById('inf-dev-err');
+  if(!desde||!hasta){err.textContent='Ingresa el rango de fechas';return;}
+  err.textContent='Cargando...';
+  try{
+    // Traer OTs devueltas en el rango (por fecha de creación de historial o por estado actual)
+    const eDev=ESTADOS.find(e=>e.nombre==='DEVUELTA_GIGARED');
+    if(!eDev){err.textContent='Estado DEVUELTA_GIGARED no encontrado';return;}
+
+    const ots=await sbGet('ordenes_trabajo',
+      '?estado_id=eq.'+eDev.id
+      +'&eliminado=eq.false'
+      +'&select=id,numero_ot,tipo_tarea,tipo_item,obs_trabajo,created_at,grupos_ot(fecha_trabajo,fecha_asignacion),clientes(codigo_gigared,apellido,nombre)'
+      +'&order=created_at.desc&limit=500'
+    )||[];
+
+    // Filtrar por rango — usar fecha_trabajo del grupo o created_at de la OT
+    const desdeD=new Date(desde+'T00:00:00');
+    const hastaD=new Date(hasta+'T23:59:59');
+    const filtradas=ots.filter(o=>{
+      const fRaw=o.grupos_ot&&o.grupos_ot.fecha_trabajo?o.grupos_ot.fecha_trabajo:o.created_at&&o.created_at.slice(0,10);
+      if(!fRaw)return false;
+      const f=new Date(fRaw+'T12:00:00');
+      return f>=desdeD&&f<=hastaD;
+    });
+
+    if(!filtradas.length){err.textContent='Sin devoluciones en el rango seleccionado';return;}
+    err.textContent='';
+
+    // Agrupar por categoria
+    const grupos={};
+    filtradas.forEach(o=>{
+      const cat=_infCategoria(o.tipo_tarea,o.tipo_item);
+      if(!grupos[cat])grupos[cat]=[];
+      grupos[cat].push(o);
+    });
+
+    const fmtD=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+    const rango=desde===hasta?fmtD(desde):fmtD(desde)+' al '+fmtD(hasta);
+    const css=_cssInforme();
+
+    let html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Devoluciones '+rango+'</title><style>'+css+'</style></head><body>';
+    html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
+    html+='<div><div class="empresa">FG Conexiones S.R.L.</div>';
+    html+='<div class="empresa-sub">Bolivia 2356 - Posadas, Misiones</div>';
+    html+='<div class="empresa-sub">Tel: 0376 154 152256 | CUIT: 30-71636657-6</div></div>';
+    html+='<div style="text-align:right;font-size:10px;color:#64748b"><div>Impreso: '+new Date().toLocaleDateString('es-AR')+'</div></div>';
+    html+='</div>';
+    html+='<div class="periodo">Desde: '+fmtD(desde)+'&nbsp;&nbsp;&nbsp;Hasta: '+fmtD(hasta)+'&nbsp;&nbsp;&nbsp;<strong>Estado Actual: Devueltas a Gigared</strong></div>';
+
+    let totalGeneral=0;
+    Object.keys(grupos).sort().forEach(cat=>{
+      const lista=grupos[cat];
+      totalGeneral+=lista.length;
+      html+='<div class="section-titulo">'+cat+'</div>';
+      html+='<table><thead><tr>'
+        +'<th style="width:90px">Fecha</th>'
+        +'<th style="width:80px">N° Cliente</th>'
+        +'<th>Nombre</th>'
+        +'<th style="width:80px">OTs</th>'
+        +'<th>Observaciones</th>'
+        +'</tr></thead><tbody>';
+      lista.forEach(o=>{
+        const cl=o.clientes||{};
+        const fecha=o.grupos_ot&&o.grupos_ot.fecha_trabajo?fmtD(o.grupos_ot.fecha_trabajo):fmtD(o.created_at&&o.created_at.slice(0,10));
+        html+='<tr>'
+          +'<td>'+fecha+'</td>'
+          +'<td style="font-family:monospace">'+fmtCodigo(cl.codigo_gigared)+'</td>'
+          +'<td style="font-weight:600">'+(cl.apellido||'')+(cl.nombre?', '+cl.nombre:'')+'</td>'
+          +'<td style="font-family:monospace;font-size:10px">'+numOT(o.numero_ot)+'</td>'
+          +'<td>'+(o.obs_trabajo||'—')+'</td>'
+          +'</tr>';
+      });
+      html+='</tbody></table>';
+      html+='<div class="tot">Cantidad: '+lista.length+'</div>';
+    });
+
+    html+='<div class="tot" style="margin-top:8px;font-size:12px">Total General: '+totalGeneral+' OTs devueltas</div>';
+
+    html+='<div class="firma">';
+    html+='<div class="firma-box"><div class="firma-line"></div><div style="font-size:10px">FG Conexiones S.R.L.</div><div style="font-size:9px;color:#64748b">Firma y sello empresa</div></div>';
+    html+='<div class="firma-box"><div class="firma-line"></div><div style="font-size:10px">Recibido por Gigared</div><div style="font-size:9px;color:#64748b">Firma, aclaracion y sello</div></div>';
+    html+='</div>';
+
+    html+='</body></html>';
+    const win=window.open('','_blank');
+    win.document.write(html);win.document.close();
+    setTimeout(()=>win.print(),600);
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+async function generarReporteDevolucionesXLSX(){
+  const desde=document.getElementById('inf-dev-desde').value;
+  const hasta=document.getElementById('inf-dev-hasta').value;
+  const err=document.getElementById('inf-dev-err');
+  if(!desde||!hasta){err.textContent='Ingresa el rango de fechas';return;}
+  err.textContent='Cargando...';
+  try{
+    const eDev=ESTADOS.find(e=>e.nombre==='DEVUELTA_GIGARED');
+    if(!eDev){err.textContent='Estado no encontrado';return;}
+    const ots=await sbGet('ordenes_trabajo',
+      '?estado_id=eq.'+eDev.id+'&eliminado=eq.false'
+      +'&select=id,numero_ot,tipo_tarea,tipo_item,obs_trabajo,created_at,grupos_ot(fecha_trabajo),clientes(codigo_gigared,apellido,nombre)'
+      +'&order=created_at.desc&limit=500'
+    )||[];
+    const desdeD=new Date(desde+'T00:00:00');
+    const hastaD=new Date(hasta+'T23:59:59');
+    const filtradas=ots.filter(o=>{
+      const fRaw=o.grupos_ot&&o.grupos_ot.fecha_trabajo?o.grupos_ot.fecha_trabajo:o.created_at&&o.created_at.slice(0,10);
+      if(!fRaw)return false;
+      const f=new Date(fRaw+'T12:00:00');
+      return f>=desdeD&&f<=hastaD;
+    });
+    if(!filtradas.length){err.textContent='Sin devoluciones en el rango';return;}
+    err.textContent='';
+
+    const fmtD=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-AR'):'';
+    const rows=[['Fecha','N° Cliente','Nombre','N° OT','Tipo','Categoria','Observacion']];
+    filtradas.forEach(o=>{
+      const cl=o.clientes||{};
+      const fecha=o.grupos_ot&&o.grupos_ot.fecha_trabajo?fmtD(o.grupos_ot.fecha_trabajo):fmtD(o.created_at&&o.created_at.slice(0,10));
+      rows.push([
+        fecha,
+        cl.codigo_gigared||'',
+        (cl.apellido||'')+(cl.nombre?', '+cl.nombre:''),
+        o.numero_ot||'',
+        (o.tipo_item||o.tipo_tarea||'').replace(/_/g,' '),
+        _infCategoria(o.tipo_tarea,o.tipo_item),
+        o.obs_trabajo||''
+      ]);
+    });
+    if(typeof XLSX==='undefined'){err.textContent='Error: XLSX no disponible';return;}
+    const wb=XLSX.utils.book_new();
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:12},{wch:14},{wch:28},{wch:14},{wch:18},{wch:18},{wch:40}];
+    XLSX.utils.book_append_sheet(wb,ws,'Devoluciones');
+    XLSX.writeFile(wb,'Devoluciones_'+desde+'_'+hasta+'.xlsx');
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+// ── REPORTE OTs POR ESTADO ──
+async function generarReporteEstado(){
+  const desde=document.getElementById('inf-est-desde').value;
+  const hasta=document.getElementById('inf-est-hasta').value;
+  const estado=document.getElementById('inf-est-estado').value;
+  const err=document.getElementById('inf-est-err');
+  if(!desde||!hasta){err.textContent='Ingresa el rango de fechas';return;}
+  err.textContent='Cargando...';
+  try{
+    let q='?eliminado=eq.false&select=id,numero_ot,tipo_tarea,tipo_item,fecha_impresion,created_at,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre),grupos_ot(cuadrillas(nombre),fecha_trabajo)&order=created_at.desc&limit=1000';
+    if(estado){const eObj=ESTADOS.find(e=>e.nombre===estado);if(eObj)q+='&estado_id=eq.'+eObj.id;}
+    const ots=await sbGet('ordenes_trabajo',q)||[];
+    const desdeD=new Date(desde+'T00:00:00');
+    const hastaD=new Date(hasta+'T23:59:59');
+    const filtradas=ots.filter(o=>{
+      const f=new Date((o.fecha_impresion||o.created_at||'').slice(0,10)+'T12:00:00');
+      return f>=desdeD&&f<=hastaD;
+    });
+    if(!filtradas.length){err.textContent='Sin OTs en el rango';return;}
+    err.textContent='';
+
+    const fmtD=d=>d?new Date(d.slice(0,10)+'T12:00:00').toLocaleDateString('es-AR'):'—';
+    const rango=desde===hasta?fmtD(desde):fmtD(desde)+' al '+fmtD(hasta);
+    const css=_cssInforme();
+    let html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>OTs '+rango+'</title><style>'+css+'</style></head><body>';
+    html+='<div class="empresa">FG Conexiones S.R.L.</div>';
+    html+='<div class="periodo">OTs '+(estado?estado.replace(/_/g,' '):'todos los estados')+' — '+rango+'</div>';
+    html+='<table><thead><tr><th>Fecha</th><th>N° Cliente</th><th>Nombre</th><th>OT</th><th>Tipo</th><th>Estado</th><th>Cuadrilla</th></tr></thead><tbody>';
+    filtradas.forEach(o=>{
+      const cl=o.clientes||{};
+      html+='<tr>'
+        +'<td>'+fmtD(o.fecha_impresion||o.created_at)+'</td>'
+        +'<td style="font-family:monospace">'+fmtCodigo(cl.codigo_gigared)+'</td>'
+        +'<td>'+fmtCli(cl)+'</td>'
+        +'<td style="font-family:monospace">'+numOT(o.numero_ot)+'</td>'
+        +'<td>'+(o.tipo_item||o.tipo_tarea||'').replace(/_/g,' ')+'</td>'
+        +'<td>'+(o.estados_ot&&o.estados_ot.nombre||'—').replace(/_/g,' ')+'</td>'
+        +'<td>'+(o.grupos_ot&&o.grupos_ot.cuadrillas&&o.grupos_ot.cuadrillas.nombre||'Sin asignar')+'</td>'
+        +'</tr>';
+    });
+    html+='</tbody></table>';
+    html+='<div class="tot">Total: '+filtradas.length+' OTs</div>';
+    html+='</body></html>';
+    const win=window.open('','_blank');win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+// ── REPORTE OTs POR TIPO ──
+async function generarReporteTipo(){
+  const desde=document.getElementById('inf-tipo-desde').value;
+  const hasta=document.getElementById('inf-tipo-hasta').value;
+  const err=document.getElementById('inf-tipo-err');
+  if(!desde||!hasta){err.textContent='Ingresa el rango de fechas';return;}
+  err.textContent='Cargando...';
+  try{
+    const ots=await sbGet('ordenes_trabajo',
+      '?eliminado=eq.false&select=id,numero_ot,tipo_tarea,tipo_item,fecha_impresion,created_at,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre)&order=tipo_item,created_at&limit=2000'
+    )||[];
+    const desdeD=new Date(desde+'T00:00:00');
+    const hastaD=new Date(hasta+'T23:59:59');
+    const filtradas=ots.filter(o=>{
+      const f=new Date((o.fecha_impresion||o.created_at||'').slice(0,10)+'T12:00:00');
+      return f>=desdeD&&f<=hastaD;
+    });
+    if(!filtradas.length){err.textContent='Sin OTs en el rango';return;}
+    err.textContent='';
+
+    // Agrupar por tipo_item
+    const porTipo={};
+    filtradas.forEach(o=>{
+      const t=o.tipo_item||o.tipo_tarea||'OTRO';
+      if(!porTipo[t])porTipo[t]=[];
+      porTipo[t].push(o);
+    });
+
+    const fmtD=d=>d?new Date(d.slice(0,10)+'T12:00:00').toLocaleDateString('es-AR'):'—';
+    const rango=desde===hasta?fmtD(desde):fmtD(desde)+' al '+fmtD(hasta);
+    const css=_cssInforme();
+    let html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>OTs por tipo '+rango+'</title><style>'+css+'</style></head><body>';
+    html+='<div class="empresa">FG Conexiones S.R.L.</div>';
+    html+='<div class="periodo">OTs por Tipo — '+rango+'</div>';
+
+    // Resumen primero
+    html+='<div class="section-titulo">Resumen por tipo</div>';
+    html+='<table style="max-width:400px"><thead><tr><th>Tipo</th><th>Cantidad</th></tr></thead><tbody>';
+    let tot=0;
+    Object.keys(porTipo).sort().forEach(t=>{
+      html+='<tr><td>'+(t).replace(/_/g,' ')+'</td><td style="font-weight:700">'+porTipo[t].length+'</td></tr>';
+      tot+=porTipo[t].length;
+    });
+    html+='<tr class="tot"><td>TOTAL</td><td>'+tot+'</td></tr></tbody></table>';
+
+    html+='</body></html>';
+    const win=window.open('','_blank');win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+// ── REPORTE OTs FINALIZADAS ──
+async function generarReporteFinalizadas(){
+  const desde=document.getElementById('inf-fin-desde').value;
+  const hasta=document.getElementById('inf-fin-hasta').value;
+  const err=document.getElementById('inf-fin-err');
+  if(!desde||!hasta){err.textContent='Ingresa el rango de fechas';return;}
+  err.textContent='Cargando...';
+  try{
+    const eFin=ESTADOS.find(e=>e.nombre==='FINALIZADA');
+    if(!eFin){err.textContent='Estado FINALIZADA no encontrado';return;}
+    const ots=await sbGet('ordenes_trabajo',
+      '?estado_id=eq.'+eFin.id+'&eliminado=eq.false'
+      +'&select=id,numero_ot,tipo_tarea,tipo_item,fecha_impresion,tag,equipo_instalado,clientes(codigo_gigared,apellido,nombre),grupos_ot(cuadrillas(nombre),fecha_trabajo)'
+      +'&order=grupos_ot(fecha_trabajo).desc&limit=2000'
+    )||[];
+    const desdeD=new Date(desde+'T00:00:00');
+    const hastaD=new Date(hasta+'T23:59:59');
+    const filtradas=ots.filter(o=>{
+      const fRaw=o.grupos_ot&&o.grupos_ot.fecha_trabajo?o.grupos_ot.fecha_trabajo:o.fecha_impresion&&o.fecha_impresion.slice(0,10);
+      if(!fRaw)return false;
+      const f=new Date(fRaw+'T12:00:00');
+      return f>=desdeD&&f<=hastaD;
+    });
+    if(!filtradas.length){err.textContent='Sin OTs finalizadas en el rango';return;}
+    err.textContent='';
+
+    const fmtD=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-AR'):'—';
+    const rango=desde===hasta?fmtD(desde):fmtD(desde)+' al '+fmtD(hasta);
+    const css=_cssInforme();
+    let html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Finalizadas '+rango+'</title><style>'+css+'</style></head><body>';
+    html+='<div class="empresa">FG Conexiones S.R.L.</div>';
+    html+='<div class="periodo">OTs Finalizadas — '+rango+'</div>';
+    html+='<table><thead><tr><th>Fecha</th><th>N° Cliente</th><th>Nombre</th><th>OT</th><th>Tipo</th><th>Cuadrilla</th><th>Precinto</th></tr></thead><tbody>';
+    filtradas.forEach(o=>{
+      const cl=o.clientes||{};
+      const fecha=o.grupos_ot&&o.grupos_ot.fecha_trabajo?fmtD(o.grupos_ot.fecha_trabajo):'—';
+      html+='<tr>'
+        +'<td>'+fecha+'</td>'
+        +'<td style="font-family:monospace">'+fmtCodigo(cl.codigo_gigared)+'</td>'
+        +'<td>'+fmtCli(cl)+'</td>'
+        +'<td style="font-family:monospace">'+numOT(o.numero_ot)+'</td>'
+        +'<td>'+(o.tipo_item||o.tipo_tarea||'').replace(/_/g,' ')+'</td>'
+        +'<td>'+(o.grupos_ot&&o.grupos_ot.cuadrillas&&o.grupos_ot.cuadrillas.nombre||'—')+'</td>'
+        +'<td style="font-family:monospace">'+(o.tag||'—')+'</td>'
+        +'</tr>';
+    });
+    html+='</tbody></table>';
+    html+='<div class="tot">Total: '+filtradas.length+' OTs finalizadas</div>';
+    html+='</body></html>';
+    const win=window.open('','_blank');win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+async function generarReporteFinalizadasXLSX(){
+  const desde=document.getElementById('inf-fin-desde').value;
+  const hasta=document.getElementById('inf-fin-hasta').value;
+  const err=document.getElementById('inf-fin-err');
+  if(!desde||!hasta){err.textContent='Ingresa el rango de fechas';return;}
+  err.textContent='Cargando...';
+  try{
+    const eFin=ESTADOS.find(e=>e.nombre==='FINALIZADA');
+    if(!eFin){err.textContent='Estado no encontrado';return;}
+    const ots=await sbGet('ordenes_trabajo',
+      '?estado_id=eq.'+eFin.id+'&eliminado=eq.false'
+      +'&select=id,numero_ot,tipo_tarea,tipo_item,tag,clientes(codigo_gigared,apellido,nombre),grupos_ot(cuadrillas(nombre),fecha_trabajo)'
+      +'&limit=2000'
+    )||[];
+    const desdeD=new Date(desde+'T00:00:00');
+    const hastaD=new Date(hasta+'T23:59:59');
+    const filtradas=ots.filter(o=>{
+      const fRaw=o.grupos_ot&&o.grupos_ot.fecha_trabajo;
+      if(!fRaw)return false;
+      const f=new Date(fRaw+'T12:00:00');
+      return f>=desdeD&&f<=hastaD;
+    });
+    if(!filtradas.length){err.textContent='Sin OTs finalizadas en el rango';return;}
+    err.textContent='';
+    if(typeof XLSX==='undefined'){err.textContent='Error: XLSX no disponible';return;}
+    const fmtD=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-AR'):'';
+    const rows=[['Fecha','N° Cliente','Nombre','N° OT','Tipo','Cuadrilla','Precinto']];
+    filtradas.forEach(o=>{
+      const cl=o.clientes||{};
+      rows.push([
+        fmtD(o.grupos_ot&&o.grupos_ot.fecha_trabajo),
+        cl.codigo_gigared||'',
+        (cl.apellido||'')+(cl.nombre?', '+cl.nombre:''),
+        o.numero_ot||'',
+        (o.tipo_item||o.tipo_tarea||'').replace(/_/g,' '),
+        o.grupos_ot&&o.grupos_ot.cuadrillas&&o.grupos_ot.cuadrillas.nombre||'',
+        o.tag||''
+      ]);
+    });
+    const wb=XLSX.utils.book_new();
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb,ws,'Finalizadas');
+    XLSX.writeFile(wb,'Finalizadas_'+desde+'_'+hasta+'.xlsx');
+  }catch(e){err.textContent='Error: '+e.message;}
+}
+
+
 </script>
 
 </body>
