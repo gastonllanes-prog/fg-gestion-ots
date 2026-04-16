@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v144</title>
+<title>FG Gestión OTs v145</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V144</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V145</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v144</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v145</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -429,7 +429,6 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <option value="SERVICE">Service</option>
     </select>
     <select class="filter-select" id="ot-fil-cuad" onchange="buscarOTs()"><option value="">Todas las cuadrillas</option></select>
-    <select class="filter-select" id="ot-fil-nodo" onchange="buscarOTs()" style="max-width:130px"><option value="">Todos los nodos</option></select>
   </div>
   <!-- Barra de selección fija — aparece cuando hay checkboxes tildados -->
   <div id="ot-sel-bar" style="display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:12px;padding:.75rem 1.25rem;margin-bottom:1rem;color:#fff">
@@ -1430,13 +1429,7 @@ async function cargarCuadrillas(){
   CUADRILLAS=await sbGet('cuadrillas','?activo=eq.true&order=nombre')||[];
   const sels=[document.getElementById('ot-fil-cuad'),document.getElementById('asig-cuad')];
   CUADRILLAS.forEach(c=>{sels.forEach(s=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;s.appendChild(o);});});
-  // Poblar selector de nodos con los nodos distintos que existen en clientes
-  try{
-    const nodos=await sbGet('clientes','?select=nodo&nodo=neq.null&order=nodo')||[];
-    const nodosUnicos=[...new Set(nodos.map(n=>n.nodo).filter(Boolean))].sort();
-    const selNodo=document.getElementById('ot-fil-nodo');
-    if(selNodo) nodosUnicos.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;selNodo.appendChild(o);});
-  }catch(e){}
+
 }
 
 function construirMenu(){
@@ -1582,21 +1575,31 @@ function renderMini(id,ots){
 let OT_SORT='fecha_impresion',OT_SORT_DIR='desc';
 let OT_SORT2='',OT_SORT2_DIR='asc'; // Ordenamiento secundario
 
-async function renderOTs(){
+function buscarOTs(){
+  OT_FILTRO_FECHA='';
+  OT_PAGE=0;
+  renderOTs();
+}
+
+function cargarMasOTs(){
+  OT_PAGE++;
+  renderOTs();
+}
+
+async function renderOTs(append=false){
   const el=document.getElementById('ot-lista');
-  el.innerHTML='<div class="loading"><span class="spinner"></span>Cargando...</div>';
+  if(!append) el.innerHTML='<div class="loading"><span class="spinner"></span>Cargando...</div>';
   try{
     const tipo=document.getElementById('ot-fil-tipo').value;
     const estFil=document.getElementById('ot-fil-estado').value;
     const q=document.getElementById('ot-search').value.trim().toLowerCase();
-    const nodoFil=document.getElementById('ot-fil-nodo')?.value||'';
     // Mapeo de columnas a campos Supabase (solo las que el server puede ordenar)
     const sortMap={'fecha_impresion':'fecha_impresion','fecha_asignacion_giga':'fecha_asignacion_giga','created_at':'created_at','clientes.apellido':'clientes(apellido)','numero_ot':'numero_ot'};
     const orderCol=sortMap[OT_SORT]||'fecha_impresion';
     // El orden secundario y los campos cliente (calle, nodo) se ordenan en memoria
     const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
-    const extraFiltros=(()=>{let f='';if(tipo)f+=`&tipo_tarea=eq.${tipo}`;else if(tipoItem)f+=`&tipo_item=eq.${tipoItem}`;if(OT_FILTRO_FECHA)f+=`&fecha_fin=gte.${OT_FILTRO_FECHA}T00:00:00&fecha_fin=lte.${OT_FILTRO_FECHA}T23:59:59`;if(nodoFil)f+=`&clientes.nodo=eq.${nodoFil}`;if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)f+=`&estado_id=eq.${eObj.id}`;}else{// Sin filtro de estado: excluir ELIMINADA_SISTEMA del listado normal
+    const extraFiltros=(()=>{let f='';if(tipo)f+=`&tipo_tarea=eq.${tipo}`;else if(tipoItem)f+=`&tipo_item=eq.${tipoItem}`;if(OT_FILTRO_FECHA)f+=`&fecha_fin=gte.${OT_FILTRO_FECHA}T00:00:00&fecha_fin=lte.${OT_FILTRO_FECHA}T23:59:59`;if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)f+=`&estado_id=eq.${eObj.id}`;}else{// Sin filtro de estado: excluir ELIMINADA_SISTEMA del listado normal
 const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado_id=neq.${eElim.id}`;}return f;})();
 
     let ots=[];
@@ -1727,6 +1730,46 @@ const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado
         return 0;
       });
     }
+    // En modo append, agregar filas a tabla existente si ya existe
+    if(append&&document.querySelector('#ot-lista .ot-table tbody')){
+      const tbody=document.querySelector('#ot-lista .ot-table tbody');
+      const masbtn=document.getElementById('ot-mas-btn');
+      // Construir solo las filas nuevas
+      const tmp=document.createElement('tbody');
+      tmp.innerHTML=grupos.map(({cl,ots:cOts,primerFecha,primerAsig,primerCreado})=>{
+        const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
+        const tieneRep=cOts.some(o=>o.tipo_tarea==='REPARACION');
+        const pendientes=cOts.filter(o=>!['FINALIZADA','DEVUELTA_GIGARED','NO_REALIZADA','ELIMINADA_SISTEMA'].includes(o.estados_ot?.nombre));
+        const grupoId=cOts[0]?.grupo_id||cOts[0]?.grupos_ot?.id;
+        const conteo={};cOts.forEach(o=>{const n=o.estados_ot?.nombre||'PENDIENTE';conteo[n]=(conteo[n]||0)+1;});
+        const badges=Object.entries(conteo).map(([n,c])=>`<span class="badge ${{'PENDIENTE':'b-amber','ASIGNADA':'b-blue','EN_PROCESO':'b-blue','FINALIZADA':'b-green','A_REPROGRAMAR':'b-amber','DEVUELTA_GIGARED':'b-red'}[n]||'b-gray'}" style="font-size:10px">${c} ${n.replace(/_/g,' ')}</span>`).join(' ');
+        const tipos=[...new Set(cOts.map(o=>o.tipo_item||o.tipo_tarea))].map(ti=>badgeItem(ti,cOts.find(o=>o.tipo_item===ti)?.tipo_tarea)).join(' ');
+        const cuadNombre=cOts[0]?.grupos_ot?.cuadrillas?.nombre;
+        return `<tr class="${tieneRep?'rep-row':''}" data-grupo="${grupoId||''}" data-tipos='${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}' onclick="verOT('${cOts[0].numero_ot}')">
+          <td onclick="event.stopPropagation()"><input type="checkbox" class="ot-sel-cb" data-grupo="${grupoId||''}" data-tipos='${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}' style="cursor:pointer"/></td>
+          <td style="font-size:12px;color:#2563eb;font-weight:700">${fmtCodigo(cl.codigo_gigared)}</td>
+          <td class="ot-cli-cell">${fmtCli(cl)}</td>
+          <td class="ot-dom-cell" title="${dom}" style="font-size:12px">${dom}</td>
+          <td style="font-size:12px;font-weight:600">${cl.nodo||'—'}</td>
+          <td style="font-size:12px"><a href="tel:${(cl.telefono1||'').replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#2563eb">${cl.telefono1||'—'}</a></td>
+          <td style="font-size:11px">
+            <div>${tipos}</div>
+            <div style="margin-top:3px">${badges}</div>
+            ${cuadNombre?`<div style="font-size:10px;color:#2563eb;margin-top:2px">🔧 ${cuadNombre}</div>`:''}
+            ${cOts.length>1?`<div style="font-size:10px;color:#94a3b8;margin-top:2px">${cOts.length} OTs · ${cOts.map(o=>`<span style="cursor:pointer;color:#2563eb" onclick="event.stopPropagation();verOT('${o.numero_ot}')">${numOT(o.numero_ot)}</span>`).join(', ')}</div>`:''}
+          </td>
+          <td style="font-size:11px;color:#64748b;white-space:nowrap">${fmtDT(primerFecha)}</td>
+          <td style="font-size:11px;color:#64748b;white-space:nowrap">${primerAsig?new Date(primerAsig+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</td>
+          <td style="font-size:11px;color:#64748b;white-space:nowrap">${primerCreado?new Date(primerCreado).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</td>
+          <td onclick="event.stopPropagation()">
+            ${grupoId&&pendientes.length?`<button class="btn btn-sm btn-primary" style="white-space:nowrap;font-size:11px" onclick="abrirAsignarGrupo([${grupoId}],[${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}])">📍 Asignar</button>`:''}
+          </td>
+        </tr>`;
+      }).join('');
+      while(tmp.firstChild) tbody.appendChild(tmp.firstChild);
+      if(masbtn) masbtn.style.display=ots.length===PAGE_SIZE?'block':'none';
+      return;
+    }
     el.innerHTML=`<div class="ot-table-wrap"><table class="ot-table">
       <thead><tr>
         <th style="width:32px"><input type="checkbox" id="ot-sel-all" onchange="toggleSelAll(this)" style="cursor:pointer"/></th>
@@ -1779,14 +1822,26 @@ const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado
 
 function sortOTs(col){
   OT_FILTRO_FECHA='';
-  if(OT_SORT===col){
-    // Mismo primario: invertir dirección
+  if(col==='nodo'){
+    // Click en Nodo: sort compuesto automatico — nodo primario + direccion secundaria
+    if(OT_SORT==='nodo'){
+      // Ya esta en nodo: invertir direccion
+      OT_SORT_DIR=OT_SORT_DIR==='asc'?'desc':'asc';
+    } else {
+      OT_SORT='nodo';
+      OT_SORT_DIR='asc';
+    }
+    OT_SORT2='calle_num';
+    OT_SORT2_DIR='asc';
+  } else if(OT_SORT===col){
+    // Mismo primario: invertir, limpiar secundario
     OT_SORT_DIR=OT_SORT_DIR==='asc'?'desc':'asc';
+    OT_SORT2='';
   } else if(OT_SORT2===col){
-    // Era secundario: invertir dirección secundaria
+    // Era secundario: invertir direccion secundaria
     OT_SORT2_DIR=OT_SORT2_DIR==='asc'?'desc':'asc';
   } else if(OT_SORT){
-    // Hay primario y clickeamos otro: el primario pasa a secundario
+    // Hay primario y clickeamos otro: el actual pasa a secundario
     OT_SORT2=OT_SORT;
     OT_SORT2_DIR=OT_SORT_DIR;
     OT_SORT=col;
