@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v158</title>
+<title>FG Gestión OTs v159</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V158</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V159</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v158</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v159</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1861,7 +1861,7 @@ async function renderOTs(){
     const sortMap={'fecha_impresion':'fecha_impresion','fecha_asignacion_giga':'fecha_asignacion_giga','created_at':'created_at','clientes.apellido':'clientes(apellido)','numero_ot':'numero_ot'};
     const orderCol=sortMap[OT_SORT]||'fecha_impresion';
     // El orden secundario y los campos cliente (calle, nodo) se ordenan en memoria
-    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)`;
+    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1,telefono2)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
     const cuadFil=document.getElementById('ot-fil-cuad')?.value||'';
     const extraFiltros=(()=>{
@@ -2050,7 +2050,7 @@ async function renderOTs(){
           <td class="ot-cli-cell">${fmtCli(cl)}</td>
           <td class="ot-dom-cell" title="${dom}" style="font-size:12px">${dom}</td>
           <td style="font-size:12px;font-weight:600">${cl.nodo||'—'}</td>
-          <td style="font-size:12px"><a href="tel:${(cl.telefono1||'').replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#2563eb">${cl.telefono1||'—'}</a>${cl.telefono1?'<a href="https://wa.me/549'+((cl.telefono1||"").replace(/\D/g,""))+'" target="_blank" onclick="event.stopPropagation()" style="color:#16a34a;margin-left:6px;font-size:14px" title="WhatsApp">💬</a>':''}</td>
+          <td>${renderTelefono(cl.telefono1,{small:true})}</td>
           <td style="font-size:11px">
             <div>${tipos}</div>
             <div style="margin-top:3px">${badges}</div>
@@ -2182,8 +2182,7 @@ async function verOT(numeroOT, otIdDirecto){
         </div>`:''}
       <div class="ot-info-grid">
         <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Domicilio</div><div class="ot-info-val">${domHtml}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Tel 1</div><div class="ot-info-val" style="display:flex;gap:8px;align-items:center"><a href="tel:${(cl.telefono1||'').replace(/\D/g,'')}" style="color:#2563eb">${cl.telefono1||'—'}</a>${cl.telefono1?'<a href="https://wa.me/549'+((cl.telefono1||"").replace(/\D/g,""))+'" target="_blank" style="color:#16a34a;font-size:15px" title="WhatsApp">💬</a>':''}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Tel 2</div><div class="ot-info-val" style="display:flex;gap:8px;align-items:center"><a href="tel:${(cl.telefono2||'').replace(/\D/g,'')}" style="color:#2563eb">${cl.telefono2||'—'}</a>${cl.telefono2&&cl.telefono2!=='—'?'<a href="https://wa.me/549'+((cl.telefono2||"").replace(/\D/g,""))+'" target="_blank" style="color:#16a34a;font-size:15px" title="WhatsApp">💬</a>':''}</div></div>
+        <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Teléfonos</div><div class="ot-info-val">${renderTelefonos(cl.telefono1,cl.telefono2,ot.obs_gigared)}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Nodo</div><div class="ot-info-val">${cl.nodo||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${cl.localidad||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val" style="color:${ot.tag?'#7c3aed':'#94a3b8'};font-weight:700">${ot.tag||'—'}</div></div>
@@ -2744,16 +2743,28 @@ function parsearPag(txt){
 
   ot.provincia='MISIONES';
 
-  // TELEFONOS: buscar números de 10-11 dígitos
-  const tels=new Set();
-  const rTel=/(?:376|3\d{2}|11|15|011)[-\s]?\d{7,8}/g;let mT;
-  while((mT=rTel.exec(txt))!==null){
-    const n=mT[0].replace(/[\s\-]/g,'');
-    if(n.length>=10&&n.length<=11)tels.add(n);
-  }
-  if(ot.codigo_cliente)tels.delete(ot.codigo_cliente);
-  const telArr=[...tels].filter(t=>!t.startsWith('2026')&&!t.startsWith('2025'));
-  ot.telefono1=telArr[0]||'';ot.telefono2=telArr[1]||'';
+  // TELEFONOS: extraer de todo el texto usando normalizarTelefono
+  // Fuente 1: texto completo del PDF (incluye Telef.1, Telef.2 y texto libre)
+  const telsNorm = extraerTelefonosDeTexto(txt);
+  // Fuente 2: obs_gigared (puede tener teléfono al final tipo "Tel 3764294339")
+  const telsObs = extraerTelefonosDeTexto(ot.obs_gigared||'');
+  // Consolidar deduplicando
+  const telMap = new Map();
+  [...telsNorm, ...telsObs].forEach(t => {
+    if(!telMap.has(t.nacional)){
+      // Excluir si coincide con código de cliente
+      const cBase = (ot.codigo_cliente||'').replace(/^0+/,'');
+      if(!cBase || !t.nacional.endsWith(cBase.slice(-7))){
+        // Excluir fechas (2025, 2026) y números de OT (005003...)
+        if(!/^(2025|2026|005|100|200|300)/.test(t.nacional)){
+          telMap.set(t.nacional, t);
+        }
+      }
+    }
+  });
+  const telArr = [...telMap.values()];
+  ot.telefono1 = telArr[0]?.original || '';
+  ot.telefono2 = telArr[1]?.original || '';
 
   // OBS GIGARED: capturar texto libre que aparece antes del código de cliente en el PDF
   // Puede empezar con cualquier palabra — no limitamos a trigger words
@@ -6031,7 +6042,7 @@ async function renderClientes(){
           <td style="font-size:11px;color:#94a3b8">${c.barrio||'—'}</td>
           <td>${c.localidad||'—'}</td>
           <td style="font-size:12px;font-weight:600">${c.nodo||'—'}</td>
-          <td style="font-size:12px;color:${c.telefono1?'#1e293b':'#cbd5e1'}">${c.telefono1||'—'}</td>
+          <td>${renderTelefono(c.telefono1,{small:true})}</td>
         </tr>`;
       }).join('')}</tbody></table></div>
       <div style="font-size:12px;color:#94a3b8;margin-top:.5rem;text-align:right">${clientes.length} cliente${clientes.length!==1?'s':''}</div>`;
@@ -6073,8 +6084,7 @@ async function abrirDetalleCli(cliId){
         <div class="ot-info-item"><div class="ot-info-label">Barrio</div><div class="ot-info-val">${c.barrio||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${c.localidad||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Nodo</div><div class="ot-info-val" style="font-weight:700;color:#2563eb">${c.nodo||'—'}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Tel 1</div><div class="ot-info-val">${c.telefono1||'—'}</div></div>
-        <div class="ot-info-item"><div class="ot-info-label">Tel 2</div><div class="ot-info-val">${c.telefono2||'—'}</div></div>
+        <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Teléfonos</div><div class="ot-info-val">${renderTelefonos(c.telefono1,c.telefono2,'')}</div></div>
       </div>`;
 
     // Stats card
@@ -9141,6 +9151,133 @@ window.onload=()=>{
     if(cu){CU=JSON.parse(cu);iniciarApp().catch(e=>{console.warn('Error restaurando sesión:',e);localStorage.removeItem('cu');CU=null;});}
   }catch(e){localStorage.removeItem('cu');CU=null;}
 };
+
+
+// ═══ TELÉFONOS — NORMALIZACIÓN Y RENDER ═══
+
+/**
+ * Normaliza un teléfono argentino.
+ * Devuelve {original, nacional, wa} o null si no es válido.
+ * nacional: 10 dígitos (ej: "3764123456")
+ * wa: listo para wa.me (ej: "5493764123456")
+ */
+function normalizarTelefono(raw){
+  if(!raw) return null;
+  // Limpiar todo lo que no sea dígito
+  let n = String(raw).replace(/[^\d]/g,'');
+  if(!n) return null;
+
+  // Eliminar prefijo 54 o 549
+  if(n.startsWith('549') && n.length === 13) n = n.slice(3);      // 5493764123456 → 3764123456
+  else if(n.startsWith('54') && n.length === 12) n = n.slice(2);  // 543764123456 → 3764123456
+  else if(n.startsWith('0') && n.length === 11) n = n.slice(1);   // 03764123456 → 3764123456
+
+  // Remover 15 local: si empieza con área (376/376/etc.) + 15 + 7 dígitos
+  // Ej: 376-15-123456 → 3764123456
+  const m15 = n.match(/^(3\d{2,3})(15)(\d{6,8})$/);
+  if(m15) n = m15[1] + m15[3];
+
+  // Debe quedar 10 dígitos (área + número)
+  if(n.length !== 10) return null;
+
+  // Sanity: debe empezar con 3 (NEA/NOA/interior) o 11 (CABA)
+  if(!/^(3|11)/.test(n)) return null;
+
+  return { original: String(raw).trim(), nacional: n, wa: '549' + n };
+}
+
+/**
+ * Extrae todos los números de teléfono posibles de un texto libre.
+ * Detecta patrones: 376-154-152256, 3764 123456, (376)1541234, etc.
+ */
+function extraerTelefonosDeTexto(texto){
+  if(!texto) return [];
+  const encontrados = new Set();
+
+  // Patrón 1: secuencias de 10-11 dígitos con separadores opcionales
+  const re = /(?:(?:\+?54\s*9?\s*)?(?:\(?\d{3,4}\)?[\s\-\.]*\d{3,4}[\s\-\.]*\d{4}|\d{10,11}))/g;
+  let m;
+  while((m = re.exec(texto)) !== null){
+    const norm = normalizarTelefono(m[0]);
+    if(norm) encontrados.add(norm.nacional);
+  }
+
+  // Patrón 2: "Tel XXXX XXXXXXX" o "cel XXXXXXXXXX"
+  const reLbl = /(?:cel(?:ular)?|tel(?:[eé]f(?:ono)?)?|contacto|fax|whatsapp|wapp|wp)[:\s\-]+(\d[\d\s\-\.]{7,14}\d)/gi;
+  while((m = reLbl.exec(texto)) !== null){
+    const norm = normalizarTelefono(m[1]);
+    if(norm) encontrados.add(norm.nacional);
+  }
+
+  return [...encontrados]
+    .map(n => normalizarTelefono(n))
+    .filter(Boolean);
+}
+
+/**
+ * Consolida teléfonos de múltiples fuentes de un cliente/OT.
+ * Prioridad: tel1 > tel2 > extras de texto libre.
+ * Devuelve array de objetos {original, nacional, wa} deduplicados.
+ */
+function consolidarTelefonos(tel1, tel2, textoLibre){
+  const mapa = new Map(); // nacional → objeto
+
+  const agregar = raw => {
+    if(!raw) return;
+    const norm = normalizarTelefono(raw);
+    if(norm && !mapa.has(norm.nacional)){
+      mapa.set(norm.nacional, norm);
+    }
+  };
+
+  // Prioridad 1 y 2
+  agregar(tel1);
+  agregar(tel2);
+
+  // Prioridad 3: texto libre (obs_gigared, etc.)
+  if(textoLibre){
+    extraerTelefonosDeTexto(textoLibre).forEach(t => {
+      if(!mapa.has(t.nacional)) mapa.set(t.nacional, t);
+    });
+  }
+
+  return [...mapa.values()];
+}
+
+/**
+ * Renderiza un teléfono como HTML con link WhatsApp.
+ * @param {string|object} tel — string crudo o {original, nacional, wa}
+ * @param {object} opts — {small, mostrarOriginal}
+ */
+function renderTelefono(tel, opts={}){
+  if(!tel) return '<span style="color:#cbd5e1">—</span>';
+  const norm = typeof tel === 'string' ? normalizarTelefono(tel) : tel;
+  const display = norm ? norm.original : (typeof tel === 'string' ? tel : '');
+  const wa = norm ? norm.wa : null;
+  const fs = opts.small ? '11px' : '13px';
+
+  let html = `<span style="font-size:${fs};display:inline-flex;align-items:center;gap:5px">`;
+  html += `<a href="tel:${norm ? norm.nacional : display.replace(/\D/g,'')}" style="color:#2563eb" onclick="event.stopPropagation()">${display}</a>`;
+  if(wa){
+    html += `<a href="https://wa.me/${wa}" target="_blank" onclick="event.stopPropagation()" style="color:#16a34a;font-size:15px;line-height:1" title="Abrir WhatsApp">💬</a>`;
+  }
+  html += '</span>';
+  return html;
+}
+
+/**
+ * Renderiza TODOS los teléfonos de un cliente (lista vertical).
+ */
+function renderTelefonos(tel1, tel2, obsGigared){
+  const tels = consolidarTelefonos(tel1, tel2, obsGigared);
+  if(!tels.length) return '<span style="color:#cbd5e1">—</span>';
+  return tels.map((t,i) =>
+    `<div style="${i>0?'margin-top:4px':''}">`
+    + renderTelefono(t)
+    + (i===0&&tels.length>1?'':'' )
+    + '</div>'
+  ).join('');
+}
 
 // ═══ COORDINADAS ═══
 let _coordOtId=null,_coordHora='';
