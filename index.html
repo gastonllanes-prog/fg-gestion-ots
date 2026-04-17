@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v155</title>
+<title>FG Gestión OTs v156</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V155</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V156</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v155</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v156</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -204,7 +204,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-pend-ots"></div>
       <div style="font-size:10px;color:#f59e0b;margin-top:4px">clientes · ver →</div>
     </div>
-    <div class="stat" style="cursor:pointer;border-left:4px solid #2563eb" onclick="irAOTsAsignadas()">
+    <div class="stat" style="cursor:pointer;border-left:4px solid #2563eb" onclick="irAConFiltroEstado('ASIGNADA')">
       <div class="lbl">Asignadas</div>
       <div class="val blue" id="dash-asig">—</div>
       <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-asig-ots"></div>
@@ -1187,6 +1187,39 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
 </div>
 
+<!-- MODAL COORDINAR FECHA -->
+<div class="modal-overlay hidden" id="modal-coordinar">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title" id="coord-titulo">Coordinar fecha <button class="modal-close" onclick="cerrarModal('modal-coordinar')">✕</button></div>
+    <div style="padding:.25rem 0 1rem">
+      <div class="fg" style="margin-bottom:.75rem">
+        <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Fecha</label>
+        <input type="date" id="coord-fecha" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit"/>
+      </div>
+      <div class="fg" style="margin-bottom:.75rem">
+        <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Horario aproximado</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px" id="coord-horarios">
+          <button type="button" class="coord-hora-btn" onclick="selectCoordHora(this,'08:00')" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;background:#f8fafc">08:00</button>
+          <button type="button" class="coord-hora-btn" onclick="selectCoordHora(this,'09:00')" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;background:#f8fafc">09:00</button>
+          <button type="button" class="coord-hora-btn" onclick="selectCoordHora(this,'10:00')" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;background:#f8fafc">10:00</button>
+          <button type="button" class="coord-hora-btn" onclick="selectCoordHora(this,'11:00')" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;background:#f8fafc">11:00</button>
+          <button type="button" class="coord-hora-btn" onclick="selectCoordHora(this,'13:00')" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;background:#f8fafc">13:00</button>
+          <button type="button" class="coord-hora-btn" onclick="selectCoordHora(this,'14:00')" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;background:#f8fafc">14:00</button>
+          <button type="button" class="coord-hora-btn" onclick="selectCoordHora(this,'15:00')" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;background:#f8fafc">15:00</button>
+          <button type="button" class="coord-hora-btn" onclick="selectCoordHora(this,'16:00')" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;background:#f8fafc">16:00</button>
+          <button type="button" class="coord-hora-btn" onclick="selectCoordHora(this,'17:00')" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;background:#f8fafc">17:00</button>
+          <button type="button" class="coord-hora-btn" onclick="selectCoordHora(this,'')" style="padding:7px 14px;border-radius:8px;border:1px solid #fca5a5;font-size:12px;font-weight:600;cursor:pointer;background:#fef2f2;color:#dc2626">🗑 Quitar fecha</button>
+        </div>
+      </div>
+      <p class="err-msg" id="coord-err"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:2" onclick="confirmarCoordinar()">✓ Guardar</button>
+      <button class="btn" onclick="cerrarModal('modal-coordinar')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR CIERRE -->
 <div class="modal-overlay hidden" id="editar-cierre-modal">
   <div class="modal" style="max-width:680px;max-height:90vh;overflow-y:auto">
@@ -1375,7 +1408,7 @@ function toggleManualRep(){
 }
 
 function badgeE(n){
-  const m={PENDIENTE:'b-amber',ASIGNADA:'b-blue',EN_PROCESO:'b-blue',FINALIZADA:'b-green',A_REPROGRAMAR:'b-amber',DEVUELTA_GIGARED:'b-red',NO_REALIZADA:'b-gray',ELIMINADA_SISTEMA:'b-gray'};
+  const m={PENDIENTE:'b-amber',ASIGNADA:'b-blue',EN_PROCESO:'b-blue',FINALIZADA:'b-green',DEVUELTA_GIGARED:'b-red',ELIMINADA_SISTEMA:'b-gray'};
   return`<span class="badge ${m[n]||'b-gray'}">${(n||'').replace(/_/g,' ')}</span>`;
 }
 function badgeTipo(t,item){
@@ -1655,7 +1688,7 @@ async function renderDashboard(){
       }
       else if(n==='ASIGNADA'||n==='EN_PROCESO'){a++;aGrupos.add(gid);}
       else if(n==='FINALIZADA'&&(o.fecha_fin||'').startsWith(hoy)){f++;fGrupos.add(gid);}
-      else if(n==='A_REPROGRAMAR'||n==='DEVUELTA_GIGARED'){r++;rGrupos.add(gid);}
+      else if(n==='DEVUELTA_GIGARED'){r++;rGrupos.add(gid);}
     });
 
     // Top stats: número grande = clientes, abajo = OTs
@@ -1814,7 +1847,7 @@ async function renderOTs(){
     const sortMap={'fecha_impresion':'fecha_impresion','fecha_asignacion_giga':'fecha_asignacion_giga','created_at':'created_at','clientes.apellido':'clientes(apellido)','numero_ot':'numero_ot'};
     const orderCol=sortMap[OT_SORT]||'fecha_impresion';
     // El orden secundario y los campos cliente (calle, nodo) se ordenan en memoria
-    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)`;
+    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
     const cuadFil=document.getElementById('ot-fil-cuad')?.value||'';
     const extraFiltros=(()=>{
@@ -1989,11 +2022,11 @@ async function renderOTs(){
       <tbody>${grupos.map(({cl,ots:cOts,primerFecha,primerAsig,primerCreado})=>{
         const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
         const tieneRep=cOts.some(o=>o.tipo_tarea==='REPARACION');
-        const pendientes=cOts.filter(o=>!['FINALIZADA','DEVUELTA_GIGARED','NO_REALIZADA','ELIMINADA_SISTEMA'].includes(o.estados_ot?.nombre));
+        const pendientes=cOts.filter(o=>!['FINALIZADA','DEVUELTA_GIGARED','ELIMINADA_SISTEMA'].includes(o.estados_ot?.nombre));
         const yaAsignada=cOts.some(o=>o.grupos_ot?.cuadrillas);
         const grupoId=cOts[0]?.grupo_id||cOts[0]?.grupos_ot?.id;
         const conteo={};cOts.forEach(o=>{const n=o.estados_ot?.nombre||'PENDIENTE';conteo[n]=(conteo[n]||0)+1;});
-        const badges=Object.entries(conteo).map(([n,c])=>`<span class="badge ${{'PENDIENTE':'b-amber','ASIGNADA':'b-blue','EN_PROCESO':'b-blue','FINALIZADA':'b-green','A_REPROGRAMAR':'b-amber','DEVUELTA_GIGARED':'b-red'}[n]||'b-gray'}" style="font-size:10px">${c} ${n.replace(/_/g,' ')}</span>`).join(' ');
+        const badges=Object.entries(conteo).map(([n,c])=>`<span class="badge ${{'PENDIENTE':'b-amber','ASIGNADA':'b-blue','EN_PROCESO':'b-blue','FINALIZADA':'b-green','DEVUELTA_GIGARED':'b-red'}[n]||'b-gray'}" style="font-size:10px">${c} ${n.replace(/_/g,' ')}</span>`).join(' ');
         const tipos=[...new Set(cOts.map(o=>o.tipo_item||o.tipo_tarea))].map(ti=>badgeItem(ti,cOts.find(o=>o.tipo_item===ti)?.tipo_tarea)).join(' ');
         const cuadNombre=cOts[0]?.grupos_ot?.cuadrillas?.nombre;
         const fechaCoord=cOts.find(o=>o.fecha_coordinada)?.fecha_coordinada?.slice(0,10);
@@ -2008,7 +2041,7 @@ async function renderOTs(){
             <div>${tipos}</div>
             <div style="margin-top:3px">${badges}</div>
             ${cuadNombre?`<div style="font-size:10px;color:#2563eb;margin-top:2px">🔧 ${cuadNombre}</div>`:''}
-            ${fechaCoord?`<div style="font-size:10px;color:#0891b2;margin-top:2px">📅 Coord: ${new Date(fechaCoord+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}</div>`:''}
+            ${fechaCoord?`<div style="font-size:10px;color:#0891b2;margin-top:2px">📅 ${new Date(fechaCoord+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}${cOts.find(o=>o.hora_coordinada)?.hora_coordinada?' '+cOts.find(o=>o.hora_coordinada).hora_coordinada:''}</div>`:''}
             ${cOts.length>1?`<div style="font-size:10px;color:#94a3b8;margin-top:2px">${cOts.length} OTs · ${cOts.map(o=>`<span style="cursor:pointer;color:#2563eb" onclick="event.stopPropagation();verOT('${o.numero_ot}')">${numOT(o.numero_ot)}</span>`).join(', ')}</div>`:''}
             ${cOts[0]?.fecha_coordinada?`<div style="font-size:10px;color:#7c3aed;font-weight:700;margin-top:2px">📅 ${new Date(cOts[0].fecha_coordinada+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'2-digit',month:'2-digit'})}</div>`:''}
           </td>
@@ -2142,7 +2175,7 @@ async function verOT(numeroOT, otIdDirecto){
         <div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val" style="color:${ot.tag?'#7c3aed':'#94a3b8'};font-weight:700">${ot.tag||'—'}</div></div>
         ${ot.equipo_instalado?`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">📱 Equipo(s) instalado(s)</div><div class="ot-info-val" style="font-family:monospace;font-size:13px;font-weight:700;color:#2563eb;letter-spacing:.05em">${ot.equipo_instalado}</div></div>`:''}
         ${ot.fecha_coordinada?`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">📅 Fecha coordinada</div><div class="ot-info-val" style="color:#7c3aed;font-weight:700">${new Date(ot.fecha_coordinada+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`:''}
-        ${ot.fecha_coordinada?`<div class="ot-info-item" style="border:1px solid #7dd3fc;background:#f0f9ff"><div class="ot-info-label" style="color:#0891b2">📅 Coordinada</div><div class="ot-info-val" style="color:#0891b2;font-weight:700">${fmtF(ot.fecha_coordinada.slice(0,10))}</div></div>`:''}
+        ${ot.fecha_coordinada?`<div class="ot-info-item" style="border:1px solid #7dd3fc;background:#f0f9ff"><div class="ot-info-label" style="color:#0891b2">📅 Coordinada</div><div class="ot-info-val" style="color:#0891b2;font-weight:700">${fmtF(ot.fecha_coordinada.slice(0,10))}${ot.hora_coordinada?' '+ot.hora_coordinada:''}</div></div>`:''}
         <div class="ot-info-item"><div class="ot-info-label">Emisión Gigared</div><div class="ot-info-val">${fmtF(ot.fecha_emision)}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Asignación Gigared</div><div class="ot-info-val">${fmtF(ot.fecha_asignacion_giga)}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">F. Impresión</div><div class="ot-info-val" style="font-weight:700">${ot.fecha_impresion?new Date(ot.fecha_impresion).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</div></div>
@@ -2187,16 +2220,17 @@ async function verOT(numeroOT, otIdDirecto){
       if(!ot.grupos_ot?.cuadrillas) btns+=`<button class="btn btn-primary" onclick="abrirAsignar(${ot.grupo_id||ot.id})">📍 Asignar</button>`;
       btns+=`<button class="btn" onclick="abrirCambiarEstado(${ot.id},'${est}')">↕ Estado</button>`;
       if(est==='ASIGNADA'||est==='EN_PROCESO') btns+=`<button class="btn btn-green" onclick="abrirCierre(${ot.id},'${ot.numero_ot}','${ot.tipo_tarea||''}')">✓ Cerrar</button>`;
-      if(est==='PENDIENTE'||est==='A_REPROGRAMAR'){
+      if(est==='PENDIENTE'){
         const fechaCoord=ot.fecha_coordinada?ot.fecha_coordinada.slice(0,10):'';
-        btns+=`<button class="btn btn-sm" style="font-size:11px;color:#0891b2;border-color:#7dd3fc" onclick="abrirCoordinar(${ot.id},'${fechaCoord}')">📅 ${fechaCoord?'Coordinada: '+new Date(fechaCoord+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'Coordinar fecha'}</button>`;
+        const labelCoord=fechaCoord?'📅 Coord: '+new Date(fechaCoord+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'📅 Coordinar fecha';
+        btns+=`<button class="btn btn-sm" style="font-size:11px;color:#0891b2;border-color:#7dd3fc" onclick="abrirModalCoordinar(${ot.id},'${fechaCoord}','${ot.hora_coordinada||''}','${fmtCli(cl).replace(/'/g,'')}','${numOT(ot.numero_ot)}')">${labelCoord}</button>`;
       }
     }
     if(est==='FINALIZADA'&&(CU.rol==='superadmin'||CU.rol==='admin')){
       btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb;border-color:rgba(37,99,235,.3)" onclick="abrirEditarCierre(${ot.id})">✏️ Editar cierre</button>`;
       btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarCierre(${ot.id},'${ot.numero_ot}',${ot.grupos_ot?.cuadrilla_id||'null'},${ot.grupo_id||'null'},'${(ot.fecha_fin||'').slice(0,10)}')">🗑️ Eliminar cierre</button>`;
     }
-    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#7c3aed;border-color:rgba(124,58,237,.3)" onclick="abrirCoordeinarFecha(${ot.id},'${ot.fecha_coordinada||''}','${fmtCli(cl)}')">📅 Coordinar</button>`;
+
     btns+=`<button class="btn btn-sm" style="margin-left:auto;font-size:11px;color:#64748b" onclick="editarTipoOT(${ot.id},'${ot.tipo_item||''}','${ot.tipo_tarea||''}')">✏️ Tipo</button>`;
     btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarOT(${ot.id})">✏️ Editar OT</button>`;
     btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarCliente(${cl.id})">👤 Editar cliente</button>`;
@@ -3633,8 +3667,8 @@ async function cargarOTsPendientes(){
   const el=document.getElementById('asgn-tabla');
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
-    // Traer OTs pendientes (PENDIENTE o A_REPROGRAMAR)
-    const estadosPend=ESTADOS.filter(e=>['PENDIENTE','A_REPROGRAMAR'].includes(e.nombre)).map(e=>e.id);
+    // Traer OTs pendientes
+    const estadosPend=ESTADOS.filter(e=>e.nombre==='PENDIENTE').map(e=>e.id);
     let q='?select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,nodo,telefono1),estados_ot(nombre),grupos_ot(id,cuadrilla_id,cuadrillas(nombre))&order=fecha_impresion.asc.nullslast&limit=300';
     if(estadosPend.length) q+='&estado_id=in.('+estadosPend.join(',')+')';
     const ots=await sbGet('ordenes_trabajo',q)||[];
@@ -6034,7 +6068,7 @@ async function abrirDetalleCli(cliId){
     const pend=otsArr.filter(o=>o.estados_ot?.nombre==='PENDIENTE').length;
     const asig=otsArr.filter(o=>['ASIGNADA','EN_PROCESO'].includes(o.estados_ot?.nombre)).length;
     const fin=otsArr.filter(o=>o.estados_ot?.nombre==='FINALIZADA').length;
-    const dev=otsArr.filter(o=>['A_REPROGRAMAR','DEVUELTA_GIGARED','NO_REALIZADA'].includes(o.estados_ot?.nombre)).length;
+    const dev=otsArr.filter(o=>['DEVUELTA_GIGARED'].includes(o.estados_ot?.nombre)).length;
     document.getElementById('cli-det-stats').innerHTML=`
       <div class="card-title">Resumen OTs</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
@@ -6064,7 +6098,7 @@ async function abrirDetalleCli(cliId){
 function cliDetTab(filtro,el){
   if(el){document.querySelectorAll('#cli-det-tabs .ntab').forEach(t=>t.classList.remove('active'));el.classList.add('active');}
   else{document.querySelectorAll('#cli-det-tabs .ntab').forEach((t,i)=>{const tabs=['todas','pendiente','asignada','finalizada','otras'];t.classList.toggle('active',tabs[i]===filtro);});}
-  const estadoMap={pendiente:['PENDIENTE'],asignada:['ASIGNADA','EN_PROCESO'],finalizada:['FINALIZADA'],otras:['A_REPROGRAMAR','DEVUELTA_GIGARED','NO_REALIZADA','ELIMINADA_SISTEMA']};
+  const estadoMap={pendiente:['PENDIENTE'],asignada:['ASIGNADA','EN_PROCESO'],finalizada:['FINALIZADA'],otras:['DEVUELTA_GIGARED','ELIMINADA_SISTEMA']};
   const lista=filtro==='todas'?CLI_DET_OTS:CLI_DET_OTS.filter(o=>estadoMap[filtro]?.includes(o.estados_ot?.nombre));
   const cont=document.getElementById('cli-det-ots');
   if(!lista.length){cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div>Sin OTs en esta categoría</div></div>';return;}
@@ -9096,37 +9130,87 @@ window.onload=()=>{
 };
 
 // ═══ COORDINADAS ═══
+let _coordOtId=null,_coordHora='';
 
-async function abrirCoordinar(otId, fechaActual){
-  const nueva=prompt('Fecha coordinada con el cliente (AAAA-MM-DD):'+(fechaActual?'\nActual: '+fechaActual:''), fechaActual||new Date().toISOString().slice(0,10));
-  if(nueva===null) return; // canceló
+function abrirModalCoordinar(otId, fechaActual, horaActual, nombreCli, numOt){
+  _coordOtId=otId;
+  _coordHora=horaActual||'';
+  document.getElementById('coord-titulo').childNodes[0].textContent=
+    'Coordinar — OT '+numOt+' — '+nombreCli+' ';
+  const fi=document.getElementById('coord-fecha');
+  if(fi) fi.value=fechaActual||'';
+  // Resetear botones de hora
+  document.querySelectorAll('.coord-hora-btn').forEach(b=>{
+    const esQuitar=b.textContent.includes('Quitar');
+    b.style.background=esQuitar?'#fef2f2':'#f8fafc';
+    b.style.borderColor=esQuitar?'#fca5a5':'var(--border)';
+    b.style.color=esQuitar?'#dc2626':'inherit';
+  });
+  // Marcar hora actual
+  if(horaActual){
+    document.querySelectorAll('.coord-hora-btn').forEach(b=>{
+      if(b.textContent.trim()===horaActual){
+        b.style.background='#0891b2';b.style.color='#fff';b.style.borderColor='#0891b2';
+      }
+    });
+  }
+  document.getElementById('coord-err').textContent='';
+  abrirModal('modal-coordinar');
+}
+
+function selectCoordHora(btn, hora){
+  _coordHora=hora;
+  document.querySelectorAll('.coord-hora-btn').forEach(b=>{
+    const esQuitar=b.textContent.includes('Quitar');
+    b.style.background=esQuitar?'#fef2f2':'#f8fafc';
+    b.style.borderColor=esQuitar?'#fca5a5':'var(--border)';
+    b.style.color=esQuitar?'#dc2626':'inherit';
+    b.style.fontWeight='600';
+  });
+  if(hora){
+    btn.style.background='#0891b2';
+    btn.style.color='#fff';
+    btn.style.borderColor='#0891b2';
+  }
+  // Si eligió "Quitar fecha" borrar también la fecha
+  if(!hora){
+    const fi=document.getElementById('coord-fecha');
+    if(fi) fi.value='';
+  }
+}
+
+async function confirmarCoordinar(){
+  const fecha=document.getElementById('coord-fecha')?.value||'';
+  const err=document.getElementById('coord-err');
+  if(!_coordOtId){err.textContent='Error: OT no identificada';return;}
   try{
-    await sbPatch('ordenes_trabajo','?id=eq.'+otId,{fecha_coordinada:nueva||null});
-    // Recargar el modal
-    const body=document.getElementById('ot-modal-body');
-    if(body){
-      const numEl=body.querySelector('[style*="monospace"]');
-      if(numEl) verOT(null,otId);
-      else verOT(null,otId);
-    }
-  }catch(e){alert('Error: '+e.message);}
+    await sbPatch('ordenes_trabajo','?id=eq.'+_coordOtId,{
+      fecha_coordinada:fecha||null,
+      hora_coordinada:fecha&&_coordHora?_coordHora:null
+    });
+    cerrarModal('modal-coordinar');
+    verOT(null,_coordOtId);
+    // Actualizar widget del dashboard si está visible
+    if(document.getElementById('s-dashboard').style.display!=='none') cargarWidgetCoordinadas();
+  }catch(e){err.textContent='Error: '+e.message;}
 }
 
 function irACoordinadas(){
+  // Ir a la pantalla de coordinadas (vista de calendario)
   irA('ots');
   setTimeout(()=>{
-    // Filtrar por OTs coordinadas para los próximos 7 días
-    const hoy=new Date().toISOString().slice(0,10);
-    const en7=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
-    // Usar búsqueda con filtro especial de coordinadas
     OT_FILTRO_COORDINADAS=true;
-    OT_FILTRO_COORD_DESDE=hoy;
-    OT_FILTRO_COORD_HASTA=en7;
+    OT_FILTRO_COORD_DESDE=new Date().toISOString().slice(0,10);
+    OT_FILTRO_COORD_HASTA=new Date(Date.now()+30*864e5).toISOString().slice(0,10);
     const estSel=document.getElementById('ot-fil-estado');
-    if(estSel) estSel.value='PENDIENTE';
+    if(estSel) estSel.value='';
+    // Agregar etiqueta visual de que estamos viendo coordinadas
+    const search=document.getElementById('ot-search');
+    if(search){search.value='';search.placeholder='Viendo OTs coordinadas próximos 30 días...';}
     renderOTs();
   },100);
 }
+
 
 async function cargarWidgetCoordinadas(){
   const hoy=new Date().toISOString().slice(0,10);
