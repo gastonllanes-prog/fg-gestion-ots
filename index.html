@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v150</title>
+<title>FG Gestión OTs v151</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V150</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V151</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v150</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v151</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1486,7 +1486,14 @@ function irAConFiltro(tipo,isItem=false){
 // DASHBOARD
 async function renderDashboard(){
   try{
-    const all=await sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,grupo_id,cliente_id,estados_ot(nombre)&limit=5000&eliminado=eq.false')||[];
+    // Cargar OTs activas + finalizadas en últimos 90 días para stats del dashboard
+    const hace90=new Date(Date.now()-90*864e5).toISOString().slice(0,10);
+    const all=await sbGet('ordenes_trabajo',
+      '?select=id,tipo_tarea,tipo_item,fecha_fin,grupo_id,cliente_id,estados_ot(nombre)'
+      +'&eliminado=eq.false'
+      +'&or=(estados_ot.nombre.neq.FINALIZADA,fecha_fin.gte.'+hace90+')'
+      +'&limit=3000'
+    )||[];
     const hoy=new Date().toISOString().slice(0,10);
     let p=0,a=0,f=0,r=0;
     // Clientes únicos por estado (grupo_id = visita única)
@@ -1618,7 +1625,7 @@ async function renderDashboard(){
         if(eFin&&eAsig){
           const [cuadFin,cuadAsig]=await Promise.all([
             sbGet('ordenes_trabajo','?select=grupos_ot(cuadrillas(nombre))&estado_id=eq.'+eFin.id+'&fecha_fin=gte.'+hoy+'T00:00:00&eliminado=eq.false&limit=200'),
-            sbGet('ordenes_trabajo','?select=grupos_ot(cuadrillas(nombre))&estado_id=in.('+[eFin.id,eAsig.id].join(',')+'&eliminado=eq.false&limit=200')
+            sbGet('ordenes_trabajo','?select=grupos_ot(cuadrillas(nombre))&estado_id=in.('+[eFin.id,eAsig.id].join(',')+')&eliminado=eq.false&limit=200')
           ]);
           const cFin={},cTot={};
           (cuadFin||[]).forEach(o=>{const n=o.grupos_ot?.cuadrillas?.nombre||'Sin asignar';cFin[n]=(cFin[n]||0)+1;});
@@ -2169,6 +2176,8 @@ async function editarCliente(cliId){
 
 // ─── ELIMINAR OT (soft delete) ────────────────────────────────────────────────
 async function eliminarOT(otId, numOt, grupoId){
+  if(!CU||!(CU.rol==='superadmin'||CU.rol==='admin')){alert('Sin permisos');return;}
+
   const conf=confirm(`¿Eliminar OT ${numOT(numOt)}?\nVa a quedar guardada y se puede recuperar después.`);
   if(!conf)return;
   try{
@@ -2188,6 +2197,8 @@ async function eliminarOT(otId, numOt, grupoId){
 
 // ─── ELIMINAR CLIENTE completo (soft delete) ──────────────────────────────────
 async function eliminarCliente(cliId, nombre){
+  if(!CU||!(CU.rol==='superadmin'||CU.rol==='admin')){alert('Sin permisos');return;}
+
   const conf=confirm(`¿Eliminar cliente "${nombre.trim()}" y TODAS sus OTs?\nVan a quedar guardados y se pueden recuperar después.`);
   if(!conf)return;
   const conf2=confirm('Confirmación final: se van a marcar como eliminados el cliente y todas sus órdenes de trabajo.');
@@ -3829,6 +3840,8 @@ async function guardarAsignacion(){
 let EC={otId:null, cuadId:null, matsOrig:[], servsOrig:[], serialesOrig:[], mats:[], servs:[], seriales:[]};
 
 async function abrirEditarCierre(otId){
+  if(!CU||!(CU.rol==='superadmin'||CU.rol==='admin')){alert('Sin permisos');return;}
+
   const err=document.getElementById('ec-err');
   document.getElementById('ec-body').innerHTML='<div class="loading"><span class="spinner"></span></div>';
   document.getElementById('ec-err').textContent='';
@@ -4083,6 +4096,8 @@ async function confirmarEditarCierre(){
 }
 
 async function eliminarCierre(otId, numOT_str, cuadId, grupoId, fechaFin){
+  if(!CU||!(CU.rol==='superadmin'||CU.rol==='admin')){alert('Sin permisos');return;}
+
   // Construir lista de OTs del mismo grupo cerradas el mismo día
   let otsAEliminar=[otId];
   let infoGrupo='';
@@ -5349,8 +5364,8 @@ async function confirmarWizardCierre(){
   }catch(e){document.getElementById('wiz-err').textContent='Error: '+e.message;}
 }
 
-// Mantener confirmarCierre por si se usa desde el modal viejo
-async function confirmarCierre(){}
+// Alias de compatibilidad
+async function confirmarCierre(){await confirmarWizardCierre();}
 
 // CLIENTES
 async function renderClientes(){
