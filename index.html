@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v151</title>
+<title>FG Gestión OTs v152</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V151</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V152</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v151</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v152</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -268,6 +268,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div><div class="ph-title">Asignar OTs</div><div class="ph-sub">Programá órdenes por cuadrilla</div></div>
     <div style="margin-left:auto">
       <button class="btn btn-sm" onclick="imprimirOrdenesProgramadas()" style="gap:6px">🖨️ Reporte del día</button>
+      <button class="btn btn-sm" onclick="exportarCSVLogistic()" style="gap:6px;color:#16a34a;border-color:#16a34a">📥 CSV Logistic</button>
     </div>
   </div>
 
@@ -553,6 +554,21 @@ tr:hover td{background:rgba(37,99,235,.02)}
 </div>
 
 <!-- SECCIÓN TÉCNICOS -->
+<div id="s-logistic" style="display:none">
+  <div class="ph">
+    <div class="ph-icon" style="background:#f0fdf4;color:#16a34a">📤</div>
+    <div><div class="ph-title">Logistic</div><div class="ph-sub">Exportar CSV por cuadrilla para el sistema Logistic</div></div>
+  </div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem;max-width:480px;margin-bottom:1rem">
+    <div class="fg" style="margin-bottom:.75rem">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px">Fecha de trabajo</label>
+      <input type="date" id="log-fecha" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit" onchange="renderLogisticCuadrillas()"/>
+    </div>
+    <p style="font-size:12px;color:#64748b;margin:0">Seleccioná la fecha para ver las cuadrillas con OTs asignadas ese día.</p>
+  </div>
+  <div id="log-cuadrillas"></div>
+</div>
+
 <div id="s-tecnicos" style="display:none">
   <div id="tec-list-view">
     <div class="ph"><div class="ph-icon blue">👷</div><div><div class="ph-title">Técnicos</div><div class="ph-sub">Personal de campo</div></div>
@@ -1430,7 +1446,7 @@ function construirMenu(){
   const items=[
     {sec:'Principal'},{id:'dashboard',icon:'📊',label:'Dashboard'},{id:'ots',icon:'📋',label:'Órdenes de trabajo'},
     {id:'asignar',icon:'📍',label:'Asignar OTs'},{id:'asignadas',icon:'✓',label:'Cerrar OTs'},{id:'liquidacion',icon:'📊',label:'Liquidación diaria'},
-    {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},
+    {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},{id:'logistic',icon:'📤',label:'Logistic'},
     {id:'tecnicos',icon:'👷',label:'Técnicos'},
     {sec:'Stock'},{id:'stock-cuad',icon:'🔧',label:'Stock Cuadrillas'},{id:'stock',icon:'📦',label:'Stock Depósito'},
     {sec:'Informes'},{id:'informes',icon:'📑',label:'Informes'},
@@ -1449,9 +1465,9 @@ function irA(sec){
   const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
   document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
-  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',liquidacion:'Liquidación diaria',informes:'Informes',clientes:'Clientes',cuadrillas:'Cuadrillas',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
+  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',liquidacion:'Liquidación diaria',informes:'Informes',clientes:'Clientes',cuadrillas:'Cuadrillas',logistic:'Logistic',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
   closeSidebar();
-  const fn={dashboard:renderDashboard,ots:()=>{const sel=document.getElementById('ot-fil-estado');if(sel&&!sel.value)sel.value='PENDIENTE';renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:renderClientes,cuadrillas:renderCuadrillas,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
+  const fn={dashboard:renderDashboard,ots:()=>{const sel=document.getElementById('ot-fil-estado');if(sel&&!sel.value)sel.value='PENDIENTE';renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:renderClientes,cuadrillas:renderCuadrillas,logistic:renderLogistic,tecnicos:renderTecnicos,'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
 }
 
@@ -2913,6 +2929,397 @@ async function guardarCambioEstado(){
 
 // ASIGNAR
 // ═══ REPORTE ÓRDENES PROGRAMADAS POR FECHA ═══
+
+
+// ═══ LOGISTIC — PANTALLA DE EXPORTACIÓN ═══
+async function renderLogistic(){
+  // Setear fecha de hoy por defecto
+  const hoy=new Date().toISOString().slice(0,10);
+  const fi=document.getElementById('log-fecha');
+  if(fi&&!fi.value) fi.value=hoy;
+  renderLogisticCuadrillas();
+}
+
+async function renderLogisticCuadrillas(){
+  const fecha=document.getElementById('log-fecha')?.value;
+  const el=document.getElementById('log-cuadrillas');
+  if(!el) return;
+  if(!fecha){el.innerHTML='';return;}
+
+  el.innerHTML='<div class="loading"><span class="spinner"></span>Buscando cuadrillas...</div>';
+
+  try{
+    // Traer todos los grupos asignados para esa fecha
+    const grupos=await sbGet('grupos_ot',
+      '?fecha_trabajo=eq.'+fecha
+      +'&eliminado=eq.false'
+      +'&cuadrilla_id=not.is.null'
+      +'&select=id,cuadrilla_id,cuadrillas(id,nombre),ordenes_trabajo(id,estados_ot(nombre))'
+    )||[];
+
+    if(!grupos.length){
+      el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div>Sin OTs asignadas para esta fecha</div></div>';
+      return;
+    }
+
+    // Agrupar por cuadrilla
+    const porCuad={};
+    grupos.forEach(g=>{
+      const cid=g.cuadrilla_id;
+      if(!porCuad[cid]){
+        porCuad[cid]={
+          id:cid,
+          nombre:g.cuadrillas?.nombre||'Cuadrilla '+cid,
+          grupos:0, ots:0
+        };
+      }
+      porCuad[cid].grupos++;
+      porCuad[cid].ots+=(g.ordenes_trabajo||[]).filter(o=>{
+        const est=o.estados_ot?.nombre||'';
+        return est!=='ELIMINADA_SISTEMA'&&est!=='DEVUELTA_GIGARED';
+      }).length;
+    });
+
+    const cuads=Object.values(porCuad).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+    const fmtFecha=new Date(fecha+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+
+    let html='<div style="font-size:13px;font-weight:700;color:#1e3a5f;margin-bottom:.75rem">'+cuads.length+' cuadrilla'+(cuads.length!==1?'s':'')+' con OTs el '+fmtFecha+'</div>';
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.75rem;margin-bottom:1rem">';
+
+    cuads.forEach(c=>{
+      html+='<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:.875rem 1rem">'
+        +'<div>'
+          +'<div style="font-weight:700;font-size:14px;color:#1e293b">🔧 '+c.nombre+'</div>'
+          +'<div style="font-size:11px;color:#64748b;margin-top:2px">'+c.grupos+' cliente'+(c.grupos!==1?'s':'')+' · '+c.ots+' OT'+(c.ots!==1?'s':'')+'</div>'
+        +'</div>'
+        +'<button class="btn btn-sm" style="white-space:nowrap;background:#16a34a;color:#fff;border-color:#16a34a;font-size:12px;font-weight:700"'
+          +' onclick="exportarCSVLogisticPorCuad('+c.id+',\''+c.nombre.replace(/'/g,'')+'\',\''+fecha+'\')">📥 Descargar CSV</button>'
+        +'</div>';
+    });
+
+    html+='</div>';
+
+    // Botón para descargar todos de una
+    if(cuads.length>1){
+      html+='<button class="btn btn-primary" style="padding:11px 24px;font-size:13px" onclick="exportarCSVLogisticTodos(\''+fecha+'\')">📥 Descargar TODOS los CSV ('+cuads.length+' archivos)</button>';
+    }
+
+    el.innerHTML=html;
+  }catch(e){el.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';}
+}
+
+async function exportarCSVLogisticPorCuad(cuadId, cuadNombre, fecha){
+  try{
+    const grupos=await sbGet('grupos_ot',
+      '?cuadrilla_id=eq.'+cuadId
+      +'&fecha_trabajo=eq.'+fecha
+      +'&eliminado=eq.false'
+      +'&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,localidad,telefono1,telefono2))'
+      +'&order=horario_visita.asc.nullslast'
+    )||[];
+
+    if(!grupos.length){
+      alert('Sin OTs para '+cuadNombre+' en esa fecha.');
+      return;
+    }
+
+    const csv=_generarContenidoCSVLogistic(grupos, fecha);
+    if(!csv){alert('No se generaron filas para esta cuadrilla.');return;}
+
+    const hoyStr=_fechaHoyStr();
+    const slug=cuadNombre.replace(/[^a-zA-Z0-9\s-]/g,'').replace(/\s+/g,'_');
+    const filename='clientes_ot_cuadrilla__'+slug+'_'+hoyStr+'.csv';
+    _descargarCSV(csv, filename);
+
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function exportarCSVLogisticTodos(fecha){
+  const el=document.getElementById('log-cuadrillas');
+  const btns=el.querySelectorAll('button');
+  btns.forEach(b=>b.disabled=true);
+
+  try{
+    // Traer todos los grupos del día con sus cuadrillas
+    const grupos=await sbGet('grupos_ot',
+      '?fecha_trabajo=eq.'+fecha
+      +'&eliminado=eq.false'
+      +'&cuadrilla_id=not.is.null'
+      +'&select=id,horario_visita,cuadrilla_id,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,localidad,telefono1,telefono2))'
+      +'&order=cuadrillas(nombre),horario_visita.asc.nullslast'
+    )||[];
+
+    // Agrupar por cuadrilla
+    const porCuad={};
+    grupos.forEach(g=>{
+      const cid=g.cuadrilla_id;
+      if(!porCuad[cid]){
+        porCuad[cid]={nombre:g.cuadrillas?.nombre||('Cuadrilla '+cid), grupos:[]};
+      }
+      porCuad[cid].grupos.push(g);
+    });
+
+    const hoyStr=_fechaHoyStr();
+    let count=0;
+    for(const [cid, c] of Object.entries(porCuad)){
+      const csv=_generarContenidoCSVLogistic(c.grupos, fecha);
+      if(!csv) continue;
+      const slug=c.nombre.replace(/[^a-zA-Z0-9\s-]/g,'').replace(/\s+/g,'_');
+      const filename='clientes_ot_cuadrilla__'+slug+'_'+hoyStr+'.csv';
+      await new Promise(res=>{setTimeout(()=>{_descargarCSV(csv,filename);res();},300*count);});
+      count++;
+    }
+    alert('✅ '+count+' archivos CSV descargados.');
+  }catch(e){alert('Error: '+e.message);}
+  finally{btns.forEach(b=>b.disabled=false);}
+}
+
+function _generarContenidoCSVLogistic(grupos, fecha){
+  const OT_HIER=['CAMBIO_TECNOLOGIA','BASICA','ONU','CABLEMODEM','RECONEXION','REPARACION','DESCONEXION'];
+  const fmtFechaCsv=d=>{
+    const dt=new Date(d+'T12:00:00');
+    return String(dt.getDate()).padStart(2,'0')+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+dt.getFullYear();
+  };
+  const fechaFmt=fmtFechaCsv(fecha);
+  const rows=[];
+
+  grupos.forEach(g=>{
+    const ots=(g.ordenes_trabajo||[]).filter(o=>{
+      const est=o.estados_ot?.nombre||'';
+      return est!=='ELIMINADA_SISTEMA'&&est!=='DEVUELTA_GIGARED';
+    });
+    if(!ots.length) return;
+
+    const cl=ots[0]?.clientes||{};
+
+    const otPrincipal=[...ots].sort((a,b)=>{
+      const ai=OT_HIER.indexOf(a.tipo_item||a.tipo_tarea);
+      const bi=OT_HIER.indexOf(b.tipo_item||b.tipo_tarea);
+      return (ai<0?99:ai)-(bi<0?99:bi);
+    })[0];
+    if(!otPrincipal) return;
+
+    // Col 1: código sin prefijo
+    const codRaw=(cl.codigo_gigared||'').replace(/\D/g,'');
+    let codNum=codRaw;
+    if(codRaw.length>6&&(codRaw.startsWith('005001')||codRaw.startsWith('005003'))){
+      codNum=String(parseInt(codRaw.slice(6))||codRaw.slice(6));
+    }
+
+    // Col 2: nombre
+    const nombre=((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim().replace(/,/g,' ');
+
+    // Col 3: dirección
+    let dir=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'');
+    if(cl.localidad) dir+=' '+cl.localidad;
+    dir+=' Misiones';
+    dir=dir.replace(/,/g,' ');
+
+    // Col 4 y 5: teléfonos
+    const tel1=(cl.telefono1||'').replace(/,/g,'');
+    const tel2=(cl.telefono2||'0').replace(/,/g,'')||'0';
+
+    // Col 6: descripción
+    const tipoKey=otPrincipal.tipo_item||otPrincipal.tipo_tarea||'';
+    const desc=(otPrincipal.obs_gigared||LOGISTIC_TIPO_DESC[tipoKey]||tipoKey).replace(/,/g,' ');
+
+    // Col 7: duración fija
+    const dur=40;
+
+    // Col 8 y 9: fechas
+    const hi=g.horario_visita?g.horario_visita.slice(0,5):'08:00';
+    const hf='15:00';
+
+    rows.push([codNum,nombre,dir,tel1,tel2,desc,dur,fechaFmt+' '+hi,fechaFmt+' '+hf,''].join(','));
+  });
+
+  return rows.length?rows.join('\n')+'\n':null;
+}
+
+function _fechaHoyStr(){
+  const d=new Date();
+  return String(d.getDate()).padStart(2,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+d.getFullYear();
+}
+
+function _descargarCSV(contenido, filename){
+  const blob=new Blob([contenido],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ═══ EXPORT CSV LOGISTIC ═══
+const LOGISTIC_TIPO_DESC = {
+  'BASICA':            'Instalacion Domiciliaria',
+  'ONU':               'Instalacion ONU',
+  'CABLEMODEM':        'Instalacion Cable Modem',
+  'CM_EXISTENTE':      'Cable Modem Existente',
+  'CAMBIO_TECNOLOGIA': 'Traspaso De Abonado De Hfc A Ftth',
+  'DECODIFICADOR':     'Instalacion Decodificador',
+  'DECODIFICADOR_ADJ': 'Instalacion Decodificador',
+  'RECONEXION':        'Reconexion De Servicio',
+  'RECONEXION_EQUIPO': 'Reconexion Con Equipo',
+  'BOCA_ADICIONAL':    'Instalacion Boca Adicional',
+  'AGREGA_TV':         'Agrega Servicio TV',
+  'SMART_CARD':        'Instalacion Smart Card',
+  'TV_BOX':            'Instalacion TV Box',
+  'GIGACAM':           'Instalacion Camara Gigacam',
+  'REPARACION':        'Reparacion De Servicio',
+  'DESCONEXION':       'Baja De Servicio',
+  'CAMBIO_DOMICILIO':  'Cambio De Domicilio',
+};
+
+async function exportarCSVLogistic(){
+  // Leer cuadrilla y fecha del selector de Asignar OTs
+  const cuadSel=document.getElementById('asgn-cuad');
+  const fechaSel=document.getElementById('asgn-fecha');
+  const cuadId=cuadSel?.value;
+  const fecha=fechaSel?.value;
+
+  if(!cuadId||!fecha){
+    alert('Seleccioná una cuadrilla y una fecha antes de exportar.');
+    return;
+  }
+
+  const cuadNombre=cuadSel.selectedOptions[0]?.text||'cuadrilla';
+
+  try{
+    // Traer grupos asignados a esa cuadrilla y fecha
+    const grupos=await sbGet('grupos_ot',
+      '?cuadrilla_id=eq.'+cuadId
+      +'&fecha_trabajo=eq.'+fecha
+      +'&eliminado=eq.false'
+      +'&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,localidad,telefono1,telefono2))'
+      +'&order=horario_visita.asc.nullslast'
+    )||[];
+
+    if(!grupos.length){
+      alert('No hay OTs asignadas para '+cuadNombre+' el '+new Date(fecha+'T12:00:00').toLocaleDateString('es-AR')+'.');
+      return;
+    }
+
+    // Formatear fecha para el CSV: DD-MM-YYYY
+    const fmtFechaCsv=d=>{
+      const dt=new Date(d+'T12:00:00');
+      const dd=String(dt.getDate()).padStart(2,'0');
+      const mm=String(dt.getMonth()+1).padStart(2,'0');
+      const yyyy=dt.getFullYear();
+      return dd+'-'+mm+'-'+yyyy;
+    };
+    const fechaFormato=fmtFechaCsv(fecha);
+
+    // Horario por defecto si no hay horario_visita
+    const horaInicioDefault='08:00';
+    const horaFinDefault='15:00';
+
+    const rows=[];
+
+    grupos.forEach(g=>{
+      const ots=g.ordenes_trabajo||[];
+      if(!ots.length) return;
+
+      // Usar el primer cliente del grupo (todos son del mismo cliente)
+      const cl=ots[0]?.clientes||{};
+
+      // Una fila por grupo (visita al domicilio)
+      // Pero si hay múltiples tipos principales (ej: BASICA+ONU), generar una fila por OT principal
+      // OTs que generan fila: excluir las que son "accesorias" del grupo
+      const otsParaCSV=ots.filter(o=>{
+        const est=o.estados_ot?.nombre||'';
+        return est!=='ELIMINADA_SISTEMA'&&est!=='DEVUELTA_GIGARED';
+      });
+
+      // Agrupar OTs por "tipo principal" para generar una fila por tipo de servicio
+      // Si el grupo tiene solo BASICA+ONU = 1 fila (visita de instalación)
+      // Si tiene BASICA+ONU+DECO = 1 fila con descripción del principal
+      // Usamos la primera OT con obs_gigared, o la más importante según jerarquía
+      const OT_HIER=['CAMBIO_TECNOLOGIA','BASICA','ONU','CABLEMODEM','RECONEXION','REPARACION','DESCONEXION'];
+      const otPrincipal=otsParaCSV.sort((a,b)=>{
+        const ai=OT_HIER.indexOf(a.tipo_item||a.tipo_tarea)||99;
+        const bi=OT_HIER.indexOf(b.tipo_item||b.tipo_tarea)||99;
+        return ai-bi;
+      })[0];
+
+      if(!otPrincipal) return;
+
+      // Col 1: código cliente (solo el número, sin prefijo 005001/005003)
+      const codRaw=(cl.codigo_gigared||'').replace(/\D/g,'');
+      const codNum=codRaw.length>=6?parseInt(codRaw.slice(codRaw.startsWith('005003')||codRaw.startsWith('005001')?6:0))||codRaw:codRaw;
+
+      // Col 2: nombre "Apellido Nombre" (sin coma)
+      const nombre=((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim();
+
+      // Col 3: dirección "Calle Numero Localidad Misiones"
+      let dir='';
+      if(cl.calle){
+        dir=cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'');
+      } else {
+        dir=cl.domicilio||'';
+      }
+      if(cl.localidad) dir+=' '+cl.localidad;
+      dir+=' Misiones';
+      dir=dir.replace(/,/g,''); // eliminar comas que romperían el CSV
+
+      // Col 4: tel1
+      const tel1=(cl.telefono1||'').replace(/,/g,'');
+      // Col 5: tel2
+      const tel2=(cl.telefono2||'0').replace(/,/g,'')||'0';
+
+      // Col 6: descripción del servicio
+      // Prioridad: obs_gigared del principal → mapeo del tipo
+      const tipoKey=otPrincipal.tipo_item||otPrincipal.tipo_tarea||'';
+      const descServicio=(otPrincipal.obs_gigared||LOGISTIC_TIPO_DESC[tipoKey]||tipoKey).replace(/,/g,' ');
+
+      // Col 7: duración fija 40
+      const duracion=40;
+
+      // Col 8 y 9: fechas con horario
+      let horaInicio=horaInicioDefault;
+      let horaFin=horaFinDefault;
+      if(g.horario_visita){
+        // horario_visita es TIME format HH:MM:SS
+        horaInicio=g.horario_visita.slice(0,5);
+      }
+
+      const fechaInicio=fechaFormato+' '+horaInicio;
+      const fechaFin=fechaFormato+' '+horaFin;
+
+      // Col 10: vacía
+      rows.push([codNum,nombre,dir,tel1,tel2,descServicio,duracion,fechaInicio,fechaFin,''].join(','));
+    });
+
+    if(!rows.length){
+      alert('No se pudieron generar filas para el CSV.');
+      return;
+    }
+
+    // Generar y descargar CSV
+    const csvContent=rows.join('\n')+'\n';
+    const hoyStr=(()=>{
+      const d=new Date();
+      return String(d.getDate()).padStart(2,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+d.getFullYear();
+    })();
+    const cuadNombreSlug=cuadNombre.replace(/[^a-zA-Z0-9\s-]/g,'').replace(/\s+/g,'_');
+    const filename='clientes_ot_cuadrilla__'+cuadNombreSlug+'_'+hoyStr+'.csv';
+
+    const blob=new Blob([csvContent],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=filename;
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Confirmar al usuario
+    const msg='✅ CSV generado: '+filename+'\n'+rows.length+' clientes exportados para Logistic.';
+    alert(msg);
+
+  }catch(e){alert('Error al generar CSV: '+e.message);}
+}
+
 async function imprimirOrdenesProgramadas(){
   // Pedir fecha
   const fecha=prompt('Fecha del reporte (AAAA-MM-DD):',new Date().toISOString().slice(0,10));
