@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v152</title>
+<title>FG Gestión OTs v153</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V152</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V153</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v152</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v153</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1502,14 +1502,16 @@ function irAConFiltro(tipo,isItem=false){
 // DASHBOARD
 async function renderDashboard(){
   try{
-    // Cargar OTs activas + finalizadas en últimos 90 días para stats del dashboard
+    // Cargar stats del dashboard: OTs activas + finalizadas últimos 90 días
     const hace90=new Date(Date.now()-90*864e5).toISOString().slice(0,10);
-    const all=await sbGet('ordenes_trabajo',
-      '?select=id,tipo_tarea,tipo_item,fecha_fin,grupo_id,cliente_id,estados_ot(nombre)'
-      +'&eliminado=eq.false'
-      +'&or=(estados_ot.nombre.neq.FINALIZADA,fecha_fin.gte.'+hace90+')'
-      +'&limit=3000'
-    )||[];
+    const eFinId=ESTADOS.find(e=>e.nombre==='FINALIZADA')?.id;
+    const [allActivas, allFinalizadas]=await Promise.all([
+      // OTs no finalizadas (pendientes/asignadas/devueltas) — sin límite de fecha
+      sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,grupo_id,cliente_id,estados_ot(nombre)&eliminado=eq.false'+(eFinId?'&estado_id=neq.'+eFinId:'')+'&limit=2000'),
+      // OTs finalizadas en últimos 90 días
+      eFinId?sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,grupo_id,cliente_id,estados_ot(nombre)&eliminado=eq.false&estado_id=eq.'+eFinId+'&fecha_fin=gte.'+hace90+'T00:00:00&limit=2000'):Promise.resolve([])
+    ]);
+    const all=[...(allActivas||[]),...(allFinalizadas||[])];
     const hoy=new Date().toISOString().slice(0,10);
     let p=0,a=0,f=0,r=0;
     // Clientes únicos por estado (grupo_id = visita única)
