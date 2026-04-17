@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v154</title>
+<title>FG Gestión OTs v155</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V154</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V155</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v154</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v155</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -216,11 +216,11 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-fin-ots"></div>
       <div style="font-size:10px;color:#16a34a;margin-top:4px">ver detalle →</div>
     </div>
-    <div class="stat" style="border-left:4px solid #dc2626">
-      <div class="lbl">A reprogramar</div>
-      <div class="val red" id="dash-repro">—</div>
-      <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-repro-ots"></div>
-      <div style="font-size:10px;color:#dc2626;margin-top:4px">devueltas + a reprogram.</div>
+    <div class="stat" style="cursor:pointer;border-left:4px solid #0891b2" onclick="irACoordinadas()">
+      <div class="lbl">📅 Coordinadas</div>
+      <div class="val" style="color:#0891b2" id="dash-coord">—</div>
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-coord-sub"></div>
+      <div style="font-size:10px;color:#0891b2;margin-top:4px">próximos 7 días · ver →</div>
     </div>
   </div>
 
@@ -243,6 +243,24 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div id="dash-prog-txt" style="font-size:12px;font-weight:700;color:#1e3a5f;min-width:60px;text-align:right">0 / 0</div>
     </div>
     <div id="dash-prog-cuads" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:.5rem"></div>
+  </div>
+
+  <!-- Widget Coordinadas -->
+  <div class="card" style="margin-bottom:1rem" id="dash-coordinadas-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <div class="card-title" style="margin-bottom:0">📅 Coordinadas con clientes</div>
+      <div style="font-size:11px;color:#94a3b8">próximos 7 días</div>
+    </div>
+    <div id="dash-coordinadas"><div class="loading"><span class="spinner"></span></div></div>
+  </div>
+
+  <!-- Widget Coordinadas -->
+  <div class="card" id="dash-coord-widget" style="margin-bottom:1rem;display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <div class="card-title" style="margin-bottom:0">📅 Coordinadas próximos 7 días</div>
+      <button class="btn btn-sm" onclick="irACoordinadas()" style="font-size:11px">Ver todas →</button>
+    </div>
+    <div id="dash-coord-lista"></div>
   </div>
 
   <!-- Detalle por tipo (mini cards clickeables) -->
@@ -1500,6 +1518,105 @@ function irAConFiltro(tipo,isItem=false){
 }
 
 // DASHBOARD
+
+// ═══ COORDINADAS CON CLIENTES ═══
+async function abrirCoordeinarFecha(otId, fechaActual, nombreCli){
+  const hoy=new Date().toISOString().slice(0,10);
+  const html='<div style="padding:.25rem 0">'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:.75rem">Cliente: <strong>'+nombreCli+'</strong></div>'
+    +'<div class="fg"><label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:5px">Fecha coordinada con el cliente</label>'
+    +'<input type="date" id="coord-fecha" value="'+(fechaActual||'')+'" min="'+hoy+'"'
+    +' style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"/></div>'
+    +(fechaActual?'<button type="button" onclick="document.getElementById(\'coord-fecha\').value=\'\'" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer;padding:4px 0;margin-top:4px">✕ Quitar fecha coordinada</button>':'')
+    +'<p id="coord-err" class="err-msg"></p>'
+    +'</div>';
+  mostrarModal2('📅 Coordinar fecha — OT', html, async ()=>{
+    const fecha=document.getElementById('coord-fecha').value||null;
+    try{
+      await sbPatch('ordenes_trabajo','?id=eq.'+otId,{fecha_coordinada:fecha});
+      cerrarModal('modal2');
+      // Actualizar el detalle si está abierto
+      const body=document.getElementById('ot-modal-body');
+      if(body&&body.innerHTML) verOT(null, otId);
+      // Refrescar dashboard si está visible
+      if(document.getElementById('s-dashboard').style.display!=='none') renderDashboard();
+      renderOTs();
+    }catch(e){document.getElementById('coord-err').textContent='Error: '+e.message;}
+  }, fecha?'Guardar':'Guardar');
+}
+
+async function renderDashboardCoordinadas(){
+  const el=document.getElementById('dash-coordinadas');
+  if(!el) return;
+  try{
+    const hoy=new Date().toISOString().slice(0,10);
+    const en7=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+    // Traer OTs coordinadas en los próximos 7 días que NO estén asignadas a cuadrilla aún
+    const ots=await sbGet('ordenes_trabajo',
+      '?fecha_coordinada=gte.'+hoy+'&fecha_coordinada=lte.'+en7
+      +'&eliminado=eq.false'
+      +'&select=id,numero_ot,tipo_item,tipo_tarea,fecha_coordinada,grupos_ot(id,cuadrilla_id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,nodo)'
+      +'&order=fecha_coordinada.asc'
+      +'&limit=50'
+    )||[];
+
+    if(!ots.length){
+      el.innerHTML='<div style="font-size:12px;color:#94a3b8;text-align:center;padding:.5rem">Sin fechas coordinadas en los próximos 7 días</div>';
+      return;
+    }
+
+    // Agrupar por fecha
+    const porFecha={};
+    ots.forEach(o=>{
+      const f=o.fecha_coordinada;
+      if(!porFecha[f]) porFecha[f]=[];
+      porFecha[f].push(o);
+    });
+
+    const fmtDia=d=>{
+      const dt=new Date(d+'T12:00:00');
+      const hoyDt=new Date();
+      hoyDt.setHours(0,0,0,0);
+      const diff=Math.round((dt-hoyDt)/864e5);
+      const label=diff===0?'HOY':diff===1?'Mañana':dt.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+      return {label, esHoy:diff===0, esMañana:diff===1};
+    };
+
+    let html='';
+    Object.keys(porFecha).sort().forEach(fecha=>{
+      const {label, esHoy, esMañana}=fmtDia(fecha);
+      const color=esHoy?'#dc2626':esMañana?'#ea580c':'#7c3aed';
+      const lista=porFecha[fecha];
+      html+='<div style="margin-bottom:.6rem">';
+      html+='<div style="font-size:11px;font-weight:700;color:'+color+';text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">'+label+' ('+lista.length+')</div>';
+      html+='<div style="display:flex;flex-wrap:wrap;gap:5px">';
+      lista.forEach(o=>{
+        const cl=o.clientes||{};
+        const asignada=o.grupos_ot?.cuadrilla_id;
+        const cuad=o.grupos_ot?.cuadrillas?.nombre;
+        html+='<div style="background:'+(asignada?'#f0fdf4':'#faf5ff')+';border:1px solid '+(asignada?'#bbf7d0':'#e9d5ff')+';border-radius:8px;padding:4px 10px;cursor:pointer;font-size:11px" onclick="verOT(\''+o.numero_ot+'\')">'
+          +'<span style="font-weight:700;color:'+(asignada?'#16a34a':'#7c3aed')+'">'+fmtCodigo(cl.codigo_gigared)+'</span>'
+          +' '+fmtCli(cl)
+          +(asignada?' <span style="color:#16a34a">✓ '+cuad+'</span>':'')
+          +'</div>';
+      });
+      html+='</div></div>';
+    });
+
+    // Si hay coordinadas para hoy sin asignar, mostrar alerta
+    const hoyPend=(porFecha[hoy]||[]).filter(o=>!o.grupos_ot?.cuadrilla_id);
+    if(hoyPend.length){
+      const card=document.getElementById('dash-coordinadas-card');
+      if(card) card.style.borderColor='#fca5a5';
+      html='<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;color:#dc2626;margin-bottom:.5rem">⚠️ '+hoyPend.length+' coordinada'+(hoyPend.length>1?'s':'')+' de HOY sin asignar a cuadrilla</div>'+html;
+    }
+
+    el.innerHTML=html;
+  }catch(e){
+    el.innerHTML='<div style="font-size:11px;color:#dc2626">Error: '+e.message+'</div>';
+  }
+}
+
 async function renderDashboard(){
   try{
     // Cargar stats del dashboard: OTs activas + finalizadas últimos 90 días
@@ -1657,6 +1774,10 @@ async function renderDashboard(){
         }
       }catch(e){}
     }
+    // Cargar widget coordinadas en paralelo (no bloquea el resto)
+    renderDashboardCoordinadas();
+    // Cargar widget de coordinadas
+    cargarWidgetCoordinadas();
   }catch(e){console.error('Dashboard error:',e);}
 }
 
@@ -1673,10 +1794,12 @@ function renderMini(id,ots){
 
 // OTs TABLA
 let OT_SORT='fecha_impresion',OT_SORT_DIR='desc',OT_PAGE=0;
+let OT_FILTRO_COORDINADAS=false,OT_FILTRO_COORD_DESDE='',OT_FILTRO_COORD_HASTA='';
 let OT_SORT2='',OT_SORT2_DIR='asc'; // Ordenamiento secundario
 
 function buscarOTs(){
   OT_FILTRO_FECHA='';
+  OT_FILTRO_COORDINADAS=false;
   renderOTs();
 }
 
@@ -1691,7 +1814,7 @@ async function renderOTs(){
     const sortMap={'fecha_impresion':'fecha_impresion','fecha_asignacion_giga':'fecha_asignacion_giga','created_at':'created_at','clientes.apellido':'clientes(apellido)','numero_ot':'numero_ot'};
     const orderCol=sortMap[OT_SORT]||'fecha_impresion';
     // El orden secundario y los campos cliente (calle, nodo) se ordenan en memoria
-    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)`;
+    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
     const cuadFil=document.getElementById('ot-fil-cuad')?.value||'';
     const extraFiltros=(()=>{
@@ -1703,6 +1826,10 @@ async function renderOTs(){
       else{const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado_id=neq.${eElim.id}`;}
       // Filtro de cuadrilla: filtra por grupo asignado a esa cuadrilla
       if(cuadFil) f+=`&grupos_ot.cuadrilla_id=eq.${cuadFil}`;
+      // Filtro de coordinadas
+      if(OT_FILTRO_COORDINADAS&&OT_FILTRO_COORD_DESDE&&OT_FILTRO_COORD_HASTA){
+        f+=`&fecha_coordinada=gte.${OT_FILTRO_COORD_DESDE}T00:00:00&fecha_coordinada=lte.${OT_FILTRO_COORD_HASTA}T23:59:59`;
+      }
       return f;
     })();
 
@@ -1869,6 +1996,7 @@ async function renderOTs(){
         const badges=Object.entries(conteo).map(([n,c])=>`<span class="badge ${{'PENDIENTE':'b-amber','ASIGNADA':'b-blue','EN_PROCESO':'b-blue','FINALIZADA':'b-green','A_REPROGRAMAR':'b-amber','DEVUELTA_GIGARED':'b-red'}[n]||'b-gray'}" style="font-size:10px">${c} ${n.replace(/_/g,' ')}</span>`).join(' ');
         const tipos=[...new Set(cOts.map(o=>o.tipo_item||o.tipo_tarea))].map(ti=>badgeItem(ti,cOts.find(o=>o.tipo_item===ti)?.tipo_tarea)).join(' ');
         const cuadNombre=cOts[0]?.grupos_ot?.cuadrillas?.nombre;
+        const fechaCoord=cOts.find(o=>o.fecha_coordinada)?.fecha_coordinada?.slice(0,10);
         return `<tr class="${tieneRep?'rep-row':''}" data-grupo="${grupoId||''}" data-tipos='${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}' onclick="verOT('${cOts[0].numero_ot}')">
           <td onclick="event.stopPropagation()"><input type="checkbox" class="ot-sel-cb" data-grupo="${grupoId||''}" data-tipos='${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}' style="cursor:pointer"/></td>
           <td style="font-size:12px;color:#2563eb;font-weight:700">${fmtCodigo(cl.codigo_gigared)}</td>
@@ -1880,7 +2008,9 @@ async function renderOTs(){
             <div>${tipos}</div>
             <div style="margin-top:3px">${badges}</div>
             ${cuadNombre?`<div style="font-size:10px;color:#2563eb;margin-top:2px">🔧 ${cuadNombre}</div>`:''}
+            ${fechaCoord?`<div style="font-size:10px;color:#0891b2;margin-top:2px">📅 Coord: ${new Date(fechaCoord+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}</div>`:''}
             ${cOts.length>1?`<div style="font-size:10px;color:#94a3b8;margin-top:2px">${cOts.length} OTs · ${cOts.map(o=>`<span style="cursor:pointer;color:#2563eb" onclick="event.stopPropagation();verOT('${o.numero_ot}')">${numOT(o.numero_ot)}</span>`).join(', ')}</div>`:''}
+            ${cOts[0]?.fecha_coordinada?`<div style="font-size:10px;color:#7c3aed;font-weight:700;margin-top:2px">📅 ${new Date(cOts[0].fecha_coordinada+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'2-digit',month:'2-digit'})}</div>`:''}
           </td>
           <td style="font-size:11px;color:#64748b;white-space:nowrap">${fmtDT(primerFecha)}</td>
           <td style="font-size:11px;color:#64748b;white-space:nowrap">${primerAsig?new Date(primerAsig+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</td>
@@ -1896,6 +2026,7 @@ async function renderOTs(){
 
 function sortOTs(col){
   OT_FILTRO_FECHA='';
+  OT_FILTRO_COORDINADAS=false;
   if(col==='nodo'){
     // Click en Nodo: sort compuesto automatico — nodo primario + direccion secundaria
     if(OT_SORT==='nodo'){
@@ -1940,10 +2071,10 @@ async function verOT(numeroOT, otIdDirecto){
   try{
     let ot;
     if(otIdDirecto){
-      const r=await sbGet('ordenes_trabajo',`?id=eq.${otIdDirecto}&select=*,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
+      const r=await sbGet('ordenes_trabajo',`?id=eq.${otIdDirecto}&select=*,fecha_coordinada,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
       ot=r[0];
     } else {
-      const r=await sbGet('ordenes_trabajo',`?numero_ot=eq.${numeroOT}&select=*,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
+      const r=await sbGet('ordenes_trabajo',`?numero_ot=eq.${numeroOT}&select=*,fecha_coordinada,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
       ot=r[0];
     }
     if(!ot){body.innerHTML='<p style="color:#dc2626;padding:1rem">OT no encontrada.</p>';return;}
@@ -2010,6 +2141,8 @@ async function verOT(numeroOT, otIdDirecto){
         <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${cl.localidad||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val" style="color:${ot.tag?'#7c3aed':'#94a3b8'};font-weight:700">${ot.tag||'—'}</div></div>
         ${ot.equipo_instalado?`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">📱 Equipo(s) instalado(s)</div><div class="ot-info-val" style="font-family:monospace;font-size:13px;font-weight:700;color:#2563eb;letter-spacing:.05em">${ot.equipo_instalado}</div></div>`:''}
+        ${ot.fecha_coordinada?`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">📅 Fecha coordinada</div><div class="ot-info-val" style="color:#7c3aed;font-weight:700">${new Date(ot.fecha_coordinada+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`:''}
+        ${ot.fecha_coordinada?`<div class="ot-info-item" style="border:1px solid #7dd3fc;background:#f0f9ff"><div class="ot-info-label" style="color:#0891b2">📅 Coordinada</div><div class="ot-info-val" style="color:#0891b2;font-weight:700">${fmtF(ot.fecha_coordinada.slice(0,10))}</div></div>`:''}
         <div class="ot-info-item"><div class="ot-info-label">Emisión Gigared</div><div class="ot-info-val">${fmtF(ot.fecha_emision)}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Asignación Gigared</div><div class="ot-info-val">${fmtF(ot.fecha_asignacion_giga)}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">F. Impresión</div><div class="ot-info-val" style="font-weight:700">${ot.fecha_impresion?new Date(ot.fecha_impresion).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</div></div>
@@ -2054,11 +2187,16 @@ async function verOT(numeroOT, otIdDirecto){
       if(!ot.grupos_ot?.cuadrillas) btns+=`<button class="btn btn-primary" onclick="abrirAsignar(${ot.grupo_id||ot.id})">📍 Asignar</button>`;
       btns+=`<button class="btn" onclick="abrirCambiarEstado(${ot.id},'${est}')">↕ Estado</button>`;
       if(est==='ASIGNADA'||est==='EN_PROCESO') btns+=`<button class="btn btn-green" onclick="abrirCierre(${ot.id},'${ot.numero_ot}','${ot.tipo_tarea||''}')">✓ Cerrar</button>`;
+      if(est==='PENDIENTE'||est==='A_REPROGRAMAR'){
+        const fechaCoord=ot.fecha_coordinada?ot.fecha_coordinada.slice(0,10):'';
+        btns+=`<button class="btn btn-sm" style="font-size:11px;color:#0891b2;border-color:#7dd3fc" onclick="abrirCoordinar(${ot.id},'${fechaCoord}')">📅 ${fechaCoord?'Coordinada: '+new Date(fechaCoord+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'Coordinar fecha'}</button>`;
+      }
     }
     if(est==='FINALIZADA'&&(CU.rol==='superadmin'||CU.rol==='admin')){
       btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb;border-color:rgba(37,99,235,.3)" onclick="abrirEditarCierre(${ot.id})">✏️ Editar cierre</button>`;
       btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarCierre(${ot.id},'${ot.numero_ot}',${ot.grupos_ot?.cuadrilla_id||'null'},${ot.grupo_id||'null'},'${(ot.fecha_fin||'').slice(0,10)}')">🗑️ Eliminar cierre</button>`;
     }
+    btns+=`<button class="btn btn-sm" style="font-size:11px;color:#7c3aed;border-color:rgba(124,58,237,.3)" onclick="abrirCoordeinarFecha(${ot.id},'${ot.fecha_coordinada||''}','${fmtCli(cl)}')">📅 Coordinar</button>`;
     btns+=`<button class="btn btn-sm" style="margin-left:auto;font-size:11px;color:#64748b" onclick="editarTipoOT(${ot.id},'${ot.tipo_item||''}','${ot.tipo_tarea||''}')">✏️ Tipo</button>`;
     btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarOT(${ot.id})">✏️ Editar OT</button>`;
     btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="editarCliente(${cl.id})">👤 Editar cliente</button>`;
@@ -8956,6 +9094,101 @@ window.onload=()=>{
     if(cu){CU=JSON.parse(cu);iniciarApp().catch(e=>{console.warn('Error restaurando sesión:',e);localStorage.removeItem('cu');CU=null;});}
   }catch(e){localStorage.removeItem('cu');CU=null;}
 };
+
+// ═══ COORDINADAS ═══
+
+async function abrirCoordinar(otId, fechaActual){
+  const nueva=prompt('Fecha coordinada con el cliente (AAAA-MM-DD):'+(fechaActual?'\nActual: '+fechaActual:''), fechaActual||new Date().toISOString().slice(0,10));
+  if(nueva===null) return; // canceló
+  try{
+    await sbPatch('ordenes_trabajo','?id=eq.'+otId,{fecha_coordinada:nueva||null});
+    // Recargar el modal
+    const body=document.getElementById('ot-modal-body');
+    if(body){
+      const numEl=body.querySelector('[style*="monospace"]');
+      if(numEl) verOT(null,otId);
+      else verOT(null,otId);
+    }
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function irACoordinadas(){
+  irA('ots');
+  setTimeout(()=>{
+    // Filtrar por OTs coordinadas para los próximos 7 días
+    const hoy=new Date().toISOString().slice(0,10);
+    const en7=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+    // Usar búsqueda con filtro especial de coordinadas
+    OT_FILTRO_COORDINADAS=true;
+    OT_FILTRO_COORD_DESDE=hoy;
+    OT_FILTRO_COORD_HASTA=en7;
+    const estSel=document.getElementById('ot-fil-estado');
+    if(estSel) estSel.value='PENDIENTE';
+    renderOTs();
+  },100);
+}
+
+async function cargarWidgetCoordinadas(){
+  const hoy=new Date().toISOString().slice(0,10);
+  const en7=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+  try{
+    const ots=await sbGet('ordenes_trabajo',
+      '?fecha_coordinada=gte.'+hoy+'T00:00:00'
+      +'&fecha_coordinada=lte.'+en7+'T23:59:59'
+      +'&eliminado=eq.false'
+      +'&select=id,numero_ot,tipo_item,tipo_tarea,fecha_coordinada,grupos_ot(cuadrilla_id),estados_ot(nombre),clientes(apellido,nombre,codigo_gigared)'
+      +'&order=fecha_coordinada.asc&limit=50'
+    )||[];
+
+    // Excluir las ya asignadas a cuadrilla
+    const pendientes=ots.filter(o=>!o.grupos_ot?.cuadrilla_id&&o.estados_ot?.nombre!=='FINALIZADA'&&o.estados_ot?.nombre!=='ELIMINADA_SISTEMA');
+
+    // Actualizar el stat del dashboard
+    const coordEl=document.getElementById('dash-coord');
+    const coordSub=document.getElementById('dash-coord-sub');
+    if(coordEl) coordEl.textContent=pendientes.length||'0';
+    // Contar cuántas son de hoy
+    const hoyCoord=pendientes.filter(o=>o.fecha_coordinada?.startsWith(hoy)).length;
+    if(coordSub) coordSub.textContent=hoyCoord>0?hoyCoord+' para hoy':'';
+
+    // Widget
+    const widget=document.getElementById('dash-coord-widget');
+    const lista=document.getElementById('dash-coord-lista');
+    if(!widget||!lista) return;
+
+    if(!pendientes.length){widget.style.display='none';return;}
+    widget.style.display='';
+
+    const fmtD=d=>new Date(d+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+    // Agrupar por fecha
+    const porFecha={};
+    pendientes.forEach(o=>{
+      const f=o.fecha_coordinada?.slice(0,10)||'';
+      if(!porFecha[f]) porFecha[f]=[];
+      porFecha[f].push(o);
+    });
+
+    let html='';
+    Object.keys(porFecha).sort().slice(0,4).forEach(f=>{
+      const esHoy=f===hoy;
+      html+='<div style="font-size:11px;font-weight:700;color:'+(esHoy?'#dc2626':'#64748b')+';margin-bottom:4px;text-transform:uppercase">'
+        +(esHoy?'🔴 HOY — ':'')+fmtD(f)+'</div>';
+      porFecha[f].forEach(o=>{
+        const cl=o.clientes||{};
+        html+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border2);cursor:pointer" onclick="verOT(\''+o.numero_ot+'\')">'
+          +'<span style="font-size:11px;color:#64748b;min-width:50px;font-family:monospace">'+numOT(o.numero_ot)+'</span>'
+          +'<span style="flex:1;font-size:12px;font-weight:600">'+fmtCli(cl)+'</span>'
+          +'<span style="font-size:10px;color:#64748b">'+((o.tipo_item||o.tipo_tarea||'').replace(/_/g,' '))+'</span>'
+          +'</div>';
+      });
+    });
+    if(Object.keys(porFecha).length>4){
+      html+='<div style="font-size:11px;color:#0891b2;margin-top:6px;cursor:pointer" onclick="irACoordinadas()">+ '+(pendientes.length-porFecha[Object.keys(porFecha).sort()[0]].length)+' más →</div>';
+    }
+    lista.innerHTML=html;
+  }catch(e){console.warn('Error cargando coordinadas:',e);}
+}
+
 // ═══ MODULO INFORMES ═══
 function infTab(tab, el){
   document.querySelectorAll('#inf-nav .ntab').forEach(t=>t.classList.remove('active'));
