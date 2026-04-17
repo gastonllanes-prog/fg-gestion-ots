@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v153</title>
+<title>FG Gestión OTs v154</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V153</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V154</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v153</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v154</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1693,8 +1693,18 @@ async function renderOTs(){
     // El orden secundario y los campos cliente (calle, nodo) se ordenan en memoria
     const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
-    const extraFiltros=(()=>{let f='';if(tipo)f+=`&tipo_tarea=eq.${tipo}`;else if(tipoItem)f+=`&tipo_item=eq.${tipoItem}`;if(OT_FILTRO_FECHA)f+=`&fecha_fin=gte.${OT_FILTRO_FECHA}T00:00:00&fecha_fin=lte.${OT_FILTRO_FECHA}T23:59:59`;if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)f+=`&estado_id=eq.${eObj.id}`;}else{// Sin filtro de estado: excluir ELIMINADA_SISTEMA del listado normal
-const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado_id=neq.${eElim.id}`;}return f;})();
+    const cuadFil=document.getElementById('ot-fil-cuad')?.value||'';
+    const extraFiltros=(()=>{
+      let f='';
+      if(tipo) f+=`&tipo_tarea=eq.${tipo}`;
+      else if(tipoItem) f+=`&tipo_item=eq.${tipoItem}`;
+      if(OT_FILTRO_FECHA) f+=`&fecha_fin=gte.${OT_FILTRO_FECHA}T00:00:00&fecha_fin=lte.${OT_FILTRO_FECHA}T23:59:59`;
+      if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)f+=`&estado_id=eq.${eObj.id}`;}
+      else{const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado_id=neq.${eElim.id}`;}
+      // Filtro de cuadrilla: filtra por grupo asignado a esa cuadrilla
+      if(cuadFil) f+=`&grupos_ot.cuadrilla_id=eq.${cuadFil}`;
+      return f;
+    })();
 
     let ots=[];
     if(q){
@@ -3813,7 +3823,8 @@ function irAConFiltroEstado(estado){
 function inicializarAsignadas(){
   const hoy=new Date().toISOString().slice(0,10);
   const fechaEl=document.getElementById('asig-list-fecha');
-  if(fechaEl&&!fechaEl.value) fechaEl.value=hoy;
+  // Siempre setear la fecha a hoy al entrar a la pantalla
+  if(fechaEl) fechaEl.value=hoy;
   const sel=document.getElementById('asig-list-cuad');
   if(sel&&sel.options.length<=1){
     sbGet('cuadrillas','?activo=eq.true&order=nombre').then(cuads=>{
