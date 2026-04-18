@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4</title>
+<title>FG Cuadrillas v4.1</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -125,7 +125,8 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
 .mat-ctrl{display:flex;align-items:center;gap:6px}
 .mat-btn{width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1}
 .mat-btn.plus{border-color:var(--blue);background:var(--blue-l);color:var(--blue)}
-.mat-qty{min-width:26px;text-align:center;font-size:16px;font-weight:800}
+.mat-qty{width:52px;text-align:center;font-size:17px;font-weight:800;border:1.5px solid var(--border);border-radius:8px;padding:4px 2px;background:#f8fafc;-webkit-appearance:none;appearance:none;font-family:inherit;color:var(--text)}
+.mat-qty:focus{border-color:var(--blue);outline:none;background:#fff}
 /* SER CHIP */
 .ser-chip{padding:5px 12px;border-radius:8px;font-size:12px;font-family:monospace;font-weight:700;cursor:pointer;border:2px solid var(--border);background:transparent;color:var(--muted)}
 .ser-chip.sel{border-color:var(--blue);background:var(--blue);color:#fff}
@@ -154,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.1 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -901,7 +902,7 @@ function renderWizMateriales(p){
         +'<div class="mat-stock">Stock cuadrilla: '+stock+' '+(m.unidad||'')+'</div></div>'
       +'<div class="mat-ctrl">'
         +'<button class="mat-btn" onclick="wizCambiarMat('+m.id+',-1)" '+(qty<=0?'disabled':'')+'>−</button>'
-        +'<span class="mat-qty">'+qty+'</span>'
+        +'<input type="number" inputmode="numeric" class="mat-qty" id="wiz-mat-qty-'+m.id+'" value="'+qty+'" min="0" step="1" onchange="wizSetMatQty('+m.id+',this.value)" oninput="wizSetMatQty('+m.id+',this.value)"/>'
         +'<button class="mat-btn plus" onclick="wizCambiarMat('+m.id+',1)">+</button>'
       +'</div></div>';
   });
@@ -1071,8 +1072,32 @@ function wizSetAccion(accion){var p=PWIZ.pasos[PWIZ.paso];if(p)p.accion=accion;r
 
 function wizCambiarMat(matId,delta){
   var p=PWIZ.pasos[PWIZ.paso];if(!p)return;
-  p.mats[matId]=Math.max(0,(p.mats[matId]||0)+delta);
-  renderWizPaso();
+  var nueva=Math.max(0,(p.mats[matId]||0)+delta);
+  p.mats[matId]=nueva;
+  // Actualizar input en DOM sin re-renderizar (evita perder foco)
+  var inp=document.getElementById('wiz-mat-qty-'+matId);
+  if(inp){
+    inp.value=nueva;
+    // Actualizar estado del botón menos
+    var btnMenos=inp.previousElementSibling;
+    if(btnMenos)btnMenos.disabled=(nueva<=0);
+  }else{
+    renderWizPaso();
+  }
+}
+
+function wizSetMatQty(matId,val){
+  var p=PWIZ.pasos[PWIZ.paso];if(!p)return;
+  var n=parseInt(val,10);
+  if(isNaN(n)||n<0)n=0;
+  p.mats[matId]=n;
+  // Actualizar botón menos
+  var inp=document.getElementById('wiz-mat-qty-'+matId);
+  if(inp){
+    inp.value=n;
+    var btnMenos=inp.previousElementSibling;
+    if(btnMenos)btnMenos.disabled=(n<=0);
+  }
 }
 
 function wizCambiarServ(servId,delta){
