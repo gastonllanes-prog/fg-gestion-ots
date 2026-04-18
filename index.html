@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v159</title>
+<title>FG Gestión OTs v160</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V159</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V160</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v159</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v160</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -563,6 +563,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       </div>
 
       <div class="fg"><label>Estado</label><select id="cuad-activo"><option value="true">Activa</option><option value="false">Inactiva</option></select></div>
+      <div class="fg"><label>PIN app cuadrillas (4 dígitos)</label><input id="cuad-pin" type="tel" maxlength="4" placeholder="Ej: 1234" inputmode="numeric" pattern="[0-9]*" style="letter-spacing:.2em;font-size:18px;font-weight:700"/><div style="font-size:11px;color:#64748b;margin-top:4px">Dejar vacío para no permitir acceso desde la app</div></div>
       <p class="err-msg" id="cuad-err"></p>
       <div style="display:flex;gap:8px;margin-top:1rem">
         <button class="btn btn-primary" style="flex:2" onclick="guardarCuadrilla()">Guardar</button>
@@ -1328,12 +1329,14 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="fg"><label>Nombre completo</label><input id="usr-nombre" placeholder="Gaston Llanes"/></div>
     <div class="fg"><label>Email</label><input id="usr-email" type="email" placeholder="email@ejemplo.com" autocapitalize="none"/></div>
     <div class="fg"><label>Rol</label>
-      <select id="usr-rol">
+      <select id="usr-rol" onchange="toggleCuadRow()">
         <option value="superadmin">Superadmin</option>
         <option value="admin">Admin</option>
         <option value="operador">Operador (solo lectura)</option>
+        <option value="tecnico">Técnico (app móvil)</option>
       </select>
     </div>
+    <div class="fg" id="usr-cuad-row" style="display:none"><label>Cuadrilla (técnicos)</label><select id="usr-cuad-id"><option value="">Sin cuadrilla</option></select></div>
     <div class="fg"><label>Estado</label><select id="usr-activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
     <div id="usr-pass-wrap">
       <div class="fg"><label>Contraseña</label><input id="usr-pass" type="password" placeholder="Mínimo 6 caracteres"/></div>
@@ -2182,7 +2185,7 @@ async function verOT(numeroOT, otIdDirecto){
         </div>`:''}
       <div class="ot-info-grid">
         <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Domicilio</div><div class="ot-info-val">${domHtml}</div></div>
-        <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Teléfonos</div><div class="ot-info-val">${renderTelefonos(cl.telefono1,cl.telefono2,ot.obs_gigared)}</div></div>
+        <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Teléfonos</div><div class="ot-info-val">${renderTelefonos(cl.telefono1,cl.telefono2,ot.obs_gigared,ot,cl)}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Nodo</div><div class="ot-info-val">${cl.nodo||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${cl.localidad||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Precinto/Tag</div><div class="ot-info-val" style="color:${ot.tag?'#7c3aed':'#94a3b8'};font-weight:700">${ot.tag||'—'}</div></div>
@@ -6084,7 +6087,7 @@ async function abrirDetalleCli(cliId){
         <div class="ot-info-item"><div class="ot-info-label">Barrio</div><div class="ot-info-val">${c.barrio||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Localidad</div><div class="ot-info-val">${c.localidad||'—'}</div></div>
         <div class="ot-info-item"><div class="ot-info-label">Nodo</div><div class="ot-info-val" style="font-weight:700;color:#2563eb">${c.nodo||'—'}</div></div>
-        <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Teléfonos</div><div class="ot-info-val">${renderTelefonos(c.telefono1,c.telefono2,'')}</div></div>
+        <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Teléfonos</div><div class="ot-info-val">${renderTelefonos(c.telefono1,c.telefono2,'',null,c)}</div></div>
       </div>`;
 
     // Stats card
@@ -6211,6 +6214,7 @@ async function abrirFormCuadrilla(id=null){
     if(c&&c[0]){
       document.getElementById('cuad-nombre').value=c[0].nombre||'';
       document.getElementById('cuad-activo').value=String(c[0].activo);
+      document.getElementById('cuad-pin').value=c[0].pin_pwa||'';
     }
     // Cargar técnicos actuales de esta cuadrilla
     const tecIds=(asigs||[]).map(a=>a.tecnico_id);
@@ -6218,6 +6222,7 @@ async function abrirFormCuadrilla(id=null){
   }else{
     document.getElementById('cuad-nombre').value='';
     document.getElementById('cuad-activo').value='true';
+    document.getElementById('cuad-pin').value='';
     renderSelectorTecnicos([]);
     agregarSelectorTecnico(); // empezar con 1 selector vacío
   }
@@ -6316,9 +6321,11 @@ async function guardarCuadrilla(){
   try{
     let cuadId=CUAD_EDIT_ID;
     if(cuadId){
-      await sbPatch('cuadrillas',`?id=eq.${cuadId}`,{nombre,activo});
+      const pinVal=document.getElementById('cuad-pin').value.trim()||null;
+      await sbPatch('cuadrillas',`?id=eq.${cuadId}`,{nombre,activo,pin_pwa:pinVal});
     }else{
-      const r=await sbPost('cuadrillas',{nombre,activo});
+      const pinVal=document.getElementById('cuad-pin').value.trim()||null;
+      const r=await sbPost('cuadrillas',{nombre,activo,pin_pwa:pinVal});
       cuadId=(Array.isArray(r)?r[0]:r)?.id;
     }
 
@@ -9093,6 +9100,14 @@ function abrirModalUsuario(id){
   USR_EDIT_ID=id||null;
   document.getElementById('usr-modal-titulo').textContent=id?'Editar usuario':'Nuevo usuario';
   document.getElementById('usr-id-hidden').value=id||'';
+  // Cargar cuadrillas para técnicos
+  const cuadSel=document.getElementById('usr-cuad-id');
+  if(cuadSel&&cuadSel.options.length<=1){
+    sbGet('cuadrillas','?activo=eq.true&order=nombre').then(cuads=>{
+      (cuads||[]).forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;cuadSel.appendChild(o);});
+    });
+  }
+  toggleCuadRow();
   document.getElementById('usr-err').textContent='';
   document.getElementById('usr-pass-wrap').style.display=id?'none':'';
   document.getElementById('usr-pass-change').style.display=id?'':'none';
@@ -9115,6 +9130,12 @@ function abrirModalUsuario(id){
   }
   abrirModal('usr-modal');
 }
+function toggleCuadRow(){
+  const rol=document.getElementById('usr-rol').value;
+  const row=document.getElementById('usr-cuad-row');
+  if(row) row.style.display=rol==='tecnico'?'':'none';
+}
+
 async function guardarUsuario(){
   const err=document.getElementById('usr-err');
   const nombre=document.getElementById('usr-nombre').value.trim();
@@ -9123,7 +9144,10 @@ async function guardarUsuario(){
   const activo=document.getElementById('usr-activo').value==='true';
   const id=USR_EDIT_ID;
   if(!nombre||!email){err.textContent='Nombre y email son obligatorios';return;}
+  const cuadId=document.getElementById('usr-cuad-id')?.value;
   const data={nombre,email,rol,activo};
+  if(rol==='tecnico'&&cuadId) data.cuadrilla_id=parseInt(cuadId)||null;
+  else data.cuadrilla_id=null;
   if(!id){
     const pass=document.getElementById('usr-pass').value;
     if(!pass||pass.length<6){err.textContent='Contraseña mínimo 6 caracteres';return;}
@@ -9245,6 +9269,90 @@ function consolidarTelefonos(tel1, tel2, textoLibre){
 }
 
 /**
+
+// ── WHATSAPP MENSAJES PRE-ARMADOS ──────────────────────────────────────────
+
+const WHATSAPP_TEMPLATES = {
+  INSTALACION: (nombre, dir) =>
+    'Hola ' + nombre + ', te escribimos de la contratista de Gigared para coordinar la instalación de tu servicio.'
+    + (dir ? ' Tu dirección es: ' + dir + '.' : '')
+    + ' ¿Es correcta? ¿Qué horario te queda mejor?',
+
+  REPARACION: (nombre, dir) =>
+    'Hola ' + nombre + ', te escribimos de la contratista de Gigared por tu solicitud técnica.'
+    + (dir ? ' Tu dirección es: ' + dir + '.' : '')
+    + ' ¿Es correcta? ¿En qué horario podemos pasar o contactarte?',
+
+  CAMBIO_DOMICILIO: (nombre, dir) =>
+    'Hola ' + nombre + ', te escribimos de la contratista de Gigared para coordinar tu cambio de domicilio.'
+    + (dir ? ' Tu dirección es: ' + dir + '.' : '')
+    + ' ¿Es correcta? ¿Qué disponibilidad tenés?',
+
+  ADICIONAL: (nombre, dir) =>
+    'Hola ' + nombre + ', te escribimos de la contratista de Gigared para coordinar la gestión solicitada.'
+    + (dir ? ' Tu dirección es: ' + dir + '.' : '')
+    + ' ¿Es correcta? ¿Qué horario te queda cómodo?',
+
+  GENERICO: (nombre, dir) =>
+    'Hola ' + nombre + ', te escribimos de la contratista de Gigared.'
+    + (dir ? ' Tu dirección es: ' + dir + '.' : '')
+    + ' ¿Podemos coordinar?',
+};
+
+/**
+ * Construye el mensaje de WhatsApp según tipo de OT y datos del cliente.
+ * @param {object} ot  — {tipo_item, tipo_tarea}  (puede ser null/vacío)
+ * @param {object} cl  — {apellido, nombre, calle, numero_domicilio, domicilio}
+ * @returns {string} mensaje listo para encodeURIComponent, o '' si no aplica
+ */
+function buildWhatsappMessage(ot, cl) {
+  const tipo = (ot && (ot.tipo_item || ot.tipo_tarea)) || '';
+
+  // Desconexión: sin mensaje agresivo
+  if (tipo === 'DESCONEXION' || tipo === 'DESCONECTAR') return '';
+
+  // Nombre: "APELLIDO Nombre" o fallback
+  const nombre = cl
+    ? (((cl.apellido || '') + (cl.nombre ? ' ' + cl.nombre : '')).trim() || 'cliente')
+    : 'cliente';
+
+  // Dirección: calle + número si existen, sino domicilio crudo
+  let dir = '';
+  if (cl) {
+    if (cl.calle) {
+      dir = cl.calle + (cl.numero_domicilio ? ' ' + cl.numero_domicilio : '');
+    } else if (cl.domicilio) {
+      dir = cl.domicilio;
+    }
+  }
+
+  // Seleccionar plantilla
+  const INST = ['BASICA','ONU','CABLEMODEM','CM_EXISTENTE','CAMBIO_TECNOLOGIA',
+                'RECONEXION','RECONEXION_EQUIPO','INSTALAR'];
+  const ADIC = ['BOCA_ADICIONAL','AGREGA_TV','TV_BOX','DECODIFICADOR',
+                'DECODIFICADOR_ADJ','SMART_CARD','GIGACAM'];
+
+  let tpl;
+  if (tipo === 'REPARACION')           tpl = WHATSAPP_TEMPLATES.REPARACION;
+  else if (tipo === 'CAMBIO_DOMICILIO') tpl = WHATSAPP_TEMPLATES.CAMBIO_DOMICILIO;
+  else if (INST.includes(tipo))         tpl = WHATSAPP_TEMPLATES.INSTALACION;
+  else if (ADIC.includes(tipo))         tpl = WHATSAPP_TEMPLATES.ADICIONAL;
+  else                                   tpl = WHATSAPP_TEMPLATES.GENERICO;
+
+  return tpl(nombre, dir);
+}
+
+/**
+ * Construye la URL de WhatsApp.
+ * @param {string} wa      — número en formato "549XXXXXXXXXX"
+ * @param {string} mensaje — texto del mensaje (puede ser '')
+ * @returns {string} URL completa
+ */
+function getWhatsappUrl(wa, mensaje) {
+  const base = 'https://wa.me/' + wa;
+  return mensaje ? base + '?text=' + encodeURIComponent(mensaje) : base;
+}
+
  * Renderiza un teléfono como HTML con link WhatsApp.
  * @param {string|object} tel — string crudo o {original, nacional, wa}
  * @param {object} opts — {small, mostrarOriginal}
@@ -9259,7 +9367,10 @@ function renderTelefono(tel, opts={}){
   let html = `<span style="font-size:${fs};display:inline-flex;align-items:center;gap:5px">`;
   html += `<a href="tel:${norm ? norm.nacional : display.replace(/\D/g,'')}" style="color:#2563eb" onclick="event.stopPropagation()">${display}</a>`;
   if(wa){
-    html += `<a href="https://wa.me/${wa}" target="_blank" onclick="event.stopPropagation()" style="color:#16a34a;font-size:15px;line-height:1" title="Abrir WhatsApp">💬</a>`;
+    // Si hay contexto de OT/cliente, armar mensaje pre-armado
+    const mensaje = (opts.ot || opts.cl) ? buildWhatsappMessage(opts.ot||{}, opts.cl||{}) : '';
+    const waUrl = getWhatsappUrl(wa, mensaje);
+    html += `<a href="${waUrl}" target="_blank" onclick="event.stopPropagation()" style="color:#16a34a;font-size:15px;line-height:1" title="Abrir WhatsApp">💬</a>`;
   }
   html += '</span>';
   return html;
@@ -9268,13 +9379,12 @@ function renderTelefono(tel, opts={}){
 /**
  * Renderiza TODOS los teléfonos de un cliente (lista vertical).
  */
-function renderTelefonos(tel1, tel2, obsGigared){
+function renderTelefonos(tel1, tel2, obsGigared, ot, cl){
   const tels = consolidarTelefonos(tel1, tel2, obsGigared);
   if(!tels.length) return '<span style="color:#cbd5e1">—</span>';
   return tels.map((t,i) =>
     `<div style="${i>0?'margin-top:4px':''}">`
-    + renderTelefono(t)
-    + (i===0&&tels.length>1?'':'' )
+    + renderTelefono(t, {ot, cl})
     + '</div>'
   ).join('');
 }
