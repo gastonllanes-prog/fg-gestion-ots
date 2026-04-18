@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v162</title>
+<title>FG Gestión OTs v163</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V162</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V163</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v162</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v163</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1470,30 +1470,61 @@ async function doLogin(){
   const pass=document.getElementById('l-pass').value.trim();
   const err=document.getElementById('l-err');
   const spin=document.getElementById('l-spin');
-  if(!input||!pass){err.textContent='Completá usuario y contraseña';return;}
-  spin.style.display='inline-block';err.textContent='';
 
-  // Fallback local — acceso de recuperación
-  const LOCAL=[{id:1,nombre:'Gaston Llanes',email:'gastonllanes@gmail.com',password:'admin123',rol:'superadmin',activo:true}];
-  const loc=LOCAL.find(u=>(u.email===input||u.nombre===input)&&u.password===pass&&u.activo);
-  if(loc){
-    CU=loc;localStorage.setItem('cu',JSON.stringify(CU));spin.style.display='none';
-    iniciarApp().catch(e=>{err.textContent='Error al iniciar: '+e.message;spin.style.display='none';});
+  console.log('[LOGIN] Intentando ingresar con:', input, '/ pass:', pass.slice(0,3)+'***');
+  err.textContent='';
+
+  if(!input||!pass){
+    err.textContent='Completá usuario y contraseña';
+    console.log('[LOGIN] Campos vacíos');
     return;
   }
 
-  // Consulta a la BD para todos los demás usuarios
+  spin.style.display='inline-block';
+
+  // Fallback local
+  const LOCAL=[{id:1,nombre:'Gaston Llanes',email:'gastonllanes@gmail.com',password:'admin123',rol:'superadmin',activo:true}];
+  const loc=LOCAL.find(u=>(u.email===input||u.nombre===input)&&u.password===pass&&u.activo);
+  console.log('[LOGIN] Fallback local match:', !!loc, '| input===email:', input==='gastonllanes@gmail.com', '| pass===admin123:', pass==='admin123');
+
+  if(loc){
+    console.log('[LOGIN] Entrando por fallback local');
+    CU=loc;
+    localStorage.setItem('cu',JSON.stringify(CU));
+    spin.style.display='none';
+    iniciarApp().catch(e=>{
+      console.error('[LOGIN] Error en iniciarApp:', e);
+      err.textContent='Error al iniciar: '+e.message;
+      spin.style.display='none';
+    });
+    return;
+  }
+
+  // Consulta BD
   try{
+    console.log('[LOGIN] Consultando BD...');
     const enc=encodeURIComponent(pass);
     const [dEmail,dNombre]=await Promise.all([
-      sbGet('usuarios',`?email=ilike.${encodeURIComponent(input)}&password=eq.${enc}&activo=eq.true`),
-      sbGet('usuarios',`?nombre=ilike.${encodeURIComponent(input)}&password=eq.${enc}&activo=eq.true`)
+      sbGet('usuarios','?email=ilike.'+encodeURIComponent(input)+'&password=eq.'+enc+'&activo=eq.true'),
+      sbGet('usuarios','?nombre=ilike.'+encodeURIComponent(input)+'&password=eq.'+enc+'&activo=eq.true')
     ]);
+    console.log('[LOGIN] BD por email:', dEmail, '| BD por nombre:', dNombre);
     const d=(dEmail&&dEmail.length)?dEmail:(dNombre&&dNombre.length)?dNombre:null;
-    if(!d||!d.length){err.textContent='Usuario o contraseña incorrectos';spin.style.display='none';return;}
-    CU=d[0];localStorage.setItem('cu',JSON.stringify(CU));spin.style.display='none';
+    if(!d||!d.length){
+      err.textContent='Usuario o contraseña incorrectos';
+      spin.style.display='none';
+      console.log('[LOGIN] Sin resultados en BD');
+      return;
+    }
+    CU=d[0];
+    localStorage.setItem('cu',JSON.stringify(CU));
+    spin.style.display='none';
     iniciarApp().catch(e=>{err.textContent='Error al iniciar: '+e.message;spin.style.display='none';});
-  }catch(e){err.textContent='Error de conexión: '+e.message;spin.style.display='none';}
+  }catch(e){
+    console.error('[LOGIN] Error BD:', e);
+    err.textContent='Error de conexión: '+e.message;
+    spin.style.display='none';
+  }
 }
 document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 function logout(){localStorage.removeItem('cu');CU=null;document.body.classList.remove('app-ready');document.getElementById('s-login').style.display='flex';}
@@ -9363,6 +9394,7 @@ function getWhatsappUrl(wa, mensaje) {
   return mensaje ? base + '?text=' + encodeURIComponent(mensaje) : base;
 }
 
+/**
  * Renderiza un teléfono como HTML con link WhatsApp.
  * @param {string|object} tel — string crudo o {original, nacional, wa}
  * @param {object} opts — {small, mostrarOriginal}
