@@ -1,5 +1,5 @@
 // FG Cuadrillas — Service Worker v1
-const CACHE = 'fg-cuad-v1';
+const CACHE = 'fg-cuad-v2';
 const SHELL = ['./cuadrilla.html'];
 
 self.addEventListener('install', e => {

@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v2</title>
+<title>FG Cuadrillas v2.1</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -114,7 +114,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v2 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v2.1 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -191,6 +191,47 @@ let CUAD=null,TECNICOS=[],GRUPOS=[],GRUPO_ACTIVO=null,OT_ACTIVA=null,FILTRO='',E
 // Jerarquía de cierre — idéntica al sistema principal
 const OT_JERARQUIA={'BASICA':1,'CABLEMODEM':2,'ONU':2,'CM_EXISTENTE':2,'BOCA_ADICIONAL':3,'DECODIFICADOR':4,'DECODIFICADOR_ADJ':4,'SMART_CARD':5,'TV_BOX':6,'AGREGA_TV':7,'CAMBIO_TECNOLOGIA':7,'RECONEXION':7,'RECONEXION_EQUIPO':7,'CAMBIO_DOMICILIO':8,'GIGACAM':9,'REPARACION':10,'DESCONEXION':11};
 const ordenOT=tipo=>OT_JERARQUIA[tipo]||50;
+
+
+// ── WHATSAPP — plantillas de mensaje por tipo de OT ─────────────────────────
+const WHATSAPP_TEMPLATES = {
+  INSTALACION: (nombre, dir) =>
+    'Hola ' + nombre + ', te escribimos de la contratista de Gigared para coordinar la instalación de tu servicio.'
+    + (dir ? ' Tu dirección es: ' + dir + '.' : '') + ' ¿Es correcta? ¿Qué horario te queda mejor?',
+  REPARACION: (nombre, dir) =>
+    'Hola ' + nombre + ', te escribimos de la contratista de Gigared por tu solicitud técnica.'
+    + (dir ? ' Tu dirección es: ' + dir + '.' : '') + ' ¿Es correcta? ¿En qué horario podemos pasar o contactarte?',
+  CAMBIO_DOMICILIO: (nombre, dir) =>
+    'Hola ' + nombre + ', te escribimos de la contratista de Gigared para coordinar tu cambio de domicilio.'
+    + (dir ? ' Tu dirección es: ' + dir + '.' : '') + ' ¿Es correcta? ¿Qué disponibilidad tenés?',
+  ADICIONAL: (nombre, dir) =>
+    'Hola ' + nombre + ', te escribimos de la contratista de Gigared para coordinar la gestión solicitada.'
+    + (dir ? ' Tu dirección es: ' + dir + '.' : '') + ' ¿Es correcta? ¿Qué horario te queda cómodo?',
+  GENERICO: (nombre, dir) =>
+    'Hola ' + nombre + ', te escribimos de la contratista de Gigared.'
+    + (dir ? ' Tu dirección es: ' + dir + '.' : '') + ' ¿Podemos coordinar?',
+};
+
+function buildWhatsappMessage(ot, cl) {
+  const tipo = (ot && (ot.tipo_item || ot.tipo_tarea)) || '';
+  if (tipo === 'DESCONEXION' || tipo === 'DESCONECTAR') return '';
+  const nombre = cl ? (((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim()||'cliente') : 'cliente';
+  let dir = '';
+  if (cl) { if(cl.calle){dir=cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'');} else if(cl.domicilio){dir=cl.domicilio;} }
+  const INST=['BASICA','ONU','CABLEMODEM','CM_EXISTENTE','CAMBIO_TECNOLOGIA','RECONEXION','RECONEXION_EQUIPO','INSTALAR'];
+  const ADIC=['BOCA_ADICIONAL','AGREGA_TV','TV_BOX','DECODIFICADOR','DECODIFICADOR_ADJ','SMART_CARD','GIGACAM'];
+  let tpl;
+  if(tipo==='REPARACION') tpl=WHATSAPP_TEMPLATES.REPARACION;
+  else if(tipo==='CAMBIO_DOMICILIO') tpl=WHATSAPP_TEMPLATES.CAMBIO_DOMICILIO;
+  else if(INST.includes(tipo)) tpl=WHATSAPP_TEMPLATES.INSTALACION;
+  else if(ADIC.includes(tipo)) tpl=WHATSAPP_TEMPLATES.ADICIONAL;
+  else tpl=WHATSAPP_TEMPLATES.GENERICO;
+  return tpl(nombre, dir);
+}
+
+function getWhatsappUrl(wa, mensaje) {
+  return mensaje ? 'https://wa.me/'+wa+'?text='+encodeURIComponent(mensaje) : 'https://wa.me/'+wa;
+}
 
 // Helpers
 const numOT=n=>n?n.replace('005-','').replace(/^0+/,''):'';
@@ -465,7 +506,7 @@ function renderGrupo(){
   if(tels.length){
     html+='<div class="card" style="margin-bottom:12px">'
       +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Teléfonos</div>'
-      +tels.map(t=>'<div class="tel-row"><span class="tel-num">'+t.display+'</span><a href="tel:'+t.tel+'" class="tel-icon">📞</a><a href="https://wa.me/'+t.wa+'" target="_blank" class="tel-icon">💬</a></div>').join('')
+      +tels.map(t=>'<div class="tel-row"><span class="tel-num">'+t.display+'</span><a href="tel:'+t.tel+'" class="tel-icon">📞</a><a href="'+getWhatsappUrl(t.wa, buildWhatsappMessage(GRUPO_ACTIVO?.ordenes_trabajo?.[0]||{}, GRUPO_ACTIVO?.ordenes_trabajo?.[0]?.clientes||{}))+'" target="_blank" class="tel-icon">💬</a></div>').join('')
     +'</div>';
   }
 
@@ -565,7 +606,7 @@ function renderDetalle(ot){
   if(tels.length){
     html+='<div class="card" style="margin-bottom:14px">'
       +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Teléfonos</div>'
-      +tels.map(t=>'<div class="tel-row"><span class="tel-num">'+t.display+'</span><a href="tel:'+t.tel+'" class="tel-icon">📞</a><a href="https://wa.me/'+t.wa+'" target="_blank" class="tel-icon">💬</a></div>').join('')
+      +tels.map(t=>'<div class="tel-row"><span class="tel-num">'+t.display+'</span><a href="tel:'+t.tel+'" class="tel-icon">📞</a><a href="'+getWhatsappUrl(t.wa, buildWhatsappMessage(GRUPO_ACTIVO?.ordenes_trabajo?.[0]||{}, GRUPO_ACTIVO?.ordenes_trabajo?.[0]?.clientes||{}))+'" target="_blank" class="tel-icon">💬</a></div>').join('')
     +'</div>';
   }
 
