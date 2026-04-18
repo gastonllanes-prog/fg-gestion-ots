@@ -165,7 +165,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <h1>FG Gestión OTs</h1>
     <p>Sistema de gestión Gigared</p>
     <div class="login-card">
-      <div class="fg"><label>Email</label><input id="l-email" type="email" placeholder="tu@email.com" autocomplete="off" autocapitalize="none"/></div>
+      <div class="fg"><label>Usuario</label><input id="l-email" type="text" placeholder="Tu usuario o email" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"/></div>
       <div class="fg" style="margin-bottom:.25rem"><label>Contraseña</label><input id="l-pass" type="password" placeholder="••••••"/></div>
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
@@ -1470,14 +1470,19 @@ async function doLogin(){
   const pass=document.getElementById('l-pass').value.trim();
   const err=document.getElementById('l-err');
   const spin=document.getElementById('l-spin');
-  if(!email||!pass){err.textContent='Completá email y contraseña';return;}
+  if(!email||!pass){err.textContent='Completá usuario y contraseña';return;}
   spin.style.display='inline-block';err.textContent='';
   const USUARIOS_LOCAL=[{id:1,nombre:'Gaston Llanes',email:'gastonllanes@gmail.com',password:'admin123',rol:'superadmin',activo:true}];
   const local=USUARIOS_LOCAL.find(u=>u.email===email&&u.password===pass&&u.activo);
   if(local){CU=local;localStorage.setItem('cu',JSON.stringify(CU));spin.style.display='none';iniciarApp().catch(e=>{err.textContent='Error al iniciar: '+e.message;spin.style.display='none';});return;}
   try{
-    const d=await sbGet('usuarios',`?email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(pass)}&activo=eq.true`);
-    if(!d||!d.length){err.textContent='Email o contraseña incorrectos';spin.style.display='none';return;}
+    // Buscar por email o por nombre (username) — compatibilidad con ambos formatos
+    const [dEmail, dNombre]=await Promise.all([
+      sbGet('usuarios',`?email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(pass)}&activo=eq.true`),
+      sbGet('usuarios',`?nombre=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(pass)}&activo=eq.true`)
+    ]);
+    const d=(dEmail&&dEmail.length)?dEmail:(dNombre&&dNombre.length)?dNombre:null;
+    if(!d||!d.length){err.textContent='Usuario o contraseña incorrectos';spin.style.display='none';return;}
     CU=d[0];localStorage.setItem('cu',JSON.stringify(CU));iniciarApp();
   }catch(e){err.textContent='Error de conexión: '+e.message;spin.style.display='none';}
 }
