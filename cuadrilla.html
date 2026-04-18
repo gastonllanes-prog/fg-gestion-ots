@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.2</title>
+<title>FG Cuadrillas v4.3</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.2 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.3 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -391,7 +391,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr;
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.3';
 
   // Cargar estados con fallback
   try{
@@ -419,7 +419,7 @@ async function cargarDatos(){
       sbGet('cuadrilla_tecnicos','?cuadrilla_id=eq.'+CUAD.id+'&activo=eq.true&select=tecnicos(nombre)'),
       sbGet('grupos_ot',
         '?fecha_trabajo=eq.'+hoy()+'&cuadrilla_id=eq.'+CUAD.id+'&eliminado=eq.false'
-        +'&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,hora_inicio_tec,hora_fin_tec,estado_id,estados_ot(id,nombre),clientes(id,apellido,nombre,calle,numero_domicilio,domicilio,barrio,localidad,nodo,telefono1,telefono2,lat_domicilio,lng_domicilio,fecha_gps_domicilio))'
+        +'&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,hora_inicio_tec,hora_fin_tec,estado_id,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,localidad,nodo,telefono1,telefono2,lat_domicilio,lng_domicilio,fecha_gps_domicilio))'
         +'&order=horario_visita.asc.nullslast'
       )
     ]);
@@ -472,7 +472,7 @@ function renderGrupos(){
     var dir=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'');
     var hora=g.horario_visita?g.horario_visita.slice(0,5):'';
     var est=estadoGrupo(ots);
-    var codCli=cl.codigo_gigared?cl.codigo_gigared.replace(/^005[0-9]{3}0*/,''):'';
+    var codCli=cl.codigo_gigared?String(cl.codigo_gigared).replace(/^005/,'').replace(/^0+/,'')||String(cl.codigo_gigared):'';
     var resumen=ots.slice(0,3).map(function(o){return(TIPO_LABELS[o.tipo_item||o.tipo_tarea]||o.tipo_item||'?').replace(/^[^\s]+ /,'');}).join(' + ');
     return'<div class="card card-tap" onclick="verGrupo('+g.id+')">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">'
