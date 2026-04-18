@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas</title>
+<title>FG Cuadrillas v2</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -24,86 +24,60 @@
 }
 html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text)}
 body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height:100vh}
-
-/* LOGIN */
 .login-bg{position:fixed;inset:0;background:linear-gradient(160deg,#1e3a5f 0%,#2563eb 100%);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
 .login-box{background:#fff;border-radius:22px;padding:32px 24px;width:100%;max-width:380px;box-shadow:0 24px 60px rgba(0,0,0,.25)}
 .login-logo{text-align:center;margin-bottom:28px}
 .login-logo-icon{font-size:44px;margin-bottom:8px}
-.login-logo-title{font-size:24px;font-weight:800;color:#1e3a5f;letter-spacing:.3px}
-.login-logo-sub{font-size:13px;color:var(--muted);margin-top:4px}
+.login-logo-title{font-size:24px;font-weight:800;color:#1e3a5f}
+.login-logo-sub{font-size:13px;color:#64748b;margin-top:4px}
 .field{margin-bottom:16px}
-.field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+.field label{display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
 .field select,.field input{width:100%;padding:14px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:16px;font-family:inherit;outline:none;background:#fff;transition:border-color .2s;color:var(--text)}
 .field select:focus,.field input:focus{border-color:var(--blue)}
 .pin-field{display:flex;gap:10px;justify-content:center;margin:8px 0}
 .pin-digit{width:58px;height:68px;border:2px solid var(--border);border-radius:14px;font-size:28px;font-weight:800;text-align:center;outline:none;font-family:monospace;color:var(--blue);background:#f8fafc;transition:border-color .2s;-webkit-text-security:disc;appearance:none}
 .pin-digit:focus{border-color:var(--blue);background:#fff}
-.btn-login{width:100%;padding:16px;background:var(--blue);color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:800;cursor:pointer;margin-top:4px;transition:background .15s;font-family:inherit}
+.btn-login{width:100%;padding:16px;background:var(--blue);color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:800;cursor:pointer;margin-top:4px;font-family:inherit}
 .btn-login:active{background:var(--blue-d)}
 .btn-login:disabled{opacity:.6;cursor:not-allowed}
 .login-err{min-height:22px;font-size:13px;color:var(--red);text-align:center;margin-top:10px;font-weight:500}
-
-/* TOPBAR */
 .topbar{background:var(--blue);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:40;box-shadow:0 2px 12px rgba(37,99,235,.3);min-height:58px}
 .topbar-back{background:rgba(255,255,255,.15);border:none;color:#fff;padding:8px 12px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0}
 .topbar-info{flex:1;min-width:0}
 .topbar-title{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.topbar-sub{font-size:11px;opacity:.75;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-sub{font-size:11px;opacity:.75;margin-top:1px}
 .topbar-salir{background:rgba(255,255,255,.15);border:none;color:#fff;padding:8px 12px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0}
-
-/* SCROLL */
 .page{flex:1;overflow-y:auto;padding:14px;padding-bottom:28px}
-
-/* CARDS */
 .card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--sh);border:1px solid var(--border);margin-bottom:12px}
-.card-tap{cursor:pointer;transition:transform .1s,box-shadow .1s;-webkit-user-select:none;user-select:none}
-.card-tap:active{transform:scale(.98);box-shadow:0 1px 4px rgba(0,0,0,.08)}
-
-/* BADGES */
+.card-tap{cursor:pointer;transition:transform .1s;-webkit-user-select:none;user-select:none}
+.card-tap:active{transform:scale(.98)}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
 .b-pend{background:var(--amber-l);color:var(--amber)}
 .b-enc{background:var(--blue-l);color:var(--blue)}
 .b-fin{background:var(--cyan-l);color:var(--cyan)}
 .b-ok{background:var(--green-l);color:var(--green)}
-
-/* FILTROS */
 .filtros{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding-bottom:3px;margin-bottom:14px}
 .filtros::-webkit-scrollbar{display:none}
-.chip{padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:2px solid transparent;cursor:pointer;white-space:nowrap;background:var(--card);color:var(--muted);border-color:var(--border);transition:all .15s}
+.chip{padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:2px solid var(--border);cursor:pointer;white-space:nowrap;background:var(--card);color:var(--muted)}
 .chip.active{background:var(--blue);color:#fff;border-color:var(--blue)}
-
-/* BTNS */
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px 20px;border-radius:13px;font-size:16px;font-weight:700;border:2px solid transparent;cursor:pointer;width:100%;transition:all .12s;font-family:inherit;letter-spacing:.2px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px 20px;border-radius:13px;font-size:16px;font-weight:700;border:2px solid transparent;cursor:pointer;width:100%;font-family:inherit}
 .btn:active{transform:scale(.97)}
 .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .btn-primary{background:var(--blue);color:#fff}
-.btn-primary:active:not(:disabled){background:var(--blue-d)}
 .btn-green{background:var(--green);color:#fff}
-.btn-green:active:not(:disabled){background:#15803d}
-.btn-red{background:var(--red);color:#fff}
-.btn-outline{background:#fff;color:var(--blue);border-color:var(--blue)}
-.btn-ghost{background:var(--bg);color:var(--muted);border-color:var(--border)}
-.btn + .btn{margin-top:10px}
-.btn-sm{padding:10px 16px;font-size:14px;width:auto;display:inline-flex}
-
-/* DETALLE INFO */
+.btn+.btn{margin-top:10px}
 .info-grid{display:flex;flex-direction:column;gap:1px;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
 .info-row{display:flex;gap:12px;padding:11px 14px;background:#fff;align-items:flex-start}
 .info-row:not(:last-child){border-bottom:1px solid var(--border)}
 .info-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:76px;padding-top:1px;flex-shrink:0}
-.info-val{font-size:14px;color:var(--text);flex:1;line-height:1.4}
-
-/* TIMING */
+.info-val{font-size:14px;flex:1;line-height:1.4}
 .timing-box{background:linear-gradient(135deg,var(--blue-l),#f0fdf4);border:1.5px solid #bfdbfe;border-radius:13px;padding:14px 16px;margin-bottom:14px}
 .timing-rows{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .timing-item{background:#fff;border-radius:10px;padding:10px 12px;border:1px solid var(--border)}
-.timing-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.timing-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
 .timing-val{font-size:16px;font-weight:800;color:var(--blue);font-family:monospace}
 .timing-dur{text-align:center;margin-top:8px;font-size:13px;font-weight:700;color:var(--green)}
-.gps-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--green);background:var(--green-l);padding:3px 9px;border-radius:99px;font-weight:600;margin-top:6px}
-
-/* ESTADO GRANDE */
+.gps-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--green);background:var(--green-l);padding:3px 9px;border-radius:99px;font-weight:600}
 .estado-banner{border-radius:13px;padding:18px;text-align:center;margin-bottom:14px}
 .estado-banner.enc{background:var(--blue-l);border:2px solid #93c5fd}
 .estado-banner.fin{background:var(--cyan-l);border:2px solid #67e8f9}
@@ -111,77 +85,58 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
 .estado-banner-icon{font-size:32px;margin-bottom:6px}
 .estado-banner-txt{font-size:15px;font-weight:800}
 .estado-banner-sub{font-size:12px;margin-top:4px;opacity:.75}
-
-/* TEL */
 .tel-row{display:flex;align-items:center;gap:10px;padding:6px 0}
-.tel-num{font-size:15px;font-weight:600;flex:1;color:var(--text)}
+.tel-num{font-size:15px;font-weight:600;flex:1}
 .tel-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;text-decoration:none;font-size:20px;background:var(--bg);border:1px solid var(--border);flex-shrink:0}
-
-/* EMPTY */
 .empty{text-align:center;padding:48px 20px;color:var(--muted)}
 .empty-icon{font-size:52px;margin-bottom:12px}
 .empty-txt{font-size:16px;font-weight:700;margin-bottom:6px}
 .empty-sub{font-size:13px}
-
-/* LOADING */
 .loading{display:flex;align-items:center;justify-content:center;gap:12px;padding:48px 20px;color:var(--muted);font-size:14px}
 .spin{width:22px;height:22px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
 @keyframes sp{to{transform:rotate(360deg)}}
-
-/* INTEGRANTES */
 .integrantes{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
 .integrante-chip{background:var(--blue-l);color:var(--blue);padding:5px 12px;border-radius:99px;font-size:12px;font-weight:700}
-
-/* OT CARD */
-.ot-hora{font-size:12px;font-weight:700;color:var(--muted);background:#f1f5f9;padding:3px 9px;border-radius:7px;display:inline-block}
-.ot-num{font-size:24px;font-weight:900;color:#1e3a5f;letter-spacing:.5px}
-.ot-nombre{font-size:15px;font-weight:700;margin-top:2px}
-.ot-dir{font-size:13px;color:var(--muted);margin-top:4px}
-.ot-tipo{font-size:11px;font-weight:700;color:var(--blue);background:var(--blue-l);padding:3px 9px;border-radius:99px;display:inline-block;margin-top:7px}
-.ot-timing{font-size:11px;margin-top:5px}
-
-/* SEPARADOR */
-.sep{height:1px;background:var(--border);margin:14px 0}
+.aviso-fallback{background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:10px}
+.ot-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.ot-item:last-child{border-bottom:none}
+.ot-item-icon{font-size:20px;flex-shrink:0;width:28px;text-align:center}
+.ot-item-body{flex:1;min-width:0}
+.ot-item-tipo{font-size:14px;font-weight:700}
+.ot-item-num{font-size:11px;color:var(--muted);margin-top:2px}
 </style>
 </head>
 <body>
 
-<!-- ══ LOGIN ══════════════════════════════════════════════════════════════ -->
+<!-- LOGIN -->
 <div id="s-login" class="login-bg">
   <div class="login-box">
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">Sistema de órdenes de trabajo</div>
+      <div class="login-logo-sub">v2 · Órdenes de trabajo</div>
     </div>
-
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
-      <select id="l-cuad">
-        <option value="">Cargando cuadrillas...</option>
-      </select>
+      <select id="l-cuad"><option value="">Cargando...</option></select>
     </div>
-
     <div class="field">
       <label>PIN de acceso</label>
-      <div class="pin-field" id="pin-field">
+      <div class="pin-field">
         <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]*" id="pin0" autocomplete="off"/>
         <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]*" id="pin1" autocomplete="off"/>
         <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]*" id="pin2" autocomplete="off"/>
         <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]*" id="pin3" autocomplete="off"/>
       </div>
     </div>
-
     <button class="btn-login" id="btn-ingresar" onclick="doLogin()">Ingresar</button>
     <div class="login-err" id="l-err"></div>
   </div>
 </div>
 
-<!-- ══ APP ════════════════════════════════════════════════════════════════ -->
+<!-- APP -->
 <div id="s-app" style="display:none;flex-direction:column;flex:1;min-height:100vh">
-
-  <!-- TOPBAR -->
-  <div class="topbar" id="topbar">
+  <div class="topbar">
     <button class="topbar-back" id="btn-volver" style="display:none" onclick="volverALista()">← Volver</button>
     <div class="topbar-info">
       <div class="topbar-title" id="topbar-title">Mis OTs de hoy</div>
@@ -190,585 +145,583 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <button class="topbar-salir" onclick="salir()">Salir</button>
   </div>
 
-  <!-- PANTALLA LISTA -->
+  <!-- LISTA DE GRUPOS/CLIENTES -->
   <div class="page" id="s-lista">
-
-    <!-- Integrantes -->
     <div id="lista-integrantes" class="integrantes"></div>
-
-    <!-- Filtros -->
-    <div class="filtros" id="filtros">
-      <div class="chip active" data-est="" onclick="setFiltro('',this)">Todas</div>
-      <div class="chip" data-est="ASIGNADA" onclick="setFiltro('ASIGNADA',this)">Pendientes</div>
-      <div class="chip" data-est="EN_PROCESO" onclick="setFiltro('EN_PROCESO',this)">En curso</div>
-      <div class="chip" data-est="FINALIZADA_TECNICO" onclick="setFiltro('FINALIZADA_TECNICO',this)">Realizadas</div>
+    <div id="aviso-estados"></div>
+    <div class="filtros">
+      <div class="chip active" onclick="setFiltro('',this)">Todas</div>
+      <div class="chip" onclick="setFiltro('PENDIENTE',this)">Pendientes</div>
+      <div class="chip" onclick="setFiltro('EN_PROCESO',this)">En curso</div>
+      <div class="chip" onclick="setFiltro('FINALIZADA_TECNICO',this)">Realizadas</div>
     </div>
-
-    <!-- Lista -->
-    <div id="lista-ots"></div>
-
+    <div id="lista-grupos"></div>
   </div>
 
-  <!-- PANTALLA DETALLE -->
-  <div class="page" id="s-detalle" style="display:none"></div>
+  <!-- DETALLE GRUPO (OTs del cliente) -->
+  <div class="page" id="s-grupo" style="display:none"></div>
 
+  <!-- DETALLE OT individual -->
+  <div class="page" id="s-detalle" style="display:none"></div>
 </div>
 
 <script>
 'use strict';
 
-// ── SUPABASE ─────────────────────────────────────────────────────────────────
-const SB_URL = 'https://hsoomkdhnanyunqwwxam.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhzb29ta2RobmFueXVucXd3eGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NjM4NTEsImV4cCI6MjA5MDUzOTg1MX0.T2aeJ0wEXT_QcS2GBPwQGxPrnLlMnRASn2RepylKwRc';
+const SB_URL='https://hsoomkdhnanyunqwwxam.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhzb29ta2RobmFueXVucXd3eGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NjM4NTEsImV4cCI6MjA5MDUzOTg1MX0.T2aeJ0wEXT_QcS2GBPwQGxPrnLlMnRASn2RepylKwRc';
 
-async function sbFetch(table, method, body, params = '') {
-  const r = await fetch(`${SB_URL}/rest/v1/${table}${params}`, {
+async function sbFetch(table,method,body,params=''){
+  const r=await fetch(SB_URL+'/rest/v1/'+table+params,{
     method,
-    headers: {
-      'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + SB_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal'
-    },
-    body: body ? JSON.stringify(body) : null
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json',
+      'Prefer':method==='POST'?'return=representation':'return=minimal'},
+    body:body?JSON.stringify(body):null
   });
-  const t = await r.text();
-  if (!r.ok) throw new Error(t);
-  return t ? JSON.parse(t) : null;
+  const t=await r.text();
+  if(!r.ok)throw new Error(t);
+  return t?JSON.parse(t):null;
 }
-const sbGet = (t, p = '') => sbFetch(t, 'GET', null, p);
-const sbPatch = (t, p, b) => sbFetch(t, 'PATCH', b, p);
+const sbGet=(t,p='')=>sbFetch(t,'GET',null,p);
+const sbPatch=(t,p,b)=>sbFetch(t,'PATCH',b,p);
 
-// ── ESTADO GLOBAL ─────────────────────────────────────────────────────────────
-let CUAD = null;       // {id, nombre, pin_pwa}
-let TECNICOS = [];     // integrantes de la cuadrilla
-let OTS = [];          // OTs del día (aplanadas)
-let OT_ACTIVA = null;  // OT en detalle
-let FILTRO = '';       // filtro de estado activo
-let ESTADOS = [];      // catálogo de estados_ot
+// Estado global
+let CUAD=null,TECNICOS=[],GRUPOS=[],GRUPO_ACTIVO=null,OT_ACTIVA=null,FILTRO='',ESTADOS=[],FALLBACK_ESTADOS=false;
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
-const numOT = n => n ? n.replace('005-', '').replace(/^0+/, '') : '';
-const hoy = () => new Date().toISOString().slice(0, 10);
+// Jerarquía de cierre — idéntica al sistema principal
+const OT_JERARQUIA={'BASICA':1,'CABLEMODEM':2,'ONU':2,'CM_EXISTENTE':2,'BOCA_ADICIONAL':3,'DECODIFICADOR':4,'DECODIFICADOR_ADJ':4,'SMART_CARD':5,'TV_BOX':6,'AGREGA_TV':7,'CAMBIO_TECNOLOGIA':7,'RECONEXION':7,'RECONEXION_EQUIPO':7,'CAMBIO_DOMICILIO':8,'GIGACAM':9,'REPARACION':10,'DESCONEXION':11};
+const ordenOT=tipo=>OT_JERARQUIA[tipo]||50;
 
-const fmtHora = iso => {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+// Helpers
+const numOT=n=>n?n.replace('005-','').replace(/^0+/,''):'';
+const hoy=()=>new Date().toISOString().slice(0,10);
+const fmtHora=iso=>iso?new Date(iso).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}):'—';
+const calcDur=(ini,fin)=>{
+  if(!ini||!fin)return'';
+  const m=Math.round((new Date(fin)-new Date(ini))/60000);
+  if(m<1)return'menos de 1 min';
+  return m>=60?Math.floor(m/60)+'h '+m%60+'m':m+' min';
 };
 
-const calcDur = (ini, fin) => {
-  if (!ini || !fin) return '';
-  const m = Math.round((new Date(fin) - new Date(ini)) / 60000);
-  if (m < 1) return 'menos de 1 min';
-  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m} min`;
-};
+const TIPO_LABELS={BASICA:'📶 Instalación',ONU:'📶 ONU',CABLEMODEM:'📶 Cablemodem',CM_EXISTENTE:'📦 CM Existente',CAMBIO_TECNOLOGIA:'🔄 Cambio tec.',DECODIFICADOR:'📺 Deco',DECODIFICADOR_ADJ:'📺 Deco adj.',BOCA_ADICIONAL:'🔌 Boca adicional',AGREGA_TV:'📺 Agrega TV',SMART_CARD:'💳 Smart Card',TV_BOX:'📺 TV Box',GIGACAM:'📷 Gigacam',RECONEXION:'🔁 Reconexión',RECONEXION_EQUIPO:'🔁 Reconexión + eq.',REPARACION:'🔧 Reparación',DESCONEXION:'❌ Desconexión',CAMBIO_DOMICILIO:'🏠 Cambio domicilio'};
 
-const TIPO_LABELS = {
-  BASICA: '📶 Instalación', ONU: '📶 ONU', CABLEMODEM: '📶 Cablemodem',
-  CM_EXISTENTE: '📦 CM Existente', CAMBIO_TECNOLOGIA: '🔄 Cambio tec.',
-  DECODIFICADOR: '📺 Deco', DECODIFICADOR_ADJ: '📺 Deco adj.',
-  BOCA_ADICIONAL: '🔌 Boca adicional', AGREGA_TV: '📺 Agrega TV',
-  SMART_CARD: '💳 Smart Card', TV_BOX: '📺 TV Box', GIGACAM: '📷 Gigacam',
-  RECONEXION: '🔁 Reconexión', RECONEXION_EQUIPO: '🔁 Reconexión + eq.',
-  REPARACION: '🔧 Reparación', DESCONEXION: '❌ Desconexión',
-  CAMBIO_DOMICILIO: '🏠 Cambio domicilio'
-};
-
-function badgeEst(est) {
-  if (est === 'EN_PROCESO')         return '<span class="badge b-enc">● En domicilio</span>';
-  if (est === 'FINALIZADA_TECNICO') return '<span class="badge b-fin">✓ Realizada</span>';
-  if (est === 'FINALIZADA')         return '<span class="badge b-ok">✓ Cerrada</span>';
-  return '<span class="badge b-pend">⏳ Pendiente</span>';
+function badgeEst(est){
+  if(est==='EN_PROCESO')return'<span class="badge b-enc">● En domicilio</span>';
+  if(est==='FINALIZADA_TECNICO')return'<span class="badge b-fin">✓ Realizada</span>';
+  if(est==='FINALIZADA')return'<span class="badge b-ok">✓ Cerrada</span>';
+  return'<span class="badge b-pend">⏳ Pendiente</span>';
 }
 
-function normTel(raw) {
-  if (!raw) return null;
-  let n = String(raw).replace(/[^\d]/g, '');
-  if (!n || n.length < 8) return null;
-  if (n.startsWith('549') && n.length === 13) n = n.slice(3);
-  else if (n.startsWith('54') && n.length === 12) n = n.slice(2);
-  else if (n.startsWith('0') && n.length === 11) n = n.slice(1);
-  if (n.length !== 10) return null;
-  return { display: String(raw).trim(), tel: n, wa: '549' + n };
+function normTel(raw){
+  if(!raw)return null;
+  let n=String(raw).replace(/[^\d]/g,'');
+  if(!n||n.length<8)return null;
+  if(n.startsWith('549')&&n.length===13)n=n.slice(3);
+  else if(n.startsWith('54')&&n.length===12)n=n.slice(2);
+  else if(n.startsWith('0')&&n.length===11)n=n.slice(1);
+  if(n.length!==10)return null;
+  return{display:String(raw).trim(),tel:n,wa:'549'+n};
 }
 
-// ── LOGIN ─────────────────────────────────────────────────────────────────────
-async function cargarCuadrillasLogin() {
-  try {
-    const cuads = await sbGet('cuadrillas', '?activo=eq.true&order=nombre&select=id,nombre,pin_pwa') || [];
-    const sel = document.getElementById('l-cuad');
-    sel.innerHTML = '<option value="">— Seleccioná tu cuadrilla —</option>';
-    cuads.forEach(c => {
-      const o = document.createElement('option');
-      o.value = c.id;
-      o.dataset.nombre = c.nombre;
-      // No exponemos si tiene o no PIN en el frontend — se verifica al intentar ingresar
-      o.textContent = c.nombre;
-      sel.appendChild(o);
-    });
-  } catch (e) {
-    document.getElementById('l-err').textContent = 'Error al cargar cuadrillas. Verificá tu conexión.';
+// Estado general del grupo para el filtro de lista
+function estadoGrupo(ots){
+  const ests=ots.map(o=>o.estados_ot?.nombre||'');
+  if(ests.every(e=>e==='FINALIZADA'||e==='FINALIZADA_TECNICO'))return'FINALIZADA_TECNICO';
+  if(ests.some(e=>e==='EN_PROCESO'))return'EN_PROCESO';
+  return'PENDIENTE';
+}
+
+// Obtener estado del catálogo con intento de BD si es fallback
+async function resolverEstado(nombre){
+  let e=ESTADOS.find(s=>s.nombre===nombre);
+  if(e&&e.id)return e; // tiene id real, OK
+  // Intentar leer desde la BD
+  console.warn('[ESTADOS] Resolviendo "'+nombre+'" desde BD (fallback activo)');
+  try{
+    const d=await sbGet('estados_ot','?nombre=eq.'+nombre+'&activo=eq.true&select=id,nombre');
+    if(d&&d[0]){
+      // Guardar en memoria para no volver a consultar
+      ESTADOS=ESTADOS.map(s=>s.nombre===nombre?d[0]:s);
+      if(!ESTADOS.find(s=>s.nombre===nombre))ESTADOS.push(d[0]);
+      console.log('[ESTADOS] "'+nombre+'" resuelto desde BD, id='+d[0].id);
+      return d[0];
+    }
+  }catch(err){
+    console.error('[ESTADOS] No se pudo resolver "'+nombre+'" desde BD:',err.message);
   }
+  return null;
 }
 
-async function doLogin() {
-  const err = document.getElementById('l-err');
-  const btn = document.getElementById('btn-ingresar');
-  err.textContent = '';
+// LOGIN
+async function cargarCuadrillasLogin(){
+  try{
+    const cuads=await sbGet('cuadrillas','?activo=eq.true&order=nombre&select=id,nombre,pin_pwa')||[];
+    const sel=document.getElementById('l-cuad');
+    sel.innerHTML='<option value="">— Seleccioná tu cuadrilla —</option>';
+    cuads.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;sel.appendChild(o);});
+  }catch(e){document.getElementById('l-err').textContent='Error al cargar cuadrillas. Verificá tu conexión.';}
+}
 
-  const cuadId = document.getElementById('l-cuad').value;
-  if (!cuadId) { err.textContent = 'Seleccioná tu cuadrilla.'; return; }
-
-  const pin = ['pin0','pin1','pin2','pin3'].map(id => document.getElementById(id).value).join('');
-  if (pin.length < 4) { err.textContent = 'Ingresá el PIN completo (4 dígitos).'; return; }
-
-  btn.disabled = true;
-  btn.textContent = 'Verificando...';
-
-  try {
-    const d = await sbGet('cuadrillas', `?id=eq.${cuadId}&activo=eq.true&select=id,nombre,pin_pwa`) || [];
-    const cuad = d[0];
-
-    if (!cuad) {
-      err.textContent = 'Cuadrilla no disponible.';
-      btn.disabled = false; btn.textContent = 'Ingresar'; return;
+async function doLogin(){
+  const err=document.getElementById('l-err'),btn=document.getElementById('btn-ingresar');
+  err.textContent='';
+  const cuadId=document.getElementById('l-cuad').value;
+  if(!cuadId){err.textContent='Seleccioná tu cuadrilla.';return;}
+  const pin=['pin0','pin1','pin2','pin3'].map(id=>document.getElementById(id).value).join('');
+  if(pin.length<4){err.textContent='Ingresá el PIN completo (4 dígitos).';return;}
+  btn.disabled=true;btn.textContent='Verificando...';
+  try{
+    const d=await sbGet('cuadrillas','?id=eq.'+cuadId+'&activo=eq.true&select=id,nombre,pin_pwa')||[];
+    const cuad=d[0];
+    if(!cuad){err.textContent='Cuadrilla no disponible.';btn.disabled=false;btn.textContent='Ingresar';return;}
+    if(!cuad.pin_pwa){err.textContent='Esta cuadrilla no tiene PIN configurado. Contactá al administrador.';btn.disabled=false;btn.textContent='Ingresar';return;}
+    if(cuad.pin_pwa.trim()!==pin.trim()){
+      err.textContent='PIN incorrecto.';
+      ['pin0','pin1','pin2','pin3'].forEach(id=>{document.getElementById(id).value='';});
+      document.getElementById('pin0').focus();btn.disabled=false;btn.textContent='Ingresar';return;
     }
-
-    if (!cuad.pin_pwa) {
-      err.textContent = 'Esta cuadrilla no tiene PIN configurado. Contactá al administrador.';
-      btn.disabled = false; btn.textContent = 'Ingresar'; return;
-    }
-
-    if (cuad.pin_pwa.trim() !== pin.trim()) {
-      err.textContent = 'PIN incorrecto.';
-      // Limpiar PIN
-      ['pin0','pin1','pin2','pin3'].forEach(id => { document.getElementById(id).value = ''; });
-      document.getElementById('pin0').focus();
-      btn.disabled = false; btn.textContent = 'Ingresar'; return;
-    }
-
-    // Login OK
-    CUAD = cuad;
-    sessionStorage.setItem('fg_cuad', JSON.stringify({ id: cuad.id, nombre: cuad.nombre }));
-    btn.disabled = false; btn.textContent = 'Ingresar';
+    CUAD=cuad;
+    sessionStorage.setItem('fg_cuad',JSON.stringify({id:cuad.id,nombre:cuad.nombre}));
+    btn.disabled=false;btn.textContent='Ingresar';
     iniciarApp();
-
-  } catch (e) {
-    err.textContent = 'Error de conexión. Intentá de nuevo.';
-    btn.disabled = false; btn.textContent = 'Ingresar';
-  }
+  }catch(e){err.textContent='Error de conexión. Intentá de nuevo.';btn.disabled=false;btn.textContent='Ingresar';}
 }
 
-// ── INICIO DE APP ─────────────────────────────────────────────────────────────
-async function iniciarApp() {
-  document.getElementById('s-login').style.display = 'none';
-  const app = document.getElementById('s-app');
-  app.style.display = 'flex';
+// INICIO
+async function iniciarApp(){
+  document.getElementById('s-login').style.display='none';
+  document.getElementById('s-app').style.display='flex';
+  const fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('topbar-title').textContent=CUAD.nombre;
+  document.getElementById('topbar-sub').textContent=fechaStr;
 
-  const fechaStr = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-  document.getElementById('topbar-title').textContent = CUAD.nombre;
-  document.getElementById('topbar-sub').textContent = fechaStr;
+  // Cargar estados con fallback explícito y log claro
+  try{
+    const est=await sbGet('estados_ot','?activo=eq.true');
+    if(est&&est.length){
+      ESTADOS=est;
+      FALLBACK_ESTADOS=false;
+      console.log('[ESTADOS] Cargados correctamente desde BD:',est.map(e=>e.nombre+'('+e.id+')').join(', '));
+    }else{
+      throw new Error('Respuesta vacía');
+    }
+  }catch(e){
+    FALLBACK_ESTADOS=true;
+    ESTADOS=[{nombre:'EN_PROCESO'},{nombre:'FINALIZADA_TECNICO'},{nombre:'ASIGNADA'},{nombre:'PENDIENTE'},{nombre:'FINALIZADA'}];
+    console.warn('[ESTADOS] ⚠️ FALLBACK ACTIVADO — no se pudo leer estados_ot desde BD. Error:',e.message);
+    console.warn('[ESTADOS] Los ids se resolverán en cada operación consultando la BD individualmente.');
+  }
 
-  // Cargar estados
-  try { ESTADOS = await sbGet('estados_ot', '?activo=eq.true') || []; } catch (e) {}
+  // Aviso visible si usamos fallback
+  const avisoEl=document.getElementById('aviso-estados');
+  if(FALLBACK_ESTADOS){
+    avisoEl.innerHTML='<div class="aviso-fallback">⚠️ Estados en modo alternativo. Las operaciones funcionarán pero avisá al administrador.</div>';
+  }else{
+    avisoEl.innerHTML='';
+  }
 
   await cargarDatos();
 }
 
-async function cargarDatos() {
-  document.getElementById('lista-ots').innerHTML = '<div class="loading"><div class="spin"></div> Cargando OTs...</div>';
-
-  try {
-    // Cargar integrantes y grupos en paralelo
-    const [asigs, grupos] = await Promise.all([
-      sbGet('cuadrilla_tecnicos', `?cuadrilla_id=eq.${CUAD.id}&activo=eq.true&select=tecnicos(nombre)`) || [],
+// CARGAR DATOS
+async function cargarDatos(){
+  document.getElementById('lista-grupos').innerHTML='<div class="loading"><div class="spin"></div> Cargando OTs...</div>';
+  try{
+    const [asigs,grupos]=await Promise.all([
+      sbGet('cuadrilla_tecnicos','?cuadrilla_id=eq.'+CUAD.id+'&activo=eq.true&select=tecnicos(nombre)'),
       sbGet('grupos_ot',
-        '?fecha_trabajo=eq.' + hoy()
-        + '&cuadrilla_id=eq.' + CUAD.id
-        + '&eliminado=eq.false'
-        + '&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,hora_inicio_tec,hora_fin_tec,estados_ot(id,nombre),clientes(id,apellido,nombre,calle,numero_domicilio,domicilio,barrio,localidad,nodo,telefono1,telefono2,lat_domicilio,lng_domicilio,fecha_gps_domicilio))'
-        + '&order=horario_visita.asc.nullslast'
-      ) || []
+        '?fecha_trabajo=eq.'+hoy()
+        +'&cuadrilla_id=eq.'+CUAD.id
+        +'&eliminado=eq.false'
+        +'&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,hora_inicio_tec,hora_fin_tec,estado_id,estados_ot(id,nombre),clientes(id,apellido,nombre,calle,numero_domicilio,domicilio,barrio,localidad,nodo,telefono1,telefono2,lat_domicilio,lng_domicilio,fecha_gps_domicilio))'
+        +'&order=horario_visita.asc.nullslast'
+      )
     ]);
 
-    // Integrantes
-    TECNICOS = (asigs || []).map(a => a.tecnicos?.nombre).filter(Boolean);
+    TECNICOS=(asigs||[]).map(a=>a.tecnicos?.nombre).filter(Boolean);
     renderIntegrantes();
 
-    // Aplanar OTs
-    OTS = [];
-    (grupos || []).forEach(g => {
-      (g.ordenes_trabajo || []).forEach(ot => {
-        OTS.push({ ...ot, _horario: g.horario_visita, _grupoId: g.id });
-      });
+    // Ordenar OTs dentro de cada grupo por jerarquía
+    GRUPOS=(grupos||[]).map(g=>{
+      const ots=(g.ordenes_trabajo||[]).sort((a,b)=>ordenOT(a.tipo_item||a.tipo_tarea)-ordenOT(b.tipo_item||b.tipo_tarea));
+      return{...g,ordenes_trabajo:ots};
     });
 
-    renderLista();
-
-  } catch (e) {
-    document.getElementById('lista-ots').innerHTML =
-      `<div class="card"><p style="color:var(--red);font-size:14px">Error: ${e.message}</p></div>`;
+    renderGrupos();
+  }catch(e){
+    document.getElementById('lista-grupos').innerHTML='<div class="card"><p style="color:var(--red);font-size:14px">Error: '+e.message+'</p></div>';
   }
 }
 
-// ── RENDER INTEGRANTES ────────────────────────────────────────────────────────
-function renderIntegrantes() {
-  const el = document.getElementById('lista-integrantes');
-  if (!TECNICOS.length) { el.innerHTML = ''; return; }
-  el.innerHTML = TECNICOS.map(n =>
-    `<span class="integrante-chip">👷 ${n}</span>`
-  ).join('');
+// RENDER INTEGRANTES
+function renderIntegrantes(){
+  const el=document.getElementById('lista-integrantes');
+  el.innerHTML=TECNICOS.map(n=>'<span class="integrante-chip">👷 '+n+'</span>').join('');
 }
 
-// ── RENDER LISTA ──────────────────────────────────────────────────────────────
-function renderLista() {
-  const el = document.getElementById('lista-ots');
-
-  let lista = FILTRO ? OTS.filter(o => {
-    const est = o.estados_ot?.nombre || '';
-    if (FILTRO === 'ASIGNADA')          return est === 'ASIGNADA' || est === 'PENDIENTE';
-    if (FILTRO === 'EN_PROCESO')         return est === 'EN_PROCESO';
-    if (FILTRO === 'FINALIZADA_TECNICO') return est === 'FINALIZADA_TECNICO' || est === 'FINALIZADA';
-    return true;
-  }) : OTS;
-
-  if (!lista.length) {
-    el.innerHTML = `<div class="empty">
-      <div class="empty-icon">${OTS.length ? '🔍' : '📋'}</div>
-      <div class="empty-txt">${OTS.length ? 'Sin resultados para este filtro' : 'Sin OTs asignadas hoy'}</div>
-      <div class="empty-sub">${OTS.length ? 'Tocá "Todas" para ver todas' : 'Consultá con el administrativo'}</div>
-    </div>`;
+// RENDER LISTA DE GRUPOS
+function renderGrupos(){
+  const el=document.getElementById('lista-grupos');
+  let lista=GRUPOS;
+  if(FILTRO){
+    lista=GRUPOS.filter(g=>{
+      const est=estadoGrupo(g.ordenes_trabajo||[]);
+      if(FILTRO==='PENDIENTE')return est==='PENDIENTE';
+      if(FILTRO==='EN_PROCESO')return est==='EN_PROCESO';
+      if(FILTRO==='FINALIZADA_TECNICO')return est==='FINALIZADA_TECNICO';
+      return true;
+    });
+  }
+  if(!lista.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">'+(GRUPOS.length?'🔍':'📋')+'</div><div class="empty-txt">'+(GRUPOS.length?'Sin resultados para este filtro':'Sin OTs asignadas hoy')+'</div><div class="empty-sub">'+(GRUPOS.length?'Tocá "Todas" para ver todas':'Consultá con el administrativo')+'</div></div>';
     return;
   }
-
-  el.innerHTML = lista.map(ot => {
-    const cl = ot.clientes || {};
-    const est = ot.estados_ot?.nombre || '';
-    const tipo = ot.tipo_item || ot.tipo_tarea || '';
-    const nombre = ((cl.apellido || '') + (cl.nombre ? ' ' + cl.nombre : '')).trim() || '(Sin nombre)';
-    const dir = cl.calle ? (cl.calle + (cl.numero_domicilio ? ' ' + cl.numero_domicilio : '')) : (cl.domicilio || '');
-    const hora = ot._horario ? ot._horario.slice(0, 5) : '';
-
-    return `<div class="card card-tap" onclick="verOT(${ot.id})">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-          ${hora ? `<span class="ot-hora">⏰ ${hora}</span>` : ''}
-          ${badgeEst(est)}
-        </div>
-        <span style="color:var(--muted2);font-size:20px;flex-shrink:0">›</span>
-      </div>
-      <div class="ot-num">${numOT(ot.numero_ot)}</div>
-      <div class="ot-nombre">${nombre}</div>
-      ${dir ? `<div class="ot-dir">📍 ${dir}</div>` : ''}
-      <span class="ot-tipo">${TIPO_LABELS[tipo] || tipo}</span>
-      ${ot.hora_inicio_tec ? `<div class="ot-timing" style="color:var(--blue)">▶ ${fmtHora(ot.hora_inicio_tec)}${ot.hora_fin_tec ? ' · ✓ ' + fmtHora(ot.hora_fin_tec) + ' · ' + calcDur(ot.hora_inicio_tec, ot.hora_fin_tec) : ''}</div>` : ''}
-    </div>`;
+  el.innerHTML=lista.map(g=>{
+    const ots=g.ordenes_trabajo||[];
+    const cl=ots[0]?.clientes||{};
+    const nombre=((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim()||'(Sin nombre)';
+    const dir=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'');
+    const hora=g.horario_visita?g.horario_visita.slice(0,5):'';
+    const est=estadoGrupo(ots);
+    const codCli=cl.codigo_gigared?cl.codigo_gigared.replace(/^005[0-9]{3}0*/,''):'';
+    const resumen=ots.slice(0,3).map(o=>(TIPO_LABELS[o.tipo_item||o.tipo_tarea]||o.tipo_item||'?').replace(/^[^\s]+ /,'')).join(' + ');
+    return '<div class="card card-tap" onclick="verGrupo('+g.id+')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+          +(hora?'<span style="font-size:12px;font-weight:700;color:var(--muted);background:#f1f5f9;padding:3px 9px;border-radius:7px">⏰ '+hora+'</span>':'')
+          +badgeEst(est)
+        +'</div>'
+        +'<span style="color:var(--muted2);font-size:20px">›</span>'
+      +'</div>'
+      +(codCli?'<div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:2px">N° '+codCli+'</div>':'')
+      +'<div style="font-size:18px;font-weight:800;color:#1e3a5f">'+nombre+'</div>'
+      +(dir?'<div style="font-size:13px;color:var(--muted);margin-top:4px">📍 '+dir+'</div>':'')
+      +'<div style="margin-top:8px;display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-l);padding:3px 9px;border-radius:99px">'+ots.length+' OT'+(ots.length!==1?'s':'')+'</span>'
+        +'<span style="font-size:12px;color:var(--muted)">'+resumen+(ots.length>3?' + más':'')+'</span>'
+      +'</div>'
+    +'</div>';
   }).join('');
 }
 
-function setFiltro(est, chip) {
-  FILTRO = est;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+function setFiltro(est,chip){
+  FILTRO=est;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
   chip.classList.add('active');
-  renderLista();
+  renderGrupos();
 }
 
-// ── VER DETALLE OT ────────────────────────────────────────────────────────────
-async function verOT(otId) {
-  const el = document.getElementById('s-detalle');
-  el.innerHTML = '<div class="loading"><div class="spin"></div> Cargando...</div>';
-
-  mostrarDetalle();
-
-  try {
-    const d = await sbGet('ordenes_trabajo',
-      `?id=eq.${otId}&select=*,estados_ot(id,nombre),grupos_ot(id,horario_visita),clientes(*)&eliminado=eq.false`
-    ) || [];
-    if (!d[0]) { el.innerHTML = '<div class="card"><p style="color:var(--red)">OT no encontrada</p></div>'; return; }
-    OT_ACTIVA = d[0];
-    renderDetalle(OT_ACTIVA);
-  } catch (e) {
-    el.innerHTML = `<div class="card"><p style="color:var(--red)">Error: ${e.message}</p></div>`;
-  }
+// VER DETALLE GRUPO
+function verGrupo(grupoId){
+  GRUPO_ACTIVO=GRUPOS.find(g=>g.id===grupoId);
+  if(!GRUPO_ACTIVO)return;
+  document.getElementById('s-lista').style.display='none';
+  document.getElementById('s-grupo').style.display='block';
+  document.getElementById('s-detalle').style.display='none';
+  document.getElementById('btn-volver').style.display='inline-flex';
+  const cl=GRUPO_ACTIVO.ordenes_trabajo?.[0]?.clientes||{};
+  const nombre=((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim()||'Cliente';
+  document.getElementById('topbar-title').textContent=nombre;
+  renderGrupo();
 }
 
-function renderDetalle(ot) {
-  const el = document.getElementById('s-detalle');
-  const cl = ot.clientes || {};
-  const est = ot.estados_ot?.nombre || '';
-  const tipo = ot.tipo_item || ot.tipo_tarea || '';
-  const nombre = ((cl.apellido || '') + (cl.nombre ? ' ' + cl.nombre : '')).trim() || '(Sin nombre)';
-  const dir = cl.calle ? (cl.calle + (cl.numero_domicilio ? ' ' + cl.numero_domicilio : '')) : (cl.domicilio || '');
-  const hora = ot.grupos_ot?.horario_visita?.slice(0, 5) || '';
+function renderGrupo(){
+  const el=document.getElementById('s-grupo');
+  const g=GRUPO_ACTIVO;
+  if(!g)return;
+  const ots=g.ordenes_trabajo||[];
+  const cl=ots[0]?.clientes||{};
+  const nombre=((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim()||'(Sin nombre)';
+  const dir=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'');
+  const codCli=cl.codigo_gigared?cl.codigo_gigared.replace(/^005[0-9]{3}0*/,''):'';
+  const tels=[cl.telefono1,cl.telefono2].map(normTel).filter(Boolean);
 
-  document.getElementById('topbar-title').textContent = 'OT ' + numOT(ot.numero_ot);
+  // Calcular habilitación de cada OT
+  // Regla: solo se habilita si todas las OTs con menor número de jerarquía están FINALIZADA_TECNICO o FINALIZADA
+  const otItems=ots.map(ot=>{
+    const est=ot.estados_ot?.nombre||'';
+    const esCerrada=est==='FINALIZADA_TECNICO'||est==='FINALIZADA';
+    const esEnCurso=est==='EN_PROCESO';
+    const miOrden=ordenOT(ot.tipo_item||ot.tipo_tarea);
+    const anteriores=ots.filter(o=>ordenOT(o.tipo_item||o.tipo_tarea)<miOrden);
+    const todasCerradas=anteriores.every(o=>{const e=o.estados_ot?.nombre||'';return e==='FINALIZADA_TECNICO'||e==='FINALIZADA';});
+    // Habilitada si: ya está cerrada O en curso O no tiene anteriores OR todas las anteriores cerradas
+    const habilitada=esCerrada||esEnCurso||anteriores.length===0||todasCerradas;
+    return{ot,est,esCerrada,esEnCurso,habilitada};
+  });
 
-  const esPend = est !== 'EN_PROCESO' && est !== 'FINALIZADA_TECNICO' && est !== 'FINALIZADA';
-  const esEnCurso = est === 'EN_PROCESO';
-  const esRealizada = est === 'FINALIZADA_TECNICO' || est === 'FINALIZADA';
-  const dur = calcDur(ot.hora_inicio_tec, ot.hora_fin_tec);
+  let html='';
+
+  // Header cliente
+  html+='<div class="card" style="border-left:4px solid var(--blue);margin-bottom:12px">'
+    +(codCli?'<div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:2px">N° '+codCli+'</div>':'')
+    +'<div style="font-size:20px;font-weight:800;color:#1e3a5f">'+nombre+'</div>'
+    +(dir?'<div style="font-size:13px;color:var(--muted);margin-top:4px">📍 '+dir+(cl.barrio?' · '+cl.barrio:'')+'</div>':'')
+    +(cl.localidad?'<div style="font-size:12px;color:var(--muted);margin-top:2px">📌 '+cl.localidad+'</div>':'')
+    +(cl.nodo?'<div style="font-size:12px;color:var(--blue);font-weight:700;margin-top:4px">Nodo: '+cl.nodo+'</div>':'')
+  +'</div>';
 
   // Teléfonos
-  const tels = [cl.telefono1, cl.telefono2].map(normTel).filter(Boolean);
+  if(tels.length){
+    html+='<div class="card" style="margin-bottom:12px">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Teléfonos</div>'
+      +tels.map(t=>'<div class="tel-row"><span class="tel-num">'+t.display+'</span><a href="tel:'+t.tel+'" class="tel-icon">📞</a><a href="https://wa.me/'+t.wa+'" target="_blank" class="tel-icon">💬</a></div>').join('')
+    +'</div>';
+  }
 
-  el.innerHTML = `
-    <!-- Encabezado -->
-    <div class="card" style="border-left:4px solid var(--blue)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div>
-          <div class="ot-num">${numOT(ot.numero_ot)}</div>
-          <div class="ot-nombre">${nombre}</div>
-          <span class="ot-tipo" style="margin-top:6px">${TIPO_LABELS[tipo] || tipo}</span>
-        </div>
-        ${badgeEst(est)}
-      </div>
-    </div>
+  // OTs del grupo con orden y bloqueo
+  html+='<div class="card">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Órdenes ('+ots.length+')</div>'
+    +otItems.map(({ot,est,esCerrada,esEnCurso,habilitada})=>{
+      const tipo=ot.tipo_item||ot.tipo_tarea||'';
+      const label=TIPO_LABELS[tipo]||tipo;
+      let icono=habilitada?(esCerrada?'✅':(esEnCurso?'🔵':'▶')):'🔒';
+      const clicable=habilitada&&!esCerrada;
+      return '<div class="ot-item'+(clicable?' card-tap':'')+'"'+(clicable?' onclick="verOT('+ot.id+')"':'')+' style="cursor:'+(clicable?'pointer':'default')+'">'
+        +'<div class="ot-item-icon">'+icono+'</div>'
+        +'<div class="ot-item-body">'
+          +'<div class="ot-item-tipo">'+label+'</div>'
+          +'<div class="ot-item-num">OT '+numOT(ot.numero_ot)+(ot.hora_inicio_tec?' · ▶ '+fmtHora(ot.hora_inicio_tec)+(ot.hora_fin_tec?' · ✓ '+fmtHora(ot.hora_fin_tec):''):'')+(!habilitada?' · esperando anterior':'')+'</div>'
+        +'</div>'
+        +'<div>'+badgeEst(est)+'</div>'
+        +(clicable?'<span style="color:var(--muted2);font-size:16px">›</span>':'')
+      +'</div>';
+    }).join('')
+  +'</div>';
 
-    <!-- Timing (si hay datos) -->
-    ${ot.hora_inicio_tec ? `<div class="timing-box">
-      <div class="timing-rows">
-        <div class="timing-item">
-          <div class="timing-label">▶ Inicio</div>
-          <div class="timing-val">${fmtHora(ot.hora_inicio_tec)}</div>
-        </div>
-        ${ot.hora_fin_tec ? `<div class="timing-item">
-          <div class="timing-label">■ Fin</div>
-          <div class="timing-val">${fmtHora(ot.hora_fin_tec)}</div>
-        </div>` : '<div class="timing-item"><div class="timing-label">■ Fin</div><div class="timing-val" style="color:var(--muted2)">—</div></div>'}
-      </div>
-      ${dur ? `<div class="timing-dur">⏱ Duración: ${dur}</div>` : ''}
-      ${ot.clientes?.lat_domicilio ? `<div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span class="gps-badge">📍 Ubicación guardada</span>
-          <a href="https://maps.google.com/?q=${ot.clientes.lat_domicilio},${ot.clientes.lng_domicilio}" target="_blank" style="font-size:12px;color:var(--blue);text-decoration:none">Ver en mapa →</a>
-        </div>` : ''}
-    </div>` : ''}
+  // GPS si ya registrado
+  if(cl.lat_domicilio){
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
+      +'<span class="gps-badge">📍 Ubicación del domicilio registrada</span>'
+      +'<a href="https://maps.google.com/?q='+cl.lat_domicilio+','+cl.lng_domicilio+'" target="_blank" style="font-size:12px;color:var(--blue)">Ver →</a>'
+    +'</div>';
+  }
 
-    <!-- Datos del cliente -->
-    <div class="info-grid" style="margin-bottom:12px">
-      ${dir ? `<div class="info-row"><span class="info-lbl">📍 Dirección</span><span class="info-val" style="font-weight:600">${dir}${cl.barrio ? ' · ' + cl.barrio : ''}</span></div>` : ''}
-      ${cl.localidad ? `<div class="info-row"><span class="info-lbl">🏙 Localidad</span><span class="info-val">${cl.localidad}</span></div>` : ''}
-      ${cl.nodo ? `<div class="info-row"><span class="info-lbl">🔗 Nodo</span><span class="info-val" style="font-weight:700;color:var(--blue)">${cl.nodo}</span></div>` : ''}
-      ${hora ? `<div class="info-row"><span class="info-lbl">⏰ Horario</span><span class="info-val" style="font-weight:700">${hora}</span></div>` : ''}
-      ${ot.obs_gigared ? `<div class="info-row"><span class="info-lbl">📋 Obs.</span><span class="info-val" style="font-size:13px;color:var(--muted)">${ot.obs_gigared}</span></div>` : ''}
-    </div>
-
-    <!-- Teléfonos -->
-    ${tels.length ? `<div class="card" style="margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Teléfonos</div>
-      ${tels.map(t => `
-        <div class="tel-row">
-          <span class="tel-num">${t.display}</span>
-          <a href="tel:${t.tel}" class="tel-icon" title="Llamar">📞</a>
-          <a href="https://wa.me/${t.wa}" target="_blank" class="tel-icon" title="WhatsApp">💬</a>
-        </div>`).join('')}
-    </div>` : ''}
-
-    <!-- Acciones -->
-    <div id="acciones" style="margin-top:4px">
-      ${esPend ? `
-        <button class="btn btn-primary" id="btn-iniciar" onclick="iniciarTarea(${ot.id})">
-          ▶ Iniciar tarea
-        </button>
-      ` : ''}
-
-      ${esEnCurso ? `
-        <div class="estado-banner enc">
-          <div class="estado-banner-icon">🔵</div>
-          <div class="estado-banner-txt" style="color:var(--blue)">Tarea en curso</div>
-          <div class="estado-banner-sub" style="color:var(--blue)">Iniciada a las ${fmtHora(ot.hora_inicio_tec)}</div>
-        </div>
-        <button class="btn btn-green" id="btn-finalizar" onclick="finalizarTarea(${ot.id})">
-          ✓ Finalizar tarea
-        </button>
-        <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px">📍 Al finalizar se registrará tu ubicación actual</p>
-      ` : ''}
-
-      ${esRealizada ? `
-        <div class="estado-banner ${est === 'FINALIZADA' ? 'ok' : 'fin'}">
-          <div class="estado-banner-icon">${est === 'FINALIZADA' ? '✅' : '🎯'}</div>
-          <div class="estado-banner-txt" style="color:${est === 'FINALIZADA' ? 'var(--green)' : 'var(--cyan)'}">
-            ${est === 'FINALIZADA' ? 'Cerrada por administración' : 'Tarea realizada'}
-          </div>
-          ${dur ? `<div class="estado-banner-sub">Duración: ${dur}</div>` : ''}
-        </div>
-      ` : ''}
-    </div>
-  `;
+  el.innerHTML=html;
 }
 
-// ── INICIAR TAREA ──────────────────────────────────────────────────────────────
-async function iniciarTarea(otId) {
-  const btn = document.getElementById('btn-iniciar');
-  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
-
-  try {
-    const eEnP = ESTADOS.find(e => e.nombre === 'EN_PROCESO');
-    if (!eEnP) {
-      alert('Falta el estado EN_PROCESO en la base. Avisá al administrador.');
-      if (btn) { btn.disabled = false; btn.textContent = '▶ Iniciar tarea'; }
-      return;
-    }
-
-    const patch = {
-      estado_id: eEnP.id,
-      hora_inicio_tec: new Date().toISOString(),
-    };
-
-    await sbPatch('ordenes_trabajo', '?id=eq.' + otId, patch);
-
-    OTS = OTS.map(o => o.id === otId
-      ? { ...o, ...patch, estados_ot: { id: eEnP.id, nombre: 'EN_PROCESO' } }
-      : o
-    );
-    OT_ACTIVA = { ...OT_ACTIVA, ...patch, estados_ot: { id: eEnP.id, nombre: 'EN_PROCESO' } };
+// VER DETALLE OT
+async function verOT(otId){
+  const el=document.getElementById('s-detalle');
+  el.innerHTML='<div class="loading"><div class="spin"></div> Cargando...</div>';
+  document.getElementById('s-grupo').style.display='none';
+  el.style.display='block';
+  try{
+    const d=await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=*,estado_id,estados_ot(id,nombre),grupos_ot(id,horario_visita),clientes(*)&eliminado=eq.false')||[];
+    if(!d[0]){el.innerHTML='<div class="card"><p style="color:var(--red)">OT no encontrada</p></div>';return;}
+    OT_ACTIVA=d[0];
+    const tipo=OT_ACTIVA.tipo_item||OT_ACTIVA.tipo_tarea||'';
+    document.getElementById('topbar-title').textContent=(TIPO_LABELS[tipo]||tipo).replace(/^[^\s]+ /,'');
     renderDetalle(OT_ACTIVA);
-
-  } catch (e) {
-    alert('Error al iniciar: ' + e.message);
-    if (btn) { btn.disabled = false; btn.textContent = '▶ Iniciar tarea'; }
+  }catch(e){
+    el.innerHTML='<div class="card"><p style="color:var(--red)">Error: '+e.message+'</p></div>';
   }
 }
 
-// ── FINALIZAR TAREA ────────────────────────────────────────────────────────────
-async function finalizarTarea(otId) {
-  if (!confirm('¿Confirmás que finalizaste la tarea?')) return;
+function renderDetalle(ot){
+  const el=document.getElementById('s-detalle');
+  const cl=ot.clientes||{};
+  const est=ot.estados_ot?.nombre||'';
+  const tipo=ot.tipo_item||ot.tipo_tarea||'';
+  const dir=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'');
+  const hora=ot.grupos_ot?.horario_visita?.slice(0,5)||'';
+  const dur=calcDur(ot.hora_inicio_tec,ot.hora_fin_tec);
+  const esPend=est!=='EN_PROCESO'&&est!=='FINALIZADA_TECNICO'&&est!=='FINALIZADA';
+  const esEnCurso=est==='EN_PROCESO';
+  const esRealizada=est==='FINALIZADA_TECNICO'||est==='FINALIZADA';
+  const tels=[cl.telefono1,cl.telefono2].map(normTel).filter(Boolean);
 
-  const btn = document.getElementById('btn-finalizar');
-  if (btn) { btn.disabled = true; btn.textContent = 'Obteniendo ubicación...'; }
+  let html='';
+  html+='<div class="card" style="border-left:4px solid var(--blue)">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+      +'<div>'
+        +'<div style="font-size:22px;font-weight:900;color:#1e3a5f">'+numOT(ot.numero_ot)+'</div>'
+        +'<span style="font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-l);padding:3px 9px;border-radius:99px;display:inline-block;margin-top:4px">'+(TIPO_LABELS[tipo]||tipo)+'</span>'
+      +'</div>'
+      +badgeEst(est)
+    +'</div>'
+  +'</div>';
 
-  // GPS OBLIGATORIO — no se puede finalizar sin ubicación
-  let gps = null;
-  try {
-    gps = await obtenerGPS();
-  } catch (e) {
-    alert('📍 No se pudo obtener la ubicación.\n\nPara finalizar la tarea necesitás activar el GPS del celular y dar permiso a esta app.\n\nPasos:\n1. Activá el GPS del celu\n2. Cuando el navegador pida permiso, tocá Permitir\n3. Intentá finalizar de nuevo');
-    if (btn) { btn.disabled = false; btn.textContent = '✓ Finalizar tarea'; }
+  if(ot.hora_inicio_tec){
+    html+='<div class="timing-box">'
+      +'<div class="timing-rows">'
+        +'<div class="timing-item"><div class="timing-label">▶ Inicio</div><div class="timing-val">'+fmtHora(ot.hora_inicio_tec)+'</div></div>'
+        +(ot.hora_fin_tec
+          ?'<div class="timing-item"><div class="timing-label">■ Fin</div><div class="timing-val">'+fmtHora(ot.hora_fin_tec)+'</div></div>'
+          :'<div class="timing-item"><div class="timing-label">■ Fin</div><div class="timing-val" style="color:var(--muted2)">—</div></div>')
+      +'</div>'
+      +(dur?'<div class="timing-dur">⏱ '+dur+'</div>':'')
+      +(cl.lat_domicilio?'<div style="margin-top:6px"><span class="gps-badge">📍 Ubicación guardada</span></div>':'')
+    +'</div>';
+  }
+
+  html+='<div class="info-grid" style="margin-bottom:12px">'
+    +(dir?'<div class="info-row"><span class="info-lbl">📍 Dirección</span><span class="info-val" style="font-weight:600">'+dir+(cl.barrio?' · '+cl.barrio:'')+'</span></div>':'')
+    +(cl.nodo?'<div class="info-row"><span class="info-lbl">🔗 Nodo</span><span class="info-val" style="font-weight:700;color:var(--blue)">'+cl.nodo+'</span></div>':'')
+    +(hora?'<div class="info-row"><span class="info-lbl">⏰ Horario</span><span class="info-val" style="font-weight:700">'+hora+'</span></div>':'')
+    +(ot.obs_gigared?'<div class="info-row"><span class="info-lbl">📋 Obs.</span><span class="info-val" style="font-size:13px;color:var(--muted)">'+ot.obs_gigared+'</span></div>':'')
+  +'</div>';
+
+  if(tels.length){
+    html+='<div class="card" style="margin-bottom:14px">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Teléfonos</div>'
+      +tels.map(t=>'<div class="tel-row"><span class="tel-num">'+t.display+'</span><a href="tel:'+t.tel+'" class="tel-icon">📞</a><a href="https://wa.me/'+t.wa+'" target="_blank" class="tel-icon">💬</a></div>').join('')
+    +'</div>';
+  }
+
+  html+='<div id="acciones">'
+    +(esPend?'<button class="btn btn-primary" id="btn-iniciar" onclick="iniciarTarea('+ot.id+')">▶ Iniciar tarea</button>':'')
+    +(esEnCurso
+      ?'<div class="estado-banner enc"><div class="estado-banner-icon">🔵</div><div class="estado-banner-txt" style="color:var(--blue)">Tarea en curso</div><div class="estado-banner-sub" style="color:var(--blue)">Iniciada a las '+fmtHora(ot.hora_inicio_tec)+'</div></div>'
+       +'<button class="btn btn-green" id="btn-finalizar" onclick="finalizarTarea('+ot.id+')">✓ Finalizar tarea</button>'
+       +'<p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px">📍 Al finalizar se registrará tu ubicación</p>'
+      :'')
+    +(esRealizada
+      ?'<div class="estado-banner '+(est==='FINALIZADA'?'ok':'fin')+'"><div class="estado-banner-icon">'+(est==='FINALIZADA'?'✅':'🎯')+'</div><div class="estado-banner-txt" style="color:'+(est==='FINALIZADA'?'var(--green)':'var(--cyan)')+'">'+( est==='FINALIZADA'?'Cerrada por administración':'Tarea realizada')+'</div>'+(dur?'<div class="estado-banner-sub">Duración: '+dur+'</div>':'')+'</div>'
+      :'')
+  +'</div>';
+
+  el.innerHTML=html;
+}
+
+// INICIAR TAREA
+async function iniciarTarea(otId){
+  const btn=document.getElementById('btn-iniciar');
+  if(btn){btn.disabled=true;btn.textContent='Guardando...';}
+  try{
+    const eEnP=await resolverEstado('EN_PROCESO');
+    if(!eEnP||!eEnP.id){
+      alert('No se encontró el estado EN_PROCESO.\n\nVerificá que el SQL de la PWA fue ejecutado correctamente en Supabase.\n\nAvisá al administrador.');
+      if(btn){btn.disabled=false;btn.textContent='▶ Iniciar tarea';}
+      return;
+    }
+    const patch={estado_id:eEnP.id,hora_inicio_tec:new Date().toISOString()};
+    await sbPatch('ordenes_trabajo','?id=eq.'+otId,patch);
+    const nuevoEst={id:eEnP.id,nombre:'EN_PROCESO'};
+    OT_ACTIVA={...OT_ACTIVA,...patch,estados_ot:nuevoEst};
+    actualizarEnGrupos(otId,{...patch,estados_ot:nuevoEst});
+    renderDetalle(OT_ACTIVA);
+  }catch(e){
+    alert('Error al iniciar: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='▶ Iniciar tarea';}
+  }
+}
+
+// FINALIZAR TAREA
+async function finalizarTarea(otId){
+  if(!confirm('¿Confirmás que finalizaste la tarea?'))return;
+  const btn=document.getElementById('btn-finalizar');
+  if(btn){btn.disabled=true;btn.textContent='Obteniendo ubicación...';}
+
+  let gps=null;
+  try{gps=await obtenerGPS();}
+  catch(e){
+    alert('📍 No se pudo obtener la ubicación.\n\nActivá el GPS del celular y permití el acceso cuando el navegador lo pida.\nDespués intentá de nuevo.');
+    if(btn){btn.disabled=false;btn.textContent='✓ Finalizar tarea';}
     return;
   }
 
-  if (btn) btn.textContent = 'Guardando...';
-
-  try {
-    const eFinTec = ESTADOS.find(e => e.nombre === 'FINALIZADA_TECNICO');
-    if (!eFinTec) {
-      alert('Falta el estado FINALIZADA_TECNICO. Avisá al administrador.');
-      if (btn) { btn.disabled = false; btn.textContent = '✓ Finalizar tarea'; }
+  if(btn)btn.textContent='Guardando...';
+  try{
+    const eFinTec=await resolverEstado('FINALIZADA_TECNICO');
+    if(!eFinTec||!eFinTec.id){
+      alert('No se encontró el estado FINALIZADA_TECNICO.\n\nEjecutá el SQL de la PWA en Supabase y avisá al administrador.');
+      if(btn){btn.disabled=false;btn.textContent='✓ Finalizar tarea';}
       return;
     }
-
-    const ahora = new Date().toISOString();
-
-    // 1. Actualizar estado y hora_fin en ordenes_trabajo
-    const patchOT = {
-      estado_id: eFinTec.id,
-      hora_fin_tec: ahora,
-    };
-    await sbPatch('ordenes_trabajo', '?id=eq.' + otId, patchOT);
-
-    // 2. Guardar ubicación del domicilio en clientes (para reutilizar en futuras OTs)
-    const cliId = OT_ACTIVA?.clientes?.id;
-    if (cliId) {
-      await sbPatch('clientes', '?id=eq.' + cliId, {
-        lat_domicilio: parseFloat(gps.lat),
-        lng_domicilio: parseFloat(gps.lng),
-        fecha_gps_domicilio: ahora,
-      });
+    const ahora=new Date().toISOString();
+    const patchOT={estado_id:eFinTec.id,hora_fin_tec:ahora};
+    await sbPatch('ordenes_trabajo','?id=eq.'+otId,patchOT);
+    const cliId=OT_ACTIVA?.clientes?.id;
+    if(cliId){
+      await sbPatch('clientes','?id=eq.'+cliId,{lat_domicilio:parseFloat(gps.lat),lng_domicilio:parseFloat(gps.lng),fecha_gps_domicilio:ahora});
     }
-
-    // Actualizar en memoria
-    const clienteActualizado = { ...OT_ACTIVA.clientes, lat_domicilio: parseFloat(gps.lat), lng_domicilio: parseFloat(gps.lng), fecha_gps_domicilio: ahora };
-    const estadoActualizado = { id: eFinTec.id, nombre: 'FINALIZADA_TECNICO' };
-    OTS = OTS.map(o => o.id === otId
-      ? { ...o, ...patchOT, estados_ot: estadoActualizado, clientes: clienteActualizado }
-      : o
-    );
-    OT_ACTIVA = { ...OT_ACTIVA, ...patchOT, estados_ot: estadoActualizado, clientes: clienteActualizado };
+    const nuevoEst={id:eFinTec.id,nombre:'FINALIZADA_TECNICO'};
+    const cliAct={...OT_ACTIVA.clientes,lat_domicilio:parseFloat(gps.lat),lng_domicilio:parseFloat(gps.lng),fecha_gps_domicilio:ahora};
+    OT_ACTIVA={...OT_ACTIVA,...patchOT,estados_ot:nuevoEst,clientes:cliAct};
+    actualizarEnGrupos(otId,{...patchOT,estados_ot:nuevoEst,clientes:cliAct});
     renderDetalle(OT_ACTIVA);
-
-  } catch (e) {
-    alert('Error al finalizar: ' + e.message);
-    if (btn) { btn.disabled = false; btn.textContent = '✓ Finalizar tarea'; }
+  }catch(e){
+    alert('Error al finalizar: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='✓ Finalizar tarea';}
   }
 }
 
-// ── GPS ────────────────────────────────────────────────────────────────────────
-function obtenerGPS() {
-  return new Promise((res, rej) => {
-    if (!navigator.geolocation) { rej(new Error('GPS no disponible')); return; }
+function actualizarEnGrupos(otId,cambios){
+  GRUPOS=GRUPOS.map(g=>({...g,ordenes_trabajo:(g.ordenes_trabajo||[]).map(o=>o.id===otId?{...o,...cambios}:o)}));
+  if(GRUPO_ACTIVO)GRUPO_ACTIVO=GRUPOS.find(g=>g.id===GRUPO_ACTIVO.id)||GRUPO_ACTIVO;
+}
+
+// GPS
+function obtenerGPS(){
+  return new Promise((res,rej)=>{
+    if(!navigator.geolocation){rej(new Error('GPS no disponible'));return;}
     navigator.geolocation.getCurrentPosition(
-      p => res({ lat: p.coords.latitude.toFixed(6), lng: p.coords.longitude.toFixed(6) }),
-      e => rej(e),
-      { timeout: 8000, maximumAge: 30000 }
+      p=>res({lat:p.coords.latitude.toFixed(6),lng:p.coords.longitude.toFixed(6)}),
+      e=>rej(e),
+      {timeout:8000,maximumAge:30000}
     );
   });
 }
 
-// ── NAVEGACIÓN ─────────────────────────────────────────────────────────────────
-function mostrarDetalle() {
-  document.getElementById('s-lista').style.display = 'none';
-  document.getElementById('s-detalle').style.display = 'block';
-  document.getElementById('btn-volver').style.display = 'inline-flex';
+// NAVEGACIÓN
+function volverALista(){
+  const enDetalle=document.getElementById('s-detalle').style.display!=='none';
+  if(enDetalle&&GRUPO_ACTIVO){
+    OT_ACTIVA=null;
+    document.getElementById('s-detalle').style.display='none';
+    document.getElementById('s-grupo').style.display='block';
+    renderGrupo();
+    const cl=GRUPO_ACTIVO.ordenes_trabajo?.[0]?.clientes||{};
+    document.getElementById('topbar-title').textContent=((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim()||'Cliente';
+  }else{
+    OT_ACTIVA=null;GRUPO_ACTIVO=null;
+    document.getElementById('s-grupo').style.display='none';
+    document.getElementById('s-detalle').style.display='none';
+    document.getElementById('s-lista').style.display='block';
+    document.getElementById('btn-volver').style.display='none';
+    document.getElementById('topbar-title').textContent=CUAD.nombre;
+    renderGrupos();
+  }
 }
 
-function volverALista() {
-  OT_ACTIVA = null;
-  document.getElementById('s-detalle').style.display = 'none';
-  document.getElementById('s-lista').style.display = 'block';
-  document.getElementById('btn-volver').style.display = 'none';
-  document.getElementById('topbar-title').textContent = CUAD.nombre;
-  renderLista(); // refleja cambios en memoria
-}
-
-function salir() {
-  if (!confirm('¿Salir de la app?')) return;
+function salir(){
+  if(!confirm('¿Salir de la app?'))return;
   sessionStorage.removeItem('fg_cuad');
-  CUAD = null; OTS = []; OT_ACTIVA = null; FILTRO = '';
-  document.getElementById('s-app').style.display = 'none';
-  document.getElementById('s-login').style.display = 'flex';
-  // Limpiar PIN
-  ['pin0','pin1','pin2','pin3'].forEach(id => { document.getElementById(id).value = ''; });
-  document.getElementById('l-err').textContent = '';
+  CUAD=null;GRUPOS=[];OT_ACTIVA=null;GRUPO_ACTIVO=null;FILTRO='';
+  document.getElementById('s-app').style.display='none';
+  document.getElementById('s-login').style.display='flex';
+  ['pin0','pin1','pin2','pin3'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('l-err').textContent='';
 }
 
-// ── PIN — navegación automática entre dígitos ──────────────────────────────────
-function initPinNav() {
-  const ids = ['pin0','pin1','pin2','pin3'];
-  ids.forEach((id, i) => {
-    const el = document.getElementById(id);
-    el.addEventListener('input', () => {
-      const v = el.value.replace(/[^0-9]/g, '');
-      el.value = v.slice(-1); // solo 1 dígito
-      if (v && i < 3) document.getElementById(ids[i + 1]).focus();
-      if (i === 3 && v) document.getElementById('btn-ingresar').focus();
+// PIN
+function initPinNav(){
+  const ids=['pin0','pin1','pin2','pin3'];
+  ids.forEach((id,i)=>{
+    const el=document.getElementById(id);
+    el.addEventListener('input',()=>{
+      const v=el.value.replace(/[^0-9]/g,'');
+      el.value=v.slice(-1);
+      if(v&&i<3)document.getElementById(ids[i+1]).focus();
+      if(i===3&&v)document.getElementById('btn-ingresar').focus();
     });
-    el.addEventListener('keydown', e => {
-      if (e.key === 'Backspace' && !el.value && i > 0) document.getElementById(ids[i - 1]).focus();
-      if (e.key === 'Enter') doLogin();
+    el.addEventListener('keydown',e=>{
+      if(e.key==='Backspace'&&!el.value&&i>0)document.getElementById(ids[i-1]).focus();
+      if(e.key==='Enter')doLogin();
     });
   });
 }
 
-// ── ARRANQUE ───────────────────────────────────────────────────────────────────
-window.addEventListener('load', async () => {
-  // Registrar service worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw-cuad.js').catch(() => {});
-  }
-
-  // Inicializar PIN
+// ARRANQUE
+window.addEventListener('load',async()=>{
+  if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw-cuad.js').catch(()=>{});
   initPinNav();
-
-  // Cargar cuadrillas en el selector
   await cargarCuadrillasLogin();
-
-  // Auto-sesión (solo dura mientras el tab está abierto — sessionStorage)
-  try {
-    const saved = sessionStorage.getItem('fg_cuad');
-    if (saved) {
-      CUAD = JSON.parse(saved);
-      iniciarApp();
-    }
-  } catch (e) {}
+  try{
+    const saved=sessionStorage.getItem('fg_cuad');
+    if(saved){CUAD=JSON.parse(saved);iniciarApp();}
+  }catch(e){}
 });
 </script>
 </body>
