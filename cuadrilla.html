@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.1</title>
+<title>FG Cuadrillas v4.2</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.1 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.2 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -478,10 +478,10 @@ function renderGrupos(){
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">'
         +'<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">'
           +(hora?'<span style="font-size:12px;font-weight:700;color:var(--muted);background:#f1f5f9;padding:3px 9px;border-radius:7px">⏰ '+hora+'</span>':'')
+          +(codCli?'<span style="font-size:13px;font-weight:900;color:#1e3a5f;background:#e0e7ff;padding:3px 10px;border-radius:7px;letter-spacing:.5px">N° '+codCli+'</span>':'')
           +badgeGrupo(est)
         +'</div><span style="color:var(--muted2);font-size:20px">›</span>'
       +'</div>'
-      +(codCli?'<div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:2px">N° '+codCli+'</div>':'')
       +'<div style="font-size:18px;font-weight:800;color:#1e3a5f">'+nombre+'</div>'
       +(dir?'<div style="font-size:13px;color:var(--muted);margin-top:4px">📍 '+dir+'</div>':'')
       +'<div style="margin-top:8px;display:flex;align-items:center;gap:8px">'
