@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.4</title>
+<title>FG Cuadrillas v4.5</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.4 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.5 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -391,7 +391,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.4';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.5';
 
   // Cargar estados con fallback
   try{
@@ -1165,6 +1165,7 @@ function renderWizFotos(p,obligatorio){
         +'<div style="position:absolute;top:3px;left:4px;font-size:15px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">'+icono+'</div>'
         +(f.estado!=='subiendo'?'<button onclick="wizEliminarFoto('+i+')" style="position:absolute;top:-5px;right:-5px;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;border:none;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:700">×</button>':'')
         +'<div style="font-size:10px;font-weight:700;color:'+labelColor+';text-align:center;margin-top:3px">'+label+'</div>'
+        +(f.estado==='error'&&f.errMsg?'<div style="font-size:9px;color:var(--red);text-align:center;word-break:break-all;line-height:1.2;margin-top:2px">'+f.errMsg.slice(0,60)+'</div>':'')
         +(f.estado==='error'?'<button onclick="wizReintentar('+i+')" style="width:100%;margin-top:2px;padding:3px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">↺ Reintentar</button>':'')
         +'</div>';
     });
@@ -1212,13 +1213,22 @@ function comprimirImagen(file){
 
 async function subirFotoStorage(blob,otId,nombre){
   var path='ot-fotos/'+otId+'/'+nombre;
+  console.log('[FOTO] Subiendo: '+path+' ('+Math.round(blob.size/1024)+'kb)');
   var r=await fetch(SB_URL+'/storage/v1/object/'+path,{
     method:'POST',
     headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'image/jpeg','Cache-Control':'3600','x-upsert':'true'},
     body:blob
   });
-  if(!r.ok){var txt=await r.text();throw new Error('Storage '+r.status+': '+txt);}
-  return SB_URL+'/storage/v1/object/public/'+path;
+  var txt=await r.text();
+  if(!r.ok){
+    console.error('[FOTO] Upload falló HTTP '+r.status+':',txt);
+    var detalle='';
+    try{var je=JSON.parse(txt);detalle=je.message||je.error||txt;}catch(x){detalle=txt.slice(0,120);}
+    throw new Error('HTTP '+r.status+': '+detalle);
+  }
+  var url=SB_URL+'/storage/v1/object/public/'+path;
+  console.log('[FOTO] OK:',url);
+  return url;
 }
 
 async function wizAgregarFoto(event){
@@ -1228,31 +1238,33 @@ async function wizAgregarFoto(event){
   var otId=p.ot?p.ot.id:0;
 
   for(var i=0;i<files.length;i++){
-    var file=files[i];
-    var previewUrl=URL.createObjectURL(file);
-    var ts=Date.now();
-    var nombre='foto_'+otId+'_'+ts+'_'+i+'.jpg';
-    var fotoObj={previewUrl:previewUrl,nombre:nombre,estado:'subiendo',url:null,blob:null};
+    var fileCopy=files[i];
+    var previewUrl=URL.createObjectURL(fileCopy);
+    var ts=Date.now()+i;
+    var nombre='foto_'+otId+'_'+ts+'.jpg';
+    var fotoObj={previewUrl:previewUrl,nombre:nombre,estado:'subiendo',url:null,blob:null,errMsg:''};
     p.fotos.push(fotoObj);
-    var idx=p.fotos.length-1;
+    console.log('[FOTO] Seleccionada:',fileCopy.name,'('+Math.round(fileCopy.size/1024)+'kb)');
     refreshWizFotos(p);
 
-    // Comprimir y subir
-    (function(fotoRef,fIdx,fname,fOtId){
-      comprimirImagen(file).then(function(blob){
-        if(!blob){fotoRef.estado='error';refreshWizFotos(p);return;}
-        fotoRef.blob=blob;
-        return subirFotoStorage(blob,fOtId,fname);
-      }).then(function(url){
-        if(!url)return;
-        fotoRef.url=url;fotoRef.estado='ok';
-        refreshWizFotos(p);
-      }).catch(function(e){
-        console.warn('Upload foto:',e.message);
-        fotoRef.estado='error';
-        refreshWizFotos(p);
-      });
-    })(fotoObj,idx,nombre,otId);
+    // IIFE async con captura explícita de fileCopy y fotoObj
+    (async function(foto,file,fname,fOtId){
+      try{
+        console.log('[FOTO] Comprimiendo...',fname);
+        var blob=await comprimirImagen(file);
+        if(!blob){throw new Error('No se pudo comprimir la imagen');}
+        foto.blob=blob;
+        console.log('[FOTO] Comprimida: '+Math.round(blob.size/1024)+'kb — iniciando upload...');
+        foto.url=await subirFotoStorage(blob,fOtId,fname);
+        foto.estado='ok';foto.errMsg='';
+        console.log('[FOTO] Completada:',fname);
+      }catch(e){
+        foto.estado='error';
+        foto.errMsg=e.message||'Error desconocido';
+        console.error('[FOTO] Falló "'+fname+'":',e.message);
+      }
+      refreshWizFotos(p);
+    })(fotoObj,fileCopy,nombre,otId);
   }
 }
 
@@ -1268,13 +1280,17 @@ async function wizReintentar(idx){
   var p=PWIZ.pasos[PWIZ.paso];if(!p||!p.fotos)return;
   var f=p.fotos[idx];if(!f||!f.blob)return;
   var otId=p.ot?p.ot.id:0;
-  f.estado='subiendo';refreshWizFotos(p);
+  f.estado='subiendo';f.errMsg='';
+  refreshWizFotos(p);
+  console.log('[FOTO] Reintentando:',f.nombre);
   try{
-    var url=await subirFotoStorage(f.blob,otId,f.nombre);
-    f.url=url;f.estado='ok';
+    f.url=await subirFotoStorage(f.blob,otId,f.nombre);
+    f.estado='ok';
+    console.log('[FOTO] Reintento OK:',f.nombre);
   }catch(e){
-    console.warn('Retry upload:',e.message);
     f.estado='error';
+    f.errMsg=e.message||'Error desconocido';
+    console.error('[FOTO] Reintento falló:',e.message);
   }
   refreshWizFotos(p);
 }
