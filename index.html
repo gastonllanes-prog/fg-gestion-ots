@@ -1329,7 +1329,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="fg"><label>Nombre completo</label><input id="usr-nombre" placeholder="Gaston Llanes"/></div>
     <div class="fg"><label>Email</label><input id="usr-email" type="email" placeholder="email@ejemplo.com" autocapitalize="none"/></div>
     <div class="fg"><label>Rol</label>
-      <select id="usr-rol" onchange="toggleCuadRow()">
+      <select id="usr-rol">
         <option value="superadmin">Superadmin</option>
         <option value="admin">Admin</option>
         <option value="operador">Operador (solo lectura)</option>
@@ -9107,7 +9107,6 @@ function abrirModalUsuario(id){
       (cuads||[]).forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;cuadSel.appendChild(o);});
     });
   }
-  toggleCuadRow();
   document.getElementById('usr-err').textContent='';
   document.getElementById('usr-pass-wrap').style.display=id?'none':'';
   document.getElementById('usr-pass-change').style.display=id?'':'none';
@@ -9144,10 +9143,7 @@ async function guardarUsuario(){
   const activo=document.getElementById('usr-activo').value==='true';
   const id=USR_EDIT_ID;
   if(!nombre||!email){err.textContent='Nombre y email son obligatorios';return;}
-  const cuadId=document.getElementById('usr-cuad-id')?.value;
   const data={nombre,email,rol,activo};
-  if(rol==='tecnico'&&cuadId) data.cuadrilla_id=parseInt(cuadId)||null;
-  else data.cuadrilla_id=null;
   if(!id){
     const pass=document.getElementById('usr-pass').value;
     if(!pass||pass.length<6){err.textContent='Contraseña mínimo 6 caracteres';return;}
