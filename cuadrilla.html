@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v3</title>
+<title>FG Cuadrillas v4</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -154,7 +154,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v3 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -891,7 +891,7 @@ function renderWizMateriales(p){
   var mats=PWIZ.catalogoMats;
   if(!mats.length)return'';
   var html='<div class="card" style="margin-bottom:12px">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Materiales usados</div>';
+    +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Materiales usados *</div>';
   mats.forEach(function(m){
     var qty=p.mats[m.id]||0;
     var stock=PWIZ.scMap[m.id]||0;
@@ -914,7 +914,7 @@ function renderWizMO(p){
   var servs=PWIZ.catalogoServs;
   if(!servs.length)return'';
   var html='<div class="card" style="margin-bottom:12px">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Mano de obra</div>';
+    +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Mano de obra *</div>';
   servs.forEach(function(s){
     var qty=p.servs[s.id]||0;
     html+='<div class="mat-row">'
@@ -1133,22 +1133,20 @@ function pasoAdelante(){
     var tipo=p.ot?p.ot.tipo_item||p.ot.tipo_tarea||'':'';
     var esBasica=tipo==='BASICA';
 
-    // BASICA: requiere al menos un CORRELATIVO con serial
+    // BASICA: requiere precinto (CORRELATIVO) con qty > 0 y al menos un serial — bloqueo duro
     if(esBasica){
       var matsCor=PWIZ.catalogoMats.filter(function(m){return m.serial_tipo==='CORRELATIVO';});
       var tienePrecintoQty=matsCor.some(function(m){return(p.mats[m.id]||0)>0;});
-      if(!tienePrecintoQty){alert('BASICA requiere precinto telecrafter. Agregá la cantidad en Materiales.');return;}
+      if(!tienePrecintoQty){alert('BASICA requiere precinto telecrafter.\nAgregá la cantidad en Materiales antes de continuar.');return;}
       var tienePrecintoSerial=matsCor.some(function(m){return(p.mats[m.id]||0)>0&&(p.corrSels[m.id]||[]).length>0;});
-      if(!tienePrecintoSerial){
-        if(!confirm('El precinto no tiene número de serie seleccionado.\n¿Continuar igualmente?'))return;
-      }
+      if(!tienePrecintoSerial){alert('BASICA requiere el número de serie del precinto.\nSeleccioná o ingresá el serial antes de continuar.');return;}
     }
 
-    // INDIVIDUAL: avisar si falta serial
+    // INDIVIDUAL con qty > 0 sin serial — bloqueo duro
     var sinSerial=PWIZ.catalogoMats.filter(function(m){return m.serial_tipo==='INDIVIDUAL'&&(p.mats[m.id]||0)>0&&!p.seriales[m.id];});
     if(sinSerial.length){
       var nombres=sinSerial.map(function(m){return m.nombre;}).join(', ');
-      if(!confirm('Sin serial asignado: '+nombres+'\n¿Continuar igualmente?'))return;
+      alert('Falta asignar el serial de: '+nombres+'.\nSeleccioná o ingresá el serial antes de continuar.');return;
     }
   }
 
