@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v160</title>
+<title>FG Gestión OTs v161</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V160</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V161</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v160</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v161</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1466,25 +1466,34 @@ function fmtCodigo(code){
 
 // AUTH
 async function doLogin(){
-  const email=document.getElementById('l-email').value.trim();
+  const input=document.getElementById('l-email').value.trim();
   const pass=document.getElementById('l-pass').value.trim();
   const err=document.getElementById('l-err');
   const spin=document.getElementById('l-spin');
-  if(!email||!pass){err.textContent='Completá usuario y contraseña';return;}
+  if(!input||!pass){err.textContent='Completá usuario y contraseña';return;}
   spin.style.display='inline-block';err.textContent='';
-  const USUARIOS_LOCAL=[{id:1,nombre:'Gaston Llanes',email:'gastonllanes@gmail.com',password:'admin123',rol:'superadmin',activo:true}];
-  const local=USUARIOS_LOCAL.find(u=>u.email===email&&u.password===pass&&u.activo);
-  if(local){CU=local;localStorage.setItem('cu',JSON.stringify(CU));spin.style.display='none';iniciarApp().catch(e=>{err.textContent='Error al iniciar: '+e.message;spin.style.display='none';});return;}
   try{
-    // Buscar por email o por nombre (username) — compatibilidad con ambos formatos
-    const [dEmail, dNombre]=await Promise.all([
-      sbGet('usuarios',`?email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(pass)}&activo=eq.true`),
-      sbGet('usuarios',`?nombre=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(pass)}&activo=eq.true`)
+    // Buscar en la BD por email (ilike = sin distinción mayúsculas)
+    // y simultáneamente por nombre — cubre cualquier formato guardado
+    const enc=encodeURIComponent(pass);
+    const [dEmail,dNombre]=await Promise.all([
+      sbGet('usuarios',`?email=ilike.${encodeURIComponent(input)}&password=eq.${enc}&activo=eq.true`),
+      sbGet('usuarios',`?nombre=ilike.${encodeURIComponent(input)}&password=eq.${enc}&activo=eq.true`)
     ]);
     const d=(dEmail&&dEmail.length)?dEmail:(dNombre&&dNombre.length)?dNombre:null;
-    if(!d||!d.length){err.textContent='Usuario o contraseña incorrectos';spin.style.display='none';return;}
-    CU=d[0];localStorage.setItem('cu',JSON.stringify(CU));iniciarApp();
-  }catch(e){err.textContent='Error de conexión: '+e.message;spin.style.display='none';}
+    if(!d||!d.length){
+      err.textContent='Usuario o contraseña incorrectos';
+      spin.style.display='none';
+      return;
+    }
+    CU=d[0];
+    localStorage.setItem('cu',JSON.stringify(CU));
+    spin.style.display='none';
+    iniciarApp().catch(e=>{err.textContent='Error al iniciar: '+e.message;spin.style.display='none';});
+  }catch(e){
+    err.textContent='Error de conexión: '+e.message;
+    spin.style.display='none';
+  }
 }
 document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 function logout(){localStorage.removeItem('cu');CU=null;document.body.classList.remove('app-ready');document.getElementById('s-login').style.display='flex';}
