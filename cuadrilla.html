@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.3</title>
+<title>FG Cuadrillas v4.4</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.3 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.4 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -391,7 +391,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.3';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.4';
 
   // Cargar estados con fallback
   try{
@@ -785,7 +785,7 @@ async function abrirWizard(){
 
     PWIZ={
       grupoId:GRUPO_ACTIVO.id,cuadId:cuadId,
-      pasos:ots.map(function(ot){return{ot:ot,accion:null,mats:{},servs:{},seriales:{},corrSels:{},motivo:'',motivoOtro:false,obs:''};}),
+      pasos:ots.map(function(ot){return{ot:ot,accion:null,mats:{},servs:{},seriales:{},corrSels:{},motivo:'',motivoOtro:false,obs:'',fotos:[]};}),
       paso:0,
       catalogoMats:mats,catalogoServs:servs,
       scMap:scMap,serialesMap:serialesMap
@@ -878,10 +878,14 @@ function renderWizPaso(){
     html+=renderWizMO(p);
     // Seriales
     html+=renderWizSeriales(p);
+    // Fotos (obligatorio)
+    html+=renderWizFotos(p,true);
   }
 
   if(p.accion==='NO_REALIZADA'){
     html+=renderWizNoRealizada(p);
+    // Fotos (opcional)
+    html+=renderWizFotos(p,false);
   }
 
   document.getElementById('wiz-cont').innerHTML=html;
@@ -1141,6 +1145,140 @@ function wizSetMotivo(valor,esOtro){
 function wizSetMotivoOtroTexto(val){var p=PWIZ.pasos[PWIZ.paso];if(p)p.motivo=val;}
 function wizSetObs(val){var p=PWIZ.pasos[PWIZ.paso];if(p)p.obs=val;}
 
+// ── WIZARD — FOTOS ────────────────────────────────────────────────────────────
+
+function renderWizFotos(p,obligatorio){
+  var fotos=p.fotos||[];
+  var titulo=obligatorio?'Fotos *':'Fotos (opcional)';
+  var html='<div class="card" style="margin-bottom:12px" id="wiz-fotos-card">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px">'+titulo+'</div>';
+
+  if(fotos.length){
+    html+='<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">';
+    fotos.forEach(function(f,i){
+      var borde=f.estado==='ok'?'var(--green)':f.estado==='error'?'var(--red)':'var(--amber)';
+      var icono=f.estado==='ok'?'✅':f.estado==='error'?'❌':'⏳';
+      var label=f.estado==='ok'?'Subida':f.estado==='error'?'Error':'Subiendo...';
+      var labelColor=f.estado==='ok'?'var(--green)':f.estado==='error'?'var(--red)':'var(--amber)';
+      html+='<div style="position:relative;width:82px">'
+        +'<img src="'+f.previewUrl+'" style="width:82px;height:82px;object-fit:cover;border-radius:10px;border:2.5px solid '+borde+'"/>'
+        +'<div style="position:absolute;top:3px;left:4px;font-size:15px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">'+icono+'</div>'
+        +(f.estado!=='subiendo'?'<button onclick="wizEliminarFoto('+i+')" style="position:absolute;top:-5px;right:-5px;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;border:none;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:700">×</button>':'')
+        +'<div style="font-size:10px;font-weight:700;color:'+labelColor+';text-align:center;margin-top:3px">'+label+'</div>'
+        +(f.estado==='error'?'<button onclick="wizReintentar('+i+')" style="width:100%;margin-top:2px;padding:3px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">↺ Reintentar</button>':'')
+        +'</div>';
+    });
+    html+='</div>';
+  }
+
+  html+='<label style="display:inline-flex;align-items:center;gap:8px;padding:11px 18px;background:var(--blue-l);color:var(--blue);border-radius:11px;cursor:pointer;font-size:14px;font-weight:700;border:2px dashed var(--blue)">'
+    +'📷 Agregar foto'
+    +'<input type="file" accept="image/*" multiple onchange="wizAgregarFoto(event)" style="display:none"/>'
+    +'</label>';
+
+  html+='</div>';
+  return html;
+}
+
+function refreshWizFotos(p){
+  var obligatorio=p.accion==='REALIZADA';
+  var el=document.getElementById('wiz-fotos-card');
+  if(el){
+    var tmp=document.createElement('div');
+    tmp.innerHTML=renderWizFotos(p,obligatorio);
+    el.parentNode.replaceChild(tmp.firstChild,el);
+  }
+}
+
+function comprimirImagen(file){
+  return new Promise(function(resolve){
+    var img=new Image();
+    var objUrl=URL.createObjectURL(file);
+    img.onload=function(){
+      var MAX=1920;
+      var w=img.width,h=img.height;
+      if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+      if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}
+      var canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(objUrl);
+      canvas.toBlob(function(blob){resolve(blob);},'image/jpeg',0.75);
+    };
+    img.onerror=function(){URL.revokeObjectURL(objUrl);resolve(null);};
+    img.src=objUrl;
+  });
+}
+
+async function subirFotoStorage(blob,otId,nombre){
+  var path='ot-fotos/'+otId+'/'+nombre;
+  var r=await fetch(SB_URL+'/storage/v1/object/'+path,{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'image/jpeg','Cache-Control':'3600','x-upsert':'true'},
+    body:blob
+  });
+  if(!r.ok){var txt=await r.text();throw new Error('Storage '+r.status+': '+txt);}
+  return SB_URL+'/storage/v1/object/public/'+path;
+}
+
+async function wizAgregarFoto(event){
+  var files=Array.from(event.target.files||[]);
+  if(!files.length)return;
+  var p=PWIZ.pasos[PWIZ.paso];if(!p||!p.fotos)return;
+  var otId=p.ot?p.ot.id:0;
+
+  for(var i=0;i<files.length;i++){
+    var file=files[i];
+    var previewUrl=URL.createObjectURL(file);
+    var ts=Date.now();
+    var nombre='foto_'+otId+'_'+ts+'_'+i+'.jpg';
+    var fotoObj={previewUrl:previewUrl,nombre:nombre,estado:'subiendo',url:null,blob:null};
+    p.fotos.push(fotoObj);
+    var idx=p.fotos.length-1;
+    refreshWizFotos(p);
+
+    // Comprimir y subir
+    (function(fotoRef,fIdx,fname,fOtId){
+      comprimirImagen(file).then(function(blob){
+        if(!blob){fotoRef.estado='error';refreshWizFotos(p);return;}
+        fotoRef.blob=blob;
+        return subirFotoStorage(blob,fOtId,fname);
+      }).then(function(url){
+        if(!url)return;
+        fotoRef.url=url;fotoRef.estado='ok';
+        refreshWizFotos(p);
+      }).catch(function(e){
+        console.warn('Upload foto:',e.message);
+        fotoRef.estado='error';
+        refreshWizFotos(p);
+      });
+    })(fotoObj,idx,nombre,otId);
+  }
+}
+
+function wizEliminarFoto(idx){
+  var p=PWIZ.pasos[PWIZ.paso];if(!p||!p.fotos)return;
+  var f=p.fotos[idx];
+  if(f&&f.previewUrl)URL.revokeObjectURL(f.previewUrl);
+  p.fotos.splice(idx,1);
+  refreshWizFotos(p);
+}
+
+async function wizReintentar(idx){
+  var p=PWIZ.pasos[PWIZ.paso];if(!p||!p.fotos)return;
+  var f=p.fotos[idx];if(!f||!f.blob)return;
+  var otId=p.ot?p.ot.id:0;
+  f.estado='subiendo';refreshWizFotos(p);
+  try{
+    var url=await subirFotoStorage(f.blob,otId,f.nombre);
+    f.url=url;f.estado='ok';
+  }catch(e){
+    console.warn('Retry upload:',e.message);
+    f.estado='error';
+  }
+  refreshWizFotos(p);
+}
+
 // ── WIZARD — NAVEGACIÓN ────────────────────────────────────────────────────────
 function pasoAtras(){
   if(PWIZ.paso>0){PWIZ.paso--;renderWizPaso();}
@@ -1172,6 +1310,14 @@ function pasoAdelante(){
     if(sinSerial.length){
       var nombres=sinSerial.map(function(m){return m.nombre;}).join(', ');
       alert('Falta asignar el serial de: '+nombres+'.\nSeleccioná o ingresá el serial antes de continuar.');return;
+    }
+
+    // Fotos: al menos 1 subida correctamente — bloqueo duro
+    var fotosOk=(p.fotos||[]).filter(function(f){return f.estado==='ok';});
+    if(!fotosOk.length){
+      var haySubiendo=(p.fotos||[]).some(function(f){return f.estado==='subiendo';});
+      alert(haySubiendo?'Esperá a que terminen de subirse las fotos antes de continuar.':'Se requiere al menos 1 foto para esta OT.\nAgregá una foto con el botón 📷.');
+      return;
     }
   }
 
@@ -1266,6 +1412,12 @@ async function confirmarWizard(){
         if(corrTodos.length)pOT.tag=corrTodos.join(' - ');
         await sbPatch('ordenes_trabajo','?id=eq.'+otId,pOT);
         try{await sbPost('historial_estados_ot',{ot_id:otId,estado_nuevo_id:eFinTec.id});}catch(e){}
+
+        // Guardar fotos subidas en ot_fotos
+        var fotosOk=(p.fotos||[]).filter(function(f){return f.estado==='ok'&&f.url;});
+        for(var fi=0;fi<fotosOk.length;fi++){
+          try{await sbPost('ot_fotos',{ot_id:otId,url:fotosOk[fi].url,nombre_archivo:fotosOk[fi].nombre||null});}catch(e){console.warn('ot_fotos insert:',e.message);}
+        }
 
       }else if(p.accion==='NO_REALIZADA'){
         var obsNR='NO REALIZADA: '+p.motivo+(p.obs?'\nOBS: '+p.obs:'');
