@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.5</title>
+<title>FG Cuadrillas v4.6</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.5 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.6 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -250,6 +250,7 @@ var ESTADOS=[],FALLBACK_EST=false,MOTIVOS=[];
 
 // ── WIZARD ────────────────────────────────────────────────────────────────────
 var PWIZ={grupoId:null,cuadId:null,pasos:[],paso:0,catalogoMats:[],catalogoServs:[],scMap:{},serialesMap:{}};
+var PREC={fotos:[],ot:null}; // estado de la pantalla de rechazo
 
 // ── JERARQUÍA (idéntica al sistema principal) ─────────────────────────────────
 var OT_JERARQUIA={'BASICA':1,'CABLEMODEM':2,'ONU':2,'CM_EXISTENTE':2,'BOCA_ADICIONAL':3,
@@ -391,7 +392,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.5';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.6';
 
   // Cargar estados con fallback
   try{
@@ -632,6 +633,8 @@ async function iniciarVisita(){
 
 // ── RECHAZO ───────────────────────────────────────────────────────────────────
 function mostrarRechazo(){
+  var ots=GRUPO_ACTIVO.ordenes_trabajo||[];
+  PREC={fotos:[],ot:ots[0]||null};
   document.getElementById('s-grupo').style.display='none';
   document.getElementById('s-rechazo').style.display='block';
   document.getElementById('topbar-title').textContent='Rechazar visita';
@@ -675,8 +678,16 @@ function renderRechazo(){
 
   html+='<button class="btn btn-orange" id="btn-conf-rec" onclick="confirmarRechazo()">📍 Confirmar rechazo</button>'
     +'<button class="btn btn-ghost" style="margin-top:10px" onclick="cancelarRechazo()">← Volver</button>';
-
+  // Fotos opcionales — se inyectan como nodo separado para poder refreshear sin perder los radios
   el.innerHTML=html;
+  // Insertar sección fotos antes del botón confirmar
+  var btnConf=document.getElementById('btn-conf-rec');
+  if(btnConf){
+    var divFotos=document.createElement('div');
+    divFotos.innerHTML=renderWizFotos(PREC,false,'rec-fotos-card','recAgregarFoto(event)');
+    divFotos.style.marginBottom='12px';
+    btnConf.parentNode.insertBefore(divFotos.firstChild,btnConf);
+  }
 }
 
 async function confirmarRechazo(){
@@ -709,7 +720,9 @@ async function confirmarRechazo(){
       if(btn){btn.disabled=false;btn.textContent='📍 Confirmar rechazo';}return;
     }
     var ahora=new Date().toISOString();
-    var obsTexto='RECHAZO: '+motivo+(obs?'\nOBS: '+obs:'');
+    var fotasOkRec=(PREC.fotos||[]).filter(function(f){return f.estado==='ok'&&f.url;});
+    var obsTexto='RECHAZO TOTAL DE VISITA: '+motivo+(obs?'\nOBS: '+obs:'')
+      +(fotasOkRec.length?'\nFOTOS: '+fotasOkRec.length+' foto(s) registrada(s) como evidencia del rechazo':'');
     var ots=GRUPO_ACTIVO.ordenes_trabajo||[];
     for(var i=0;i<ots.length;i++){
       await sbPatch('ordenes_trabajo','?id=eq.'+ots[i].id,{estado_id:eRec.id,hora_inicio_tec:ahora,obs_trabajo:obsTexto});
@@ -718,6 +731,14 @@ async function confirmarRechazo(){
     var cl=ots[0]?ots[0].clientes:null;
     if(cl&&cl.id&&!cl.lat_domicilio){
       await sbPatch('clientes','?id=eq.'+cl.id,{lat_domicilio:parseFloat(gps.lat),lng_domicilio:parseFloat(gps.lng),fecha_gps_domicilio:ahora});
+    }
+    // Guardar fotos en ot_fotos asociadas a la primera OT del grupo
+    var otIdRec=ots[0]?ots[0].id:null;
+    if(otIdRec&&fotasOkRec.length){
+      for(var fi=0;fi<fotasOkRec.length;fi++){
+        try{await sbPost('ot_fotos',{ot_id:otIdRec,url:fotasOkRec[fi].url,nombre_archivo:fotasOkRec[fi].nombre||null});}
+        catch(e){console.warn('ot_fotos rechazo insert:',e.message);}
+      }
     }
     // Actualizar memoria
     var nuevoEst={id:eRec.id,nombre:'RECHAZADA_TECNICO'};
@@ -734,6 +755,7 @@ async function confirmarRechazo(){
 }
 
 function cancelarRechazo(){
+  PREC={fotos:[],ot:null};
   document.getElementById('s-rechazo').style.display='none';
   document.getElementById('s-grupo').style.display='block';
   var cl=GRUPO_ACTIVO&&GRUPO_ACTIVO.ordenes_trabajo&&GRUPO_ACTIVO.ordenes_trabajo[0]?GRUPO_ACTIVO.ordenes_trabajo[0].clientes||{}:{};
@@ -1131,7 +1153,16 @@ function wizAgregarSerialManual(matId,tipo,max){
   var serial=inp.value.trim().toUpperCase().replace(/[:\s.]/g,'');
   if(!serial)return;
   if(tipo==='INDIVIDUAL'){wizElegirSerial(matId,serial);}
-  else{wizToggleCorrSerial(matId,serial,max||99);}
+  else{
+    wizToggleCorrSerial(matId,serial,max||99);
+    // Sincronizar qty: si el técnico carga serial manualmente sin usar +,
+    // qty debe reflejar al menos la cantidad de seriales cargados
+    var p=PWIZ.pasos[PWIZ.paso];
+    if(p){
+      var corrLen=(p.corrSels[matId]||[]).length;
+      if(corrLen>(p.mats[matId]||0)){p.mats[matId]=corrLen;}
+    }
+  }
   inp.value='';
 }
 
@@ -1147,14 +1178,18 @@ function wizSetObs(val){var p=PWIZ.pasos[PWIZ.paso];if(p)p.obs=val;}
 
 // ── WIZARD — FOTOS ────────────────────────────────────────────────────────────
 
-function renderWizFotos(p,obligatorio){
+function renderWizFotos(p,obligatorio,cardId,onAgregar){
+  cardId=cardId||'wiz-fotos-card';
+  onAgregar=onAgregar||'wizAgregarFoto(event)';
   var fotos=p.fotos||[];
   var titulo=obligatorio?'Fotos *':'Fotos (opcional)';
-  var html='<div class="card" style="margin-bottom:12px" id="wiz-fotos-card">'
+  var html='<div class="card" style="margin-bottom:12px" id="'+cardId+'">'
     +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px">'+titulo+'</div>';
 
   if(fotos.length){
     html+='<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">';
+    var elimFn=cardId==='rec-fotos-card'?'recEliminarFoto':'wizEliminarFoto';
+    var reintFn=cardId==='rec-fotos-card'?'recReintentar':'wizReintentar';
     fotos.forEach(function(f,i){
       var borde=f.estado==='ok'?'var(--green)':f.estado==='error'?'var(--red)':'var(--amber)';
       var icono=f.estado==='ok'?'✅':f.estado==='error'?'❌':'⏳';
@@ -1163,10 +1198,10 @@ function renderWizFotos(p,obligatorio){
       html+='<div style="position:relative;width:82px">'
         +'<img src="'+f.previewUrl+'" style="width:82px;height:82px;object-fit:cover;border-radius:10px;border:2.5px solid '+borde+'"/>'
         +'<div style="position:absolute;top:3px;left:4px;font-size:15px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">'+icono+'</div>'
-        +(f.estado!=='subiendo'?'<button onclick="wizEliminarFoto('+i+')" style="position:absolute;top:-5px;right:-5px;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;border:none;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:700">×</button>':'')
+        +(f.estado!=='subiendo'?'<button onclick="'+elimFn+'('+i+')" style="position:absolute;top:-5px;right:-5px;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;border:none;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:700">×</button>':'')
         +'<div style="font-size:10px;font-weight:700;color:'+labelColor+';text-align:center;margin-top:3px">'+label+'</div>'
         +(f.estado==='error'&&f.errMsg?'<div style="font-size:9px;color:var(--red);text-align:center;word-break:break-all;line-height:1.2;margin-top:2px">'+f.errMsg.slice(0,60)+'</div>':'')
-        +(f.estado==='error'?'<button onclick="wizReintentar('+i+')" style="width:100%;margin-top:2px;padding:3px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">↺ Reintentar</button>':'')
+        +(f.estado==='error'?'<button onclick="'+reintFn+'('+i+')" style="width:100%;margin-top:2px;padding:3px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">↺ Reintentar</button>':'')
         +'</div>';
     });
     html+='</div>';
@@ -1174,21 +1209,26 @@ function renderWizFotos(p,obligatorio){
 
   html+='<label style="display:inline-flex;align-items:center;gap:8px;padding:11px 18px;background:var(--blue-l);color:var(--blue);border-radius:11px;cursor:pointer;font-size:14px;font-weight:700;border:2px dashed var(--blue)">'
     +'📷 Agregar foto'
-    +'<input type="file" accept="image/*" multiple onchange="wizAgregarFoto(event)" style="display:none"/>'
+    +'<input type="file" accept="image/*" multiple onchange="'+onAgregar+'" style="display:none"/>'
     +'</label>';
 
   html+='</div>';
   return html;
 }
 
-function refreshWizFotos(p){
-  var obligatorio=p.accion==='REALIZADA';
-  var el=document.getElementById('wiz-fotos-card');
+function refreshFotos(p,cardId,onAgregar){
+  var obligatorio=p.accion==='REALIZADA'||cardId==='rec-fotos-card';
+  var el=document.getElementById(cardId);
   if(el){
     var tmp=document.createElement('div');
-    tmp.innerHTML=renderWizFotos(p,obligatorio);
+    tmp.innerHTML=renderWizFotos(p,obligatorio,cardId,onAgregar);
     el.parentNode.replaceChild(tmp.firstChild,el);
   }
+}
+
+function refreshWizFotos(p){
+  // Wrapper retrocompatible
+  refreshFotos(p,'wiz-fotos-card','wizAgregarFoto(event)');
 }
 
 function comprimirImagen(file){
@@ -1295,6 +1335,67 @@ async function wizReintentar(idx){
   refreshWizFotos(p);
 }
 
+// ── FOTOS — RECHAZO (wrappers sobre PREC) ────────────────────────────────────
+
+async function recAgregarFoto(event){
+  var files=Array.from(event.target.files||[]);
+  if(!files.length)return;
+  var otId=PREC.ot?PREC.ot.id:0;
+
+  for(var i=0;i<files.length;i++){
+    var fileCopy=files[i];
+    var previewUrl=URL.createObjectURL(fileCopy);
+    var ts=Date.now()+i;
+    var nombre='rechazo_ot'+otId+'_'+ts+'.jpg'; // prefijo rechazo_ para identificación clara
+    var fotoObj={previewUrl:previewUrl,nombre:nombre,estado:'subiendo',url:null,blob:null,errMsg:''};
+    PREC.fotos.push(fotoObj);
+    console.log('[FOTO-REC] Seleccionada:',fileCopy.name,'→',nombre);
+    refreshFotos(PREC,'rec-fotos-card','recAgregarFoto(event)');
+
+    (async function(foto,file,fname,fOtId){
+      try{
+        var blob=await comprimirImagen(file);
+        if(!blob){throw new Error('No se pudo comprimir la imagen');}
+        foto.blob=blob;
+        // Path con subcarpeta rechazos/ para identificación en Storage
+        var pathNombre='rechazos/'+fname;
+        foto.url=await subirFotoStorage(blob,fOtId,pathNombre);
+        foto.estado='ok';foto.errMsg='';
+        console.log('[FOTO-REC] OK:',fname);
+      }catch(e){
+        foto.estado='error';foto.errMsg=e.message||'Error desconocido';
+        console.error('[FOTO-REC] Falló "'+fname+'":',e.message);
+      }
+      refreshFotos(PREC,'rec-fotos-card','recAgregarFoto(event)');
+    })(fotoObj,fileCopy,nombre,otId);
+  }
+}
+
+function recEliminarFoto(idx){
+  var f=PREC.fotos[idx];
+  if(f&&f.previewUrl)URL.revokeObjectURL(f.previewUrl);
+  PREC.fotos.splice(idx,1);
+  refreshFotos(PREC,'rec-fotos-card','recAgregarFoto(event)');
+}
+
+async function recReintentar(idx){
+  var f=PREC.fotos[idx];if(!f||!f.blob)return;
+  var otId=PREC.ot?PREC.ot.id:0;
+  f.estado='subiendo';f.errMsg='';
+  refreshFotos(PREC,'rec-fotos-card','recAgregarFoto(event)');
+  console.log('[FOTO-REC] Reintentando:',f.nombre);
+  try{
+    var pathNombre='rechazos/'+f.nombre;
+    f.url=await subirFotoStorage(f.blob,otId,pathNombre);
+    f.estado='ok';
+    console.log('[FOTO-REC] Reintento OK:',f.nombre);
+  }catch(e){
+    f.estado='error';f.errMsg=e.message||'Error desconocido';
+    console.error('[FOTO-REC] Reintento falló:',e.message);
+  }
+  refreshFotos(PREC,'rec-fotos-card','recAgregarFoto(event)');
+}
+
 // ── WIZARD — NAVEGACIÓN ────────────────────────────────────────────────────────
 function pasoAtras(){
   if(PWIZ.paso>0){PWIZ.paso--;renderWizPaso();}
@@ -1315,9 +1416,18 @@ function pasoAdelante(){
     // BASICA: requiere precinto (CORRELATIVO) con qty > 0 y al menos un serial — bloqueo duro
     if(esBasica){
       var matsCor=PWIZ.catalogoMats.filter(function(m){return m.serial_tipo==='CORRELATIVO';});
+      console.log('[BASICA] Precintos CORRELATIVO encontrados:',matsCor.map(function(m){return m.nombre+'(id:'+m.id+')';}));
+      // Sincronizar qty desde corrSels por si el técnico cargó serial sin usar +
+      matsCor.forEach(function(m){
+        var corrLen=(p.corrSels[m.id]||[]).length;
+        if(corrLen>(p.mats[m.id]||0)){p.mats[m.id]=corrLen;}
+      });
       var tienePrecintoQty=matsCor.some(function(m){return(p.mats[m.id]||0)>0;});
+      console.log('[BASICA] qty por material:',matsCor.map(function(m){return m.id+':qty='+(p.mats[m.id]||0);}));
       if(!tienePrecintoQty){alert('BASICA requiere precinto telecrafter.\nAgregá la cantidad en Materiales antes de continuar.');return;}
       var tienePrecintoSerial=matsCor.some(function(m){return(p.mats[m.id]||0)>0&&(p.corrSels[m.id]||[]).length>0;});
+      console.log('[BASICA] seriales por material:',matsCor.map(function(m){return m.id+':sels='+JSON.stringify(p.corrSels[m.id]||[]);}));
+      console.log('[BASICA] tienePrecintoQty:',tienePrecintoQty,'tienePrecintoSerial:',tienePrecintoSerial);
       if(!tienePrecintoSerial){alert('BASICA requiere el número de serie del precinto.\nSeleccioná o ingresá el serial antes de continuar.');return;}
     }
 
