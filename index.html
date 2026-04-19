@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v167</title>
+<title>FG Gestión OTs v168</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V167</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V168</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v167</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v168</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -10334,10 +10334,14 @@ async function verGrupoValidacion(grupoId){
   det.scrollIntoView({behavior:'smooth',block:'start'});
 
   try{
-    const [g, fotosArr, matsArr]=await Promise.all([
-      sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
-      sbGet('ot_fotos',`?ot_id=in.(${(await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id`)||[]).map(o=>o.id).join(',')})&select=id,ot_id,url,nombre_archivo`)||[],
-      sbGet('ot_materiales_usados',`?ot_id=in.(${(await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id`)||[]).map(o=>o.id).join(',')})&select=ot_id,cantidad,catalogo_materiales(nombre,unidad,serial_tipo)`)||[]
+    const otIds=(await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id`)||[]).map(o=>o.id);
+    const idList=otIds.join(',');
+
+    const [g, fotosArr, matsArr, servsArr]=await Promise.all([
+      sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabalho,obs_trabalho,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
+      sbGet('ot_fotos',`?ot_id=in.(${idList})&select=id,ot_id,url,nombre_archivo`)||[],
+      sbGet('ot_materiales_usados',`?ot_id=in.(${idList})&select=id,ot_id,material_id,cantidad,catalogo_materiales(nombre,unidad,serial_tipo)`)||[],
+      sbGet('ot_servicios_realizados',`?ot_id=in.(${idList})&select=id,ot_id,servicio_id,cantidad,catalogo_servicios(nombre)`)||[]
     ]);
     if(!g){det.innerHTML='<p style="color:#dc2626">Grupo no encontrado.</p>';return;}
 
@@ -10345,173 +10349,202 @@ async function verGrupoValidacion(grupoId){
     const cl=ots[0]?.clientes||{};
     const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
 
-    // Inyectar conteos en cada OT para alertas
     ots.forEach(ot=>{
       ot._fotos_count=(fotosArr||[]).filter(f=>f.ot_id===ot.id).length;
       ot._mats_count=(matsArr||[]).filter(m=>m.ot_id===ot.id).length;
     });
 
-    // ── RESUMEN DE GRUPO (calculado sobre todas las OTs) ──────────────────────
-    const ESTADOS_TEC=['FINALIZADA_TECNICO','RECHAZADA_TECNICO','NO_REALIZADA'];
-    let cAprobables=0, cRechazadas=0, cAdvertencia=0, cError=0;
+    let cAprobables=0,cRechazadas=0,cAdvertencia=0,cError=0;
     ots.forEach(ot=>{
       const est=ot.estados_ot?.nombre||'';
       const al=calcAlertasVal([ot]);
-      if(est==='FINALIZADA_TECNICO'&&!al.bloq.length&&!al.advert.length) cAprobables++;
-      if(est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA') cRechazadas++;
-      if(al.advert.length) cAdvertencia++;
-      if(al.bloq.length) cError++;
+      if(est==='FINALIZADA_TECNICO'&&!al.bloq.length&&!al.advert.length)cAprobables++;
+      if(est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA')cRechazadas++;
+      if(al.advert.length)cAdvertencia++;
+      if(al.bloq.length)cError++;
     });
 
-    // ── HEADER CLIENTE ────────────────────────────────────────────────────────
     const otConInicio=ots.find(o=>o.hora_inicio_tec);
     const otConFin=ots.find(o=>o.hora_fin_tec);
     const ini=otConInicio?new Date(otConInicio.hora_inicio_tec):null;
     const fin=otConFin?new Date(otConFin.hora_fin_tec):null;
     const dur=ini&&fin?Math.round((fin-ini)/60000):null;
 
-    let html='<div class="card" style="border-left:4px solid #0891b2;margin-bottom:1.25rem;padding-bottom:1rem">'
+    let html='<div class="card" style="border-left:4px solid #0891b2;margin-bottom:1.25rem">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem">'
         +'<div>'
-          +'<div style="font-size:24px;font-weight:900;color:#1e3a5f;letter-spacing:.5px">'+fmtCodigo(cl.codigo_gigared)+'</div>'
-          +'<div style="font-size:18px;font-weight:800;color:#1e293b">'+(cl.apellido||'')+' '+(cl.nombre||'')+'</div>'
-          +'<div style="font-size:12px;color:#64748b;margin-top:4px">📍 '+dom+(cl.nodo?' · <strong style="color:#2563eb">'+cl.nodo+'</strong>':'')+(cl.localidad?' · '+cl.localidad:'')+'</div>'
+          +'<div style="font-size:24px;font-weight:900;color:#1e3a5f">'+fmtCodigo(cl.codigo_gigared)+'</div>'
+          +'<div style="font-size:18px;font-weight:800">'+((cl.apellido||'')+' '+(cl.nombre||'')).trim()+'</div>'
+          +'<div style="font-size:12px;color:#64748b;margin-top:3px">📍 '+dom+(cl.nodo?' · <strong style="color:#2563eb">'+cl.nodo+'</strong>':'')+(cl.localidad?' · '+cl.localidad:'')+'</div>'
         +'</div>'
         +'<div style="text-align:right">'
-          +'<div style="font-size:13px;font-weight:700;color:#1e293b">🔧 '+(g.cuadrillas?.nombre||'—')+'</div>'
-          +'<div style="font-size:12px;color:#64748b;margin-top:2px">'+(g.fecha_trabajo||'—')+(g.horario_visita?' · '+g.horario_visita.slice(0,5)+'hs':'')+'</div>'
+          +'<div style="font-size:13px;font-weight:700">🔧 '+(g.cuadrillas?.nombre||'—')+'</div>'
+          +'<div style="font-size:12px;color:#64748b">'+(g.fecha_trabajo||'—')+(g.horario_visita?' · '+g.horario_visita.slice(0,5)+'hs':'')+'</div>'
         +'</div>'
       +'</div>'
-      // Timing
       +(ini||fin?'<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:.75rem">'
-        +(ini?'<div style="font-size:12px;color:#475569">▶ Inicio: <strong>'+ini.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</strong></div>':'')
-        +(fin?'<div style="font-size:12px;color:#475569">■ Fin: <strong>'+fin.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</strong></div>':'')
-        +(dur!==null?'<div style="font-size:12px">⏱ Duración: <strong style="color:'+(dur<5?'#dc2626':'#16a34a')+'">'+dur+' min'+(dur<5?' ⚠️':'')+'</strong></div>':'')
+        +(ini?'<span style="font-size:12px">▶ <strong>'+ini.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</strong></span>':'')
+        +(fin?'<span style="font-size:12px">■ <strong>'+fin.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</strong></span>':'')
+        +(dur!==null?'<span style="font-size:12px;font-weight:700;color:'+(dur<5?'#dc2626':'#475569')+'">⏱ '+dur+' min'+(dur<5?' ⚠️':'')+'</span>':'')
       +'</div>':'')
-      // Resumen de OTs
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:.75rem;border-top:1px solid var(--border)">'
         +'<span style="font-size:12px;font-weight:700;background:#dcfce7;color:#16a34a;padding:4px 12px;border-radius:99px">✅ '+cAprobables+' aprobable'+(cAprobables!==1?'s':'')+'</span>'
         +'<span style="font-size:12px;font-weight:700;background:#ffedd5;color:#ea580c;padding:4px 12px;border-radius:99px">❌ '+cRechazadas+' rechazada'+(cRechazadas!==1?'s':'')+'</span>'
         +(cAdvertencia?'<span style="font-size:12px;font-weight:700;background:#fef3c7;color:#d97706;padding:4px 12px;border-radius:99px">⚠️ '+cAdvertencia+' con advertencia</span>':'')
-        +(cError?'<span style="font-size:12px;font-weight:700;background:#fee2e2;color:#dc2626;padding:4px 12px;border-radius:99px">🚨 '+cError+' con error crítico</span>':'')
+        +(cError?'<span style="font-size:12px;font-weight:700;background:#fee2e2;color:#dc2626;padding:4px 12px;border-radius:99px">🚨 '+cError+' con error</span>':'')
       +'</div>'
     +'</div>';
 
-    // ── TARJETAS DE OT ────────────────────────────────────────────────────────
     ots.forEach(ot=>{
       const est=ot.estados_ot?.nombre||'';
       const fotos=(fotosArr||[]).filter(f=>f.ot_id===ot.id);
       const mats=(matsArr||[]).filter(m=>m.ot_id===ot.id);
+      const servs=(servsArr||[]).filter(s=>s.ot_id===ot.id);
       const alertas=calcAlertasVal([ot]);
-      // Badge validado: solo si AMBOS campos están cargados
       const yaValidado=!!(ot.validado_admin_at&&ot.validado_admin_por);
       const esFin=est==='FINALIZADA_TECNICO';
       const esRec=est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA';
       const esFinalizada=est==='FINALIZADA';
       const bordeColor=esFin?'#0891b2':esRec?'#ea580c':esFinalizada?'#16a34a':'#94a3b8';
 
-      html+='<div class="card" style="margin-bottom:1rem;border-left:5px solid '+bordeColor+';padding:1rem">';
+      html+='<div class="card" style="margin-bottom:1rem;border-left:5px solid '+bordeColor+';padding:0;overflow:hidden">';
 
-      // ── OT HEADER ──
-      html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem">'
+      // Header OT
+      html+='<div style="padding:.875rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;background:'+(esFinalizada?'#f0fdf4':esFin?'#f0f9ff':esRec?'#fff7ed':'#f8fafc')+'">'
         +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
           +'<span style="font-size:15px;font-weight:800;color:#1e3a5f">OT '+numOT(ot.numero_ot)+'</span>'
-          +badgeTipo(ot.tipo_tarea,ot.tipo_item)
-          +badgeE(est)
+          +badgeTipo(ot.tipo_tarea,ot.tipo_item)+' '+badgeE(est)
         +'</div>'
-        +(yaValidado
-          ?'<span style="font-size:11px;font-weight:700;color:#16a34a;background:#dcfce7;padding:3px 10px;border-radius:6px;white-space:nowrap">✓ Validado · '+ot.validado_admin_por+'</span>'
-          :'')
+        +(yaValidado?'<span style="font-size:11px;font-weight:700;color:#16a34a;background:#dcfce7;padding:3px 10px;border-radius:6px">✓ '+ot.validado_admin_por+'</span>':'')
       +'</div>';
 
-      // ── ALERTAS (prioritarias) ──
+      // Alertas
       if(alertas.bloq.length||alertas.advert.length){
-        html+='<div style="margin-bottom:.875rem">';
-        alertas.bloq.forEach(a=>{
-          html+='<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:7px 12px;margin-bottom:5px">🚨 '+a+'</div>';
-        });
-        alertas.advert.forEach(a=>{
-          html+='<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:7px 12px;margin-bottom:5px">⚠️ '+a+'</div>';
-        });
+        html+='<div style="padding:.5rem 1rem;border-bottom:1px solid var(--border)">';
+        alertas.bloq.forEach(a=>{html+='<div style="font-size:12px;font-weight:700;color:#991b1b;background:#fee2e2;border-left:3px solid #dc2626;border-radius:0 6px 6px 0;padding:6px 12px;margin-bottom:4px">🚨 '+a+'</div>';});
+        alertas.advert.forEach(a=>{html+='<div style="font-size:12px;font-weight:700;color:#92400e;background:#fef3c7;border-left:3px solid #f59e0b;border-radius:0 6px 6px 0;padding:6px 12px;margin-bottom:4px">⚠️ '+a+'</div>';});
         html+='</div>';
       }
 
-      // ── CUERPO ──
-      // Materiales (en línea, compacto)
-      if(mats.length){
-        const matTexto=mats.map(m=>'<span style="background:#f1f5f9;border-radius:5px;padding:2px 8px;font-size:11px;white-space:nowrap">'+(m.catalogo_materiales?.nombre||'?')+' ×'+m.cantidad+'</span>').join(' ');
-        html+='<div style="margin-bottom:.5rem">'
-          +'<span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Materiales</span><br>'
-          +'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">'+matTexto+'</div>'
-        +'</div>';
-      }
-      // Seriales / precinto
-      if(ot.tag||ot.equipo_instalado){
-        html+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:.5rem">';
-        if(ot.tag)html+='<div style="font-size:12px">📌 <span style="font-weight:700">Precinto:</span> <code style="background:#f5f3ff;padding:1px 6px;border-radius:4px;color:#5b21b6">'+ot.tag+'</code></div>';
-        if(ot.equipo_instalado)html+='<div style="font-size:12px">📱 <span style="font-weight:700">Serial:</span> <code style="background:#eff6ff;padding:1px 6px;border-radius:4px;color:#1d4ed8">'+ot.equipo_instalado+'</code></div>';
-        html+='</div>';
-      }
-      // Obs
-      if(ot.obs_trabajo){
-        html+='<div style="font-size:12px;color:#475569;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 6px 6px 0;padding:6px 10px;margin-bottom:.625rem">'+ot.obs_trabajo+'</div>';
-      }
-      // Fotos (más grandes)
+      // Doble columna
+      html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:0">';
+
+      // COL IZQUIERDA
+      html+='<div style="padding:.875rem 1rem;border-right:1px solid var(--border)">';
       if(fotos.length){
-        html+='<div style="margin-bottom:.625rem">'
-          +'<span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Fotos ('+fotos.length+')</span>'
-          +'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">'
-          +fotos.map(f=>'<a href="'+f.url+'" target="_blank" style="display:block;border-radius:10px;overflow:hidden;border:2px solid var(--border);transition:border-color .15s" onmouseover="this.style.borderColor=\'#2563eb\'" onmouseout="this.style.borderColor=\'\'"><img src="'+f.url+'" style="width:90px;height:90px;object-fit:cover;display:block"/></a>').join('')
-          +'</div>'
+        html+='<div style="margin-bottom:.75rem">'
+          +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Fotos ('+fotos.length+')</div>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+          +fotos.map(f=>'<a href="'+f.url+'" target="_blank"><img src="'+f.url+'" style="width:90px;height:90px;object-fit:cover;border-radius:9px;border:2px solid #e2e8f0"/></a>').join('')
+          +'</div></div>';
+      }else if(esFin){
+        html+='<div style="margin-bottom:.75rem;padding:10px;background:#fee2e2;border-radius:8px;font-size:12px;font-weight:700;color:#dc2626">📷 Sin fotos</div>';
+      }
+      if(ot.obs_trabajo){
+        html+='<div style="margin-bottom:.75rem">'
+          +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Observación</div>'
+          +'<div style="font-size:12px;color:#475569;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 6px 6px 0;padding:6px 10px">'+ot.obs_trabajo+'</div>'
         +'</div>';
       }
+      if(ot.hora_inicio_tec||ot.hora_fin_tec){
+        const i2=ot.hora_inicio_tec?new Date(ot.hora_inicio_tec):null;
+        const f2=ot.hora_fin_tec?new Date(ot.hora_fin_tec):null;
+        const d2=i2&&f2?Math.round((f2-i2)/60000):null;
+        html+='<div style="font-size:12px;color:#64748b">'
+          +(i2?'<div>▶ '+i2.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</div>':'')
+          +(f2?'<div>■ '+f2.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</div>':'')
+          +(d2!==null?'<div style="font-weight:700;color:'+(d2<5?'#dc2626':'#475569')+'">⏱ '+d2+' min</div>':'')
+        +'</div>';
+      }
+      html+='</div>';
 
-      // ── ACCIONES POR ESTADO ──
-      html+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:.875rem;padding-top:.75rem;border-top:1px solid var(--border)">';
+      // COL DERECHA
+      html+='<div style="padding:.875rem 1rem">';
+      html+='<div style="margin-bottom:.875rem">'
+        +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Materiales</div>';
+      if(mats.length){
+        mats.forEach(m=>{
+          html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'
+            +'<span style="font-size:12px;flex:1;color:#334155">'+(m.catalogo_materiales?.nombre||'?')+'</span>'
+            +'<input id="mat-val-'+m.id+'" type="number" min="0" step="1" value="'+m.cantidad+'" data-id="'+m.id+'" data-tabla="ot_materiales_usados"'
+              +' style="width:64px;padding:4px 6px;border:1.5px solid #cbd5e1;border-radius:7px;font-size:13px;font-weight:700;text-align:center;font-family:inherit"'
+              +' oninput="valAutosave(this)"/>'
+            +'<span style="font-size:11px;color:#94a3b8">'+(m.catalogo_materiales?.unidad||'')+'</span>'
+          +'</div>';
+        });
+      }else{
+        html+='<div style="font-size:12px;color:#94a3b8;font-style:italic">Sin materiales</div>';
+      }
+      html+='</div>';
 
+      html+='<div style="margin-bottom:.875rem">'
+        +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Mano de obra</div>';
+      if(servs.length){
+        servs.forEach(s=>{
+          html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'
+            +'<span style="font-size:12px;flex:1;color:#334155">'+(s.catalogo_servicios?.nombre||'?')+'</span>'
+            +'<input id="serv-val-'+s.id+'" type="number" min="0" step="1" value="'+s.cantidad+'" data-id="'+s.id+'" data-tabla="ot_servicios_realizados"'
+              +' style="width:64px;padding:4px 6px;border:1.5px solid #cbd5e1;border-radius:7px;font-size:13px;font-weight:700;text-align:center;font-family:inherit"'
+              +' oninput="valAutosave(this)"/>'
+          +'</div>';
+        });
+      }else{
+        html+='<div style="font-size:12px;color:#94a3b8;font-style:italic">Sin MO registrada</div>';
+      }
+      html+='</div>';
+
+      // Tag / Precinto editable
+      html+='<div style="margin-bottom:.5rem">'
+        +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Precinto / Tag</div>'
+        +'<input id="tag-val-'+ot.id+'" type="text" value="'+(ot.tag||'')+'" data-id="'+ot.id+'" data-tabla="ordenes_trabajo_tag"'
+          +' placeholder="Sin precinto"'
+          +' style="width:100%;padding:5px 8px;border:1.5px solid #cbd5e1;border-radius:7px;font-size:13px;font-family:monospace;color:#5b21b6"'
+          +' oninput="valAutosave(this)"'
+        +'/>'
+      +'</div>';
+
+      if(ot.equipo_instalado){
+        html+='<div style="font-size:12px;color:#334155;margin-top:4px">📱 <code style="background:#eff6ff;padding:1px 6px;border-radius:4px;color:#1d4ed8">'+ot.equipo_instalado+'</code></div>';
+      }
+      html+='</div>'; // fin col derecha
+      html+='</div>'; // fin grid
+
+      // Acciones
+      html+='<div style="padding:.75rem 1rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fafafa">';
       if(esFin){
-        // FINALIZADA_TECNICO: Aprobar (primario) · Pendiente · [Más acciones → Gigared]
-        html+='<button class="btn btn-green" style="padding:10px 18px;font-size:13px;font-weight:700" onclick="aprobarOT('+ot.id+','+grupoId+')">✅ Aprobar</button>';
-        html+='<button class="btn" style="padding:10px 18px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #cbd5e1;color:#475569" onclick="otAPendienteAdmin('+ot.id+','+grupoId+')">↩ Devolver a pendiente</button>';
-        // "Más acciones" — toggle inline
+        html+='<button class="btn btn-green" style="padding:9px 18px;font-size:13px;font-weight:700" onclick="aprobarOT('+ot.id+','+grupoId+')">✅ Aprobar</button>';
+        html+='<button class="btn" style="padding:9px 16px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #cbd5e1;color:#475569" onclick="otAPendienteAdmin('+ot.id+','+grupoId+')">↩ Pendiente</button>';
         html+='<div style="position:relative;display:inline-block">'
-          +'<button class="btn" id="mas-acc-'+ot.id+'" style="padding:10px 14px;font-size:13px;background:#fff;border:1.5px solid #cbd5e1;color:#64748b" onclick="toggleMasAcciones('+ot.id+')" title="Más acciones">⋯</button>'
-          +'<div id="mas-acc-menu-'+ot.id+'" style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);padding:6px;z-index:99;min-width:170px">'
+          +'<button id="mas-acc-'+ot.id+'" style="padding:9px 13px;font-size:14px;background:#fff;border:1.5px solid #cbd5e1;border-radius:9px;color:#64748b;cursor:pointer;line-height:1" onclick="toggleMasAcciones('+ot.id+')" title="Más acciones">⋯</button>'
+          +'<div id="mas-acc-menu-'+ot.id+'" style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);padding:6px;z-index:99;min-width:175px">'
             +'<button onclick="otAGigaradAdmin('+ot.id+','+grupoId+');toggleMasAcciones('+ot.id+')" style="width:100%;text-align:left;padding:8px 12px;border:none;background:transparent;font-size:13px;color:#dc2626;cursor:pointer;border-radius:7px;font-family:inherit;font-weight:600" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'transparent\'">📤 Devolver a Gigared</button>'
           +'</div>'
         +'</div>';
-        // Editar — secundario, menos peso
-        html+='<button class="btn btn-sm" style="font-size:11px;color:#64748b;border-color:#e2e8f0;margin-left:auto" onclick="abrirEditarCierre('+ot.id+')">✏️ Editar</button>';
-
       }else if(esRec){
-        // RECHAZADA_TECNICO: Validar (primario) · Pendiente · Gigared
-        html+='<button class="btn" style="padding:10px 18px;font-size:13px;font-weight:700;background:#0891b2;color:#fff;border-color:#0891b2" onclick="validarRechazadaAdmin('+ot.id+','+grupoId+')">✓ Validar rechazo</button>';
-        html+='<button class="btn" style="padding:10px 18px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #cbd5e1;color:#475569" onclick="otAPendienteAdmin('+ot.id+','+grupoId+')">↩ Devolver a pendiente</button>';
-        html+='<button class="btn" style="padding:10px 18px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #fca5a5;color:#dc2626" onclick="otAGigaradAdmin('+ot.id+','+grupoId+')">📤 Devolver a Gigared</button>';
-        // Editar — secundario
-        html+='<button class="btn btn-sm" style="font-size:11px;color:#64748b;border-color:#e2e8f0;margin-left:auto" onclick="abrirEditarCierre('+ot.id+')">✏️ Editar</button>';
-
+        html+='<button class="btn" style="padding:9px 18px;font-size:13px;font-weight:700;background:#0891b2;color:#fff;border-color:#0891b2" onclick="validarRechazadaAdmin('+ot.id+','+grupoId+')">✓ Validar rechazo</button>';
+        html+='<button class="btn" style="padding:9px 16px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #cbd5e1;color:#475569" onclick="otAPendienteAdmin('+ot.id+','+grupoId+')">↩ Pendiente</button>';
+        html+='<button class="btn" style="padding:9px 16px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #fca5a5;color:#dc2626" onclick="otAGigaradAdmin('+ot.id+','+grupoId+')">📤 Gigared</button>';
       }else if(esFinalizada){
-        html+='<span style="font-size:12px;font-weight:700;color:#16a34a">✓ Aprobada — sin acciones pendientes</span>';
+        html+='<span style="font-size:12px;font-weight:700;color:#16a34a">✓ Aprobada</span>';
       }
-
       html+='</div>';
-      html+='</div>'; // cierre card OT
+      html+='</div>';
     });
 
-    // ── ACCIONES DE GRUPO ─────────────────────────────────────────────────────
     const todasRechazadas=ots.every(o=>['RECHAZADA_TECNICO','NO_REALIZADA'].includes(o.estados_ot?.nombre||''));
     html+='<div style="display:flex;gap:8px;flex-wrap:wrap;padding:1rem;background:#f8fafc;border-radius:12px;border:1px solid var(--border);margin-top:.5rem;align-items:center">'
-      +'<span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-right:4px">Grupo:</span>'
+      +'<span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-right:4px">Grupo:</span>'
       +'<button class="btn btn-primary" style="font-size:13px;padding:10px 20px" onclick="aprobarGrupo('+grupoId+')">✅ Aprobar todo</button>'
-      +'<button class="btn" style="font-size:13px;padding:10px 18px;background:#fff;border:1.5px solid #fca5a5;color:#dc2626;'+(todasRechazadas?'':'opacity:.4;cursor:not-allowed')+'" '+(todasRechazadas?'onclick="devolverGrupoGigared('+grupoId+')"':'disabled title="Solo disponible cuando todas las OTs están rechazadas"')+'>📤 Devolver a Gigared</button>'
-      +'<button class="btn btn-sm" style="font-size:12px;color:#475569" onclick="reasignarGrupo('+grupoId+',\''+encodeURIComponent(g.cuadrillas?.nombre||'')+'\')">🔀 Reasignar cuadrilla</button>'
+      +'<button class="btn" style="font-size:13px;padding:10px 18px;background:#fff;border:1.5px solid #fca5a5;color:#dc2626;'+(todasRechazadas?'':'opacity:.4;cursor:not-allowed')+'" '+(todasRechazadas?'onclick="devolverGrupoGigared('+grupoId+')"':'disabled title="Solo si todas las OTs están rechazadas"')+'>📤 Devolver a Gigared</button>'
+      +'<button class="btn btn-sm" style="font-size:12px;color:#475569" onclick="reasignarGrupo('+grupoId+',\''+encodeURIComponent(g.cuadrillas?.nombre||'')+'\')">🔀 Reasignar</button>'
       +'<button class="btn btn-sm" style="font-size:12px;color:#94a3b8;margin-left:auto" onclick="document.getElementById(\'val-detalle\').style.display=\'none\'">✕ Cerrar</button>'
     +'</div>';
 
     det.innerHTML=html;
   }catch(e){det.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';}
 }
+
+
 
 // ── ACCIONES ADMINISTRATIVAS ──────────────────────────────────────────────────
 
@@ -10743,6 +10776,47 @@ async function devolverGrupoGigared(grupoId){
     await verGrupoValidacion(grupoId);
     renderValidacion();
   }catch(e){alert('Error: '+e.message);}
+}
+
+// ── AUTOSAVE INLINE VALIDACIÓN ────────────────────────────────────────────────
+
+const _valTimers={};
+
+function valAutosave(input){
+  const id=input.dataset.id;
+  const tabla=input.dataset.tabla;
+  if(!id||!tabla)return;
+
+  // Feedback visual: pendiente
+  input.style.borderColor='#f59e0b';
+
+  clearTimeout(_valTimers[input.id]);
+  _valTimers[input.id]=setTimeout(async()=>{
+    try{
+      if(tabla==='ot_materiales_usados'){
+        const cant=Math.max(0,parseInt(input.value)||0);
+        input.value=cant;
+        await sbPatch('ot_materiales_usados',`?id=eq.${id}`,{cantidad:cant});
+      }else if(tabla==='ot_servicios_realizados'){
+        const cant=Math.max(0,parseInt(input.value)||0);
+        input.value=cant;
+        await sbPatch('ot_servicios_realizados',`?id=eq.${id}`,{cantidad:cant});
+      }else if(tabla==='ordenes_trabajo_tag'){
+        const tag=input.value.trim();
+        await sbPatch('ordenes_trabajo',`?id=eq.${id}`,{tag:tag||null});
+      }
+      // Borde verde = guardado OK
+      input.style.borderColor='#16a34a';
+      input.style.background='#f0fdf4';
+      setTimeout(()=>{input.style.borderColor='#cbd5e1';input.style.background='';},1800);
+    }catch(e){
+      // Borde rojo = error
+      input.style.borderColor='#dc2626';
+      input.style.background='#fff1f2';
+      input.title='Error al guardar: '+e.message;
+      console.error('[autosave]',e.message);
+    }
+  },500);
 }
 
 // ── FIN MÓDULO VALIDACIÓN ADMINISTRATIVA ──────────────────────────────────────
