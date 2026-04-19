@@ -10338,7 +10338,7 @@ async function verGrupoValidacion(grupoId){
     const idList=otIds.join(',');
 
     const [g, fotosArr, matsArr, servsArr]=await Promise.all([
-      sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabalho,obs_trabalho,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
+      sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
       sbGet('ot_fotos',`?ot_id=in.(${idList})&select=id,ot_id,url,nombre_archivo`)||[],
       sbGet('ot_materiales_usados',`?ot_id=in.(${idList})&select=id,ot_id,material_id,cantidad,catalogo_materiales(nombre,unidad,serial_tipo)`)||[],
       sbGet('ot_servicios_realizados',`?ot_id=in.(${idList})&select=id,ot_id,servicio_id,cantidad,catalogo_servicios(nombre)`)||[]
