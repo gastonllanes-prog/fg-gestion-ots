@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.6</title>
+<title>FG Cuadrillas v4.7</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.6 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.7 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -307,7 +307,7 @@ function normTel(raw){
 function estadoGrupo(ots){
   if(!ots||!ots.length)return'PENDIENTE';
   var ests=ots.map(function(o){return o.estados_ot?o.estados_ot.nombre||'PENDIENTE':'PENDIENTE';});
-  var TERMINADOS=['FINALIZADA_TECNICO','NO_REALIZADA','FINALIZADA'];
+  var TERMINADOS=['FINALIZADA_TECNICO','RECHAZADA_TECNICO','FINALIZADA'];
   if(ests.every(function(e){return TERMINADOS.indexOf(e)>=0;}))return'TERMINADA';
   if(ests.some(function(e){return e==='RECHAZADA_TECNICO';}))return'RECHAZADA_TECNICO';
   if(ests.some(function(e){return e==='EN_PROCESO';}))return'EN_PROCESO';
@@ -392,7 +392,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.6';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.7';
 
   // Cargar estados con fallback
   try{
@@ -407,7 +407,7 @@ async function iniciarApp(){
   document.getElementById('aviso-estados').innerHTML=FALLBACK_EST?'<div class="aviso-fb">⚠️ Modo alternativo de estados. Avisá al administrador.</div>':'';
 
   // Cargar motivos de devolución (para rechazo y NO_REALIZADA)
-  try{MOTIVOS=await sbGet('motivos_devolucion','?activo=eq.true&order=orden,descripcion')||[];}catch(e){MOTIVOS=[];}
+  try{MOTIVOS=await sbGet('motivos_devolucion','?activo=eq.true&order=orden,descripcion&select=id,descripcion,activo,requiere_foto')||[];}catch(e){MOTIVOS=[];}
 
   await cargarDatos();
 }
@@ -877,15 +877,15 @@ function renderWizPaso(){
     +(ot&&ot.obs_gigared?'<div style="font-size:12px;color:var(--muted);margin-top:4px">'+ot.obs_gigared+'</div>':'')
     +'</div>';
 
-  // Toggle REALIZADA / NO_REALIZADA
+  // Toggle REALIZADA / RECHAZADA_TECNICO
   html+='<div class="card">'
     +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px">¿Se realizó esta OT?</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     +'<button onclick="wizSetAccion(\'REALIZADA\')" class="btn '+(p.accion==='REALIZADA'?'btn-green':'btn-ghost')+'" style="padding:14px 0;font-size:15px">'
       +(p.accion==='REALIZADA'?'✅ ':'')+'Realizada'
     +'</button>'
-    +'<button onclick="wizSetAccion(\'NO_REALIZADA\')" class="btn '+(p.accion==='NO_REALIZADA'?'btn-red':'btn-ghost')+'" style="padding:14px 0;font-size:15px">'
-      +(p.accion==='NO_REALIZADA'?'❌ ':'')+'No realizada'
+    +'<button onclick="wizSetAccion(\'RECHAZADA_TECNICO\')" class="btn '+(p.accion==='RECHAZADA_TECNICO'?'btn-red':'btn-ghost')+'" style="padding:14px 0;font-size:15px">'
+      +(p.accion==='RECHAZADA_TECNICO'?'❌ ':'')+'No se pudo'
     +'</button>'
     +'</div></div>';
 
@@ -904,10 +904,12 @@ function renderWizPaso(){
     html+=renderWizFotos(p,true);
   }
 
-  if(p.accion==='NO_REALIZADA'){
+  if(p.accion==='RECHAZADA_TECNICO'){
     html+=renderWizNoRealizada(p);
-    // Fotos (opcional)
-    html+=renderWizFotos(p,false);
+    // Fotos: obligatorias si el motivo tiene requiere_foto=true, opcionales si no
+    var motiMatch=MOTIVOS.find(function(m){return m.descripcion===p.motivo;});
+    var fotoOblig=!!(motiMatch&&motiMatch.requiere_foto);
+    html+=renderWizFotos(p,fotoOblig,'wiz-fotos-card','wizAgregarFoto(event)');
   }
 
   document.getElementById('wiz-cont').innerHTML=html;
@@ -1447,8 +1449,16 @@ function pasoAdelante(){
     }
   }
 
-  if(p.accion==='NO_REALIZADA'){
-    if(!p.motivo.trim()){alert('Seleccioná un motivo para la OT no realizada.');return;}
+  if(p.accion==='RECHAZADA_TECNICO'){
+    if(!p.motivo.trim()){alert('Seleccioná un motivo.');return;}
+    // Foto obligatoria si el motivo tiene requiere_foto
+    var motiRec=MOTIVOS.find(function(m){return m.descripcion===p.motivo;});
+    if(motiRec&&motiRec.requiere_foto){
+      var fotosOkRec=(p.fotos||[]).filter(function(f){return f.estado==='ok';});
+      if(!fotosOkRec.length){
+        alert('Este motivo requiere al menos 1 foto como evidencia.\nAgregá una foto antes de continuar.');return;
+      }
+    }
   }
 
   PWIZ.paso++;
@@ -1463,9 +1473,9 @@ async function confirmarWizard(){
 
   try{
     var eFinTec=await resolverEstado('FINALIZADA_TECNICO');
-    var eNoReal=await resolverEstado('NO_REALIZADA');
+    var eRecTec=await resolverEstado('RECHAZADA_TECNICO');
     if(!eFinTec||!eFinTec.id)throw new Error('No se encontró estado FINALIZADA_TECNICO. Ejecutá el SQL de configuración.');
-    if(!eNoReal||!eNoReal.id)throw new Error('No se encontró estado NO_REALIZADA. Avisá al administrador.');
+    if(!eRecTec||!eRecTec.id)throw new Error('No se encontró estado RECHAZADA_TECNICO. Avisá al administrador.');
 
     var ahora=new Date().toISOString();
     var cuadId=PWIZ.cuadId;
@@ -1545,10 +1555,15 @@ async function confirmarWizard(){
           try{await sbPost('ot_fotos',{ot_id:otId,url:fotosOk[fi].url,nombre_archivo:fotosOk[fi].nombre||null});}catch(e){console.warn('ot_fotos insert:',e.message);}
         }
 
-      }else if(p.accion==='NO_REALIZADA'){
-        var obsNR='NO REALIZADA: '+p.motivo+(p.obs?'\nOBS: '+p.obs:'');
-        await sbPatch('ordenes_trabajo','?id=eq.'+otId,{estado_id:eNoReal.id,hora_fin_tec:ahora,obs_trabajo:obsNR});
-        try{await sbPost('historial_estados_ot',{ot_id:otId,estado_nuevo_id:eNoReal.id,observacion:obsNR});}catch(e){}
+      }else if(p.accion==='RECHAZADA_TECNICO'){
+        var obsRec='RECHAZADA: '+p.motivo+(p.obs?'\nOBS: '+p.obs:'');
+        await sbPatch('ordenes_trabajo','?id=eq.'+otId,{estado_id:eRecTec.id,hora_fin_tec:ahora,obs_trabajo:obsRec});
+        try{await sbPost('historial_estados_ot',{ot_id:otId,estado_nuevo_id:eRecTec.id,observacion:obsRec});}catch(e){}
+        // Guardar fotos del rechazo (si las hay)
+        var fotasRec=(p.fotos||[]).filter(function(f){return f.estado==='ok'&&f.url;});
+        for(var fri=0;fri<fotasRec.length;fri++){
+          try{await sbPost('ot_fotos',{ot_id:otId,url:fotasRec[fri].url,nombre_archivo:fotasRec[fri].nombre||null});}catch(e){}
+        }
       }
     }
 
@@ -1558,7 +1573,7 @@ async function confirmarWizard(){
         var paso=null;
         for(var i=0;i<pasos.length;i++){if(pasos[i].ot.id===ot.id){paso=pasos[i];break;}}
         if(!paso)return ot;
-        var eNuevo=paso.accion==='REALIZADA'?{id:eFinTec.id,nombre:'FINALIZADA_TECNICO'}:{id:eNoReal.id,nombre:'NO_REALIZADA'};
+        var eNuevo=paso.accion==='REALIZADA'?{id:eFinTec.id,nombre:'FINALIZADA_TECNICO'}:{id:eRecTec.id,nombre:'RECHAZADA_TECNICO'};
         return Object.assign({},ot,{estados_ot:eNuevo,hora_fin_tec:ahora});
       })
     });

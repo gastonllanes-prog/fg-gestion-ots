@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v165</title>
+<title>FG Gestión OTs v166</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V165</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V166</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v165</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v166</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -406,7 +406,53 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div id="asig-list-tabla"><div class="loading"><span class="spinner"></span></div></div>
 </div>
 
-<div id="s-liquidacion" style="display:none">
+<div id="s-validacion" style="display:none">
+  <div class="ph">
+    <div class="ph-icon blue">✅</div>
+    <div><div class="ph-title">Validación administrativa</div><div class="ph-sub">Revisión y aprobación de cierres técnicos</div></div>
+  </div>
+  <!-- Filtros -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;align-items:flex-end">
+    <div style="flex:1;min-width:130px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Desde</label>
+      <input type="date" id="val-desde" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit" onchange="renderValidacion()"/>
+    </div>
+    <div style="flex:1;min-width:130px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Hasta</label>
+      <input type="date" id="val-hasta" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit" onchange="renderValidacion()"/>
+    </div>
+    <div style="flex:1;min-width:160px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Cuadrilla</label>
+      <select id="val-cuad" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit" onchange="renderValidacion()">
+        <option value="">Todas</option>
+      </select>
+    </div>
+    <div style="flex:1;min-width:140px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Estado técnico</label>
+      <select id="val-estado" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit" onchange="renderValidacion()">
+        <option value="">Todos</option>
+        <option value="FINALIZADA_TECNICO">Finalizada técnico</option>
+        <option value="RECHAZADA_TECNICO">Rechazada técnico</option>
+      </select>
+    </div>
+    <div style="flex:1;min-width:140px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Validación</label>
+      <select id="val-validado" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit" onchange="renderValidacion()">
+        <option value="">Todos</option>
+        <option value="pendiente">Pendientes</option>
+        <option value="validado">Validados</option>
+      </select>
+    </div>
+    <div style="flex:2;min-width:180px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Buscar</label>
+      <input id="val-buscar" placeholder="Cliente, N° cliente, nodo..." style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit" oninput="filtrarValidacion()"/>
+    </div>
+    <button class="btn btn-sm" onclick="renderValidacion()" style="align-self:flex-end;padding:8px 14px">🔄 Actualizar</button>
+  </div>
+  <div id="val-tabla"><div class="loading"><span class="spinner"></span></div></div>
+  <!-- Panel detalle del grupo -->
+  <div id="val-detalle" style="display:none;margin-top:1.5rem;border-top:2px solid var(--border);padding-top:1.5rem"></div>
+</div>
   <div class="ph">
     <div class="ph-icon blue">📊</div>
     <div><div class="ph-title">Liquidación diaria</div><div class="ph-sub">Mano de obra y materiales para Gigared</div></div>
@@ -1422,7 +1468,7 @@ function toggleManualRep(){
 }
 
 function badgeE(n){
-  const m={PENDIENTE:'b-amber',ASIGNADA:'b-blue',EN_PROCESO:'b-blue',FINALIZADA:'b-green',FINALIZADA_TECNICO:'b-cyan',DEVUELTA_GIGARED:'b-red',ELIMINADA_SISTEMA:'b-gray'};
+  const m={PENDIENTE:'b-amber',ASIGNADA:'b-blue',EN_PROCESO:'b-blue',FINALIZADA:'b-green',FINALIZADA_TECNICO:'b-cyan',RECHAZADA_TECNICO:'b-orange',NO_REALIZADA:'b-orange',DEVUELTA_GIGARED:'b-red',ELIMINADA_SISTEMA:'b-gray'};
   return`<span class="badge ${m[n]||'b-gray'}">${(n||'').replace(/_/g,' ')}</span>`;
 }
 function badgeTipo(t,item){
@@ -1555,7 +1601,7 @@ function construirMenu(){
   const nav=document.getElementById('sb-nav');
   const items=[
     {sec:'Principal'},{id:'dashboard',icon:'📊',label:'Dashboard'},{id:'ots',icon:'📋',label:'Órdenes de trabajo'},
-    {id:'asignar',icon:'📍',label:'Asignar OTs'},{id:'asignadas',icon:'✓',label:'Cerrar OTs'},{id:'liquidacion',icon:'📊',label:'Liquidación diaria'},
+    {id:'asignar',icon:'📍',label:'Asignar OTs'},{id:'asignadas',icon:'✓',label:'Cerrar OTs'},{id:'validacion',icon:'✅',label:'Validación'},{id:'liquidacion',icon:'📊',label:'Liquidación diaria'},
     {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},{id:'logistic',icon:'📤',label:'Logistic'},
     {id:'tecnicos',icon:'👷',label:'Técnicos'},
     {sec:'Stock'},{id:'stock-cuad',icon:'🔧',label:'Stock Cuadrillas'},{id:'stock',icon:'📦',label:'Stock Depósito'},
@@ -1575,9 +1621,9 @@ function irA(sec){
   const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
   document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
-  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',liquidacion:'Liquidación diaria',informes:'Informes',clientes:'Clientes',cuadrillas:'Cuadrillas',logistic:'Logistic',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
+  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',validacion:'Validación',liquidacion:'Liquidación diaria',informes:'Informes',clientes:'Clientes',cuadrillas:'Cuadrillas',logistic:'Logistic',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
   closeSidebar();
-  const fn={dashboard:renderDashboard,ots:()=>{const sel=document.getElementById('ot-fil-estado');if(sel&&!sel.value)sel.value='PENDIENTE';renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:()=>{renderClientes();},cuadrillas:()=>{renderCuadrillas();},logistic:renderLogistic,tecnicos:()=>{renderTecnicos();},'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
+  const fn={dashboard:renderDashboard,ots:()=>{const sel=document.getElementById('ot-fil-estado');if(sel&&!sel.value)sel.value='PENDIENTE';renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,validacion:inicializarValidacion,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:()=>{renderClientes();},cuadrillas:()=>{renderCuadrillas();},logistic:renderLogistic,tecnicos:()=>{renderTecnicos();},'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
 }
 
@@ -10119,6 +10165,490 @@ async function generarReporteFinalizadasXLSX(){
     XLSX.writeFile(wb,'Finalizadas_'+desde+'_'+hasta+'.xlsx');
   }catch(e){err.textContent='Error: '+e.message;}
 }
+
+// ═══════════════════════════════════════════════════════════════
+// MÓDULO VALIDACIÓN ADMINISTRATIVA — v166
+// ═══════════════════════════════════════════════════════════════
+let VAL_DATA=[], VAL_MOTIVOS=[];
+
+async function inicializarValidacion(){
+  // Setear fechas default: hoy
+  const hoyStr=new Date().toISOString().slice(0,10);
+  const d=document.getElementById('val-desde');
+  const h=document.getElementById('val-hasta');
+  if(d&&!d.value)d.value=hoyStr;
+  if(h&&!h.value)h.value=hoyStr;
+  // Poblar selector cuadrillas
+  const sel=document.getElementById('val-cuad');
+  if(sel&&sel.options.length===1){
+    try{
+      const cuads=await sbGet('cuadrillas','?activo=eq.true&order=nombre&select=id,nombre')||[];
+      cuads.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;sel.appendChild(o);});
+    }catch(e){}
+  }
+  // Cargar motivos (para mostrar en detalle)
+  try{VAL_MOTIVOS=await sbGet('motivos_devolucion','?activo=eq.true&order=orden,descripcion')||[];}catch(e){}
+  await renderValidacion();
+}
+
+async function renderValidacion(){
+  const el=document.getElementById('val-tabla');
+  const det=document.getElementById('val-detalle');
+  if(det)det.style.display='none';
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+
+  const desde=document.getElementById('val-desde')?.value;
+  const hasta=document.getElementById('val-hasta')?.value;
+  const cuadId=document.getElementById('val-cuad')?.value;
+  const estadoFil=document.getElementById('val-estado')?.value;
+
+  const ESTADOS_VAL=['FINALIZADA_TECNICO','RECHAZADA_TECNICO','NO_REALIZADA'];
+
+  try{
+    // Buscar IDs de estados de interés
+    const eIds=ESTADOS.filter(e=>ESTADOS_VAL.includes(e.nombre)).map(e=>e.id);
+    if(!eIds.length){el.innerHTML='<div class="card"><p style="color:#dc2626">Estados técnicos no encontrados. Recargá la página.</p></div>';return;}
+
+    let q='?select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false&order=fecha_trabajo.desc,horario_visita.asc';
+    if(desde)q+='&fecha_trabajo=gte.'+desde;
+    if(hasta)q+='&fecha_trabajo=lte.'+hasta;
+    if(cuadId)q+='&cuadrilla_id=eq.'+cuadId;
+    else q+='&cuadrilla_id=not.is.null';
+
+    const grupos=await sbGet('grupos_ot',q)||[];
+
+    // Filtrar: solo grupos con al menos una OT en estado técnico relevante
+    VAL_DATA=grupos.filter(g=>{
+      const ots=g.ordenes_trabajo||[];
+      const tieneRelevante=ots.some(o=>ESTADOS_VAL.includes(o.estados_ot?.nombre));
+      if(!tieneRelevante)return false;
+      if(estadoFil)return ots.some(o=>o.estados_ot?.nombre===estadoFil);
+      return true;
+    });
+
+    filtrarValidacion();
+  }catch(e){el.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';}
+}
+
+function filtrarValidacion(){
+  const busq=(document.getElementById('val-buscar')?.value||'').toLowerCase();
+  const valFil=document.getElementById('val-validado')?.value||'';
+  let lista=VAL_DATA;
+
+  if(busq){
+    lista=lista.filter(g=>{
+      const ots=g.ordenes_trabajo||[];
+      const cl=ots[0]?.clientes||{};
+      return (fmtCodigo(cl.codigo_gigared)||'').toLowerCase().includes(busq)
+        ||(cl.apellido||'').toLowerCase().includes(busq)
+        ||(cl.nodo||'').toLowerCase().includes(busq)
+        ||(cl.localidad||'').toLowerCase().includes(busq)
+        ||ots.some(o=>(o.numero_ot||'').toLowerCase().includes(busq));
+    });
+  }
+
+  if(valFil){
+    lista=lista.filter(g=>{
+      const ots=g.ordenes_trabajo||[];
+      if(valFil==='pendiente')return ots.some(o=>['FINALIZADA_TECNICO','RECHAZADA_TECNICO','NO_REALIZADA'].includes(o.estados_ot?.nombre)&&!o.validado_admin_at);
+      if(valFil==='validado')return ots.some(o=>['FINALIZADA_TECNICO','RECHAZADA_TECNICO','NO_REALIZADA'].includes(o.estados_ot?.nombre)&&o.validado_admin_at);
+      return true;
+    });
+  }
+
+  renderTablaValidacion(lista);
+}
+
+function calcEstadoGrupoVal(ots){
+  const ests=ots.map(o=>o.estados_ot?.nombre||'');
+  const TERM=['FINALIZADA_TECNICO','RECHAZADA_TECNICO','NO_REALIZADA','FINALIZADA'];
+  if(ests.every(e=>TERM.includes(e)))return ests.some(e=>e==='RECHAZADA_TECNICO'||e==='NO_REALIZADA')?'PARCIAL':'COMPLETO';
+  return'MIXTO';
+}
+
+function calcAlertasVal(ots){
+  const bloq=[], advert=[];
+  ots.forEach(ot=>{
+    const est=ot.estados_ot?.nombre||'';
+    if(est==='FINALIZADA_TECNICO'){
+      if(!ot._fotos_count)bloq.push('OT '+numOT(ot.numero_ot)+': sin fotos');
+      const tipo=ot.tipo_item||ot.tipo_tarea||'';
+      if(tipo==='BASICA'&&!ot.tag)bloq.push('OT '+numOT(ot.numero_ot)+': BASICA sin precinto');
+      if(!ot._mats_count)bloq.push('OT '+numOT(ot.numero_ot)+': sin materiales');
+      // Duración sospechosa
+      if(ot.hora_inicio_tec&&ot.hora_fin_tec){
+        const dur=Math.round((new Date(ot.hora_fin_tec)-new Date(ot.hora_inicio_tec))/60000);
+        if(dur<5)advert.push('OT '+numOT(ot.numero_ot)+': duración '+dur+' min');
+      }
+    }
+    if((est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA')&&!ot._fotos_count){
+      advert.push('OT '+numOT(ot.numero_ot)+': rechazo sin foto');
+    }
+  });
+  return{bloq,advert};
+}
+
+function renderTablaValidacion(lista){
+  const el=document.getElementById('val-tabla');
+  if(!lista.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">✅</div><div>Sin grupos pendientes para los filtros seleccionados</div></div>';return;}
+  el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.5rem">'+lista.length+' grupo'+(lista.length!==1?'s':'')+' · clic en una fila para ver detalle</div>'
+    +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+    +'<th>Fecha</th><th>Cuadrilla</th><th>Cliente</th><th>OTs</th><th>Estado</th><th>Alertas</th><th>Acciones</th>'
+    +'</tr></thead><tbody>'
+    +lista.map(g=>{
+      const ots=g.ordenes_trabajo||[];
+      const cl=ots[0]?.clientes||{};
+      const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
+      const estG=calcEstadoGrupoVal(ots);
+      const alertas=calcAlertasVal(ots);
+      const pendVal=ots.filter(o=>['FINALIZADA_TECNICO','RECHAZADA_TECNICO','NO_REALIZADA'].includes(o.estados_ot?.nombre)&&!o.validado_admin_at).length;
+      const totVal=ots.filter(o=>['FINALIZADA_TECNICO','RECHAZADA_TECNICO','NO_REALIZADA'].includes(o.estados_ot?.nombre)).length;
+      const estColor=estG==='COMPLETO'?'#16a34a':estG==='PARCIAL'?'#d97706':'#2563eb';
+      return '<tr style="cursor:pointer" onclick="verGrupoValidacion('+g.id+')">'
+        +'<td style="font-size:12px;font-weight:600;white-space:nowrap">'+(g.fecha_trabajo||'—')+(g.horario_visita?'<br><span style="color:#94a3b8">'+g.horario_visita.slice(0,5)+'</span>':'')+'</td>'
+        +'<td style="font-size:12px;font-weight:600">'+(g.cuadrillas?.nombre||'—')+'</td>'
+        +'<td style="font-size:12px"><div style="font-weight:600">'+fmtCodigo(cl.codigo_gigared)+' — '+(cl.apellido||'')+' '+(cl.nombre||'')+'</div>'
+          +'<div style="font-size:11px;color:#64748b">'+dom+(cl.nodo?' · <span style="color:#2563eb">'+cl.nodo+'</span>':'')+'</div></td>'
+        +'<td style="font-size:12px;text-align:center">'+ots.length+'<br><span style="font-size:10px;color:#64748b">'+pendVal+'/'+totVal+' pend</span></td>'
+        +'<td><span style="font-size:11px;font-weight:700;color:'+estColor+'">'+estG+'</span></td>'
+        +'<td>'+(alertas.bloq.length?'<span style="font-size:11px;font-weight:700;color:#dc2626;background:#fee2e2;padding:2px 8px;border-radius:6px">🚨 '+alertas.bloq.length+'</span> ':'')
+          +(alertas.advert.length?'<span style="font-size:11px;font-weight:700;color:#d97706;background:#fef3c7;padding:2px 8px;border-radius:6px">⚠️ '+alertas.advert.length+'</span>':'')
+          +(!alertas.bloq.length&&!alertas.advert.length?'<span style="color:#16a34a;font-size:12px">✓</span>':'')
+        +'</td>'
+        +'<td><div style="display:flex;gap:4px;flex-wrap:wrap">'
+          +'<button class="btn btn-sm" style="font-size:10px;background:#0891b2;color:#fff;border-color:#0891b2" onclick="event.stopPropagation();aprobarGrupo('+g.id+')">✅ Aprobar todo</button>'
+          +'<button class="btn btn-sm" style="font-size:10px" onclick="event.stopPropagation();reasignarGrupo('+g.id+',\''+encodeURIComponent(g.cuadrillas?.nombre||'')+'\')">'
+            +'🔀 Reasignar</button>'
+        +'</div></td>'
+        +'</tr>';
+    }).join('')+'</tbody></table></div>';
+}
+
+// ── DETALLE DE GRUPO ──────────────────────────────────────────────────────────
+async function verGrupoValidacion(grupoId){
+  const det=document.getElementById('val-detalle');
+  det.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  det.style.display='';
+  det.scrollIntoView({behavior:'smooth',block:'start'});
+
+  try{
+    const [g, fotosArr, matsArr]=await Promise.all([
+      sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
+      sbGet('ot_fotos',`?ot_id=in.(${(await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id`)||[]).map(o=>o.id).join(',')})&select=id,ot_id,url,nombre_archivo`)||[],
+      sbGet('ot_materiales_usados',`?ot_id=in.(${(await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id`)||[]).map(o=>o.id).join(',')})&select=ot_id,cantidad,catalogo_materiales(nombre,unidad,serial_tipo)`)||[]
+    ]);
+    if(!g){det.innerHTML='<p style="color:#dc2626">Grupo no encontrado.</p>';return;}
+
+    const ots=g.ordenes_trabajo||[];
+    const cl=ots[0]?.clientes||{};
+    const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
+
+    // Inyectar conteos en cada OT para alertas
+    ots.forEach(ot=>{
+      ot._fotos_count=(fotosArr||[]).filter(f=>f.ot_id===ot.id).length;
+      ot._mats_count=(matsArr||[]).filter(m=>m.ot_id===ot.id).length;
+    });
+
+    // Header
+    let html='<div class="card" style="border-left:4px solid #0891b2;margin-bottom:1rem">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">'
+        +'<div>'
+          +'<div style="font-size:22px;font-weight:900;color:#1e3a5f">'+fmtCodigo(cl.codigo_gigared)+'</div>'
+          +'<div style="font-size:17px;font-weight:800">'+(cl.apellido||'')+' '+(cl.nombre||'')+'</div>'
+          +'<div style="font-size:13px;color:#64748b;margin-top:4px">📍 '+dom+(cl.nodo?' · Nodo: <strong>'+cl.nodo+'</strong>':'')+(cl.localidad?' · '+cl.localidad:'')+'</div>'
+        +'</div>'
+        +'<div style="text-align:right">'
+          +'<div style="font-size:13px;font-weight:600">🔧 '+(g.cuadrillas?.nombre||'—')+'</div>'
+          +'<div style="font-size:12px;color:#64748b">'+(g.fecha_trabajo||'—')+(g.horario_visita?' · '+g.horario_visita.slice(0,5):'')+'</div>'
+        +'</div>'
+      +'</div>';
+
+    // Timing del grupo
+    const otConInicio=ots.find(o=>o.hora_inicio_tec);
+    const otConFin=ots.find(o=>o.hora_fin_tec);
+    if(otConInicio||otConFin){
+      const ini=otConInicio?new Date(otConInicio.hora_inicio_tec):null;
+      const fin=otConFin?new Date(otConFin.hora_fin_tec):null;
+      const dur=ini&&fin?Math.round((fin-ini)/60000):null;
+      html+='<div style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap">'
+        +(ini?'<div style="font-size:12px">▶ Inicio: <strong>'+ini.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</strong></div>':'')
+        +(fin?'<div style="font-size:12px">■ Fin: <strong>'+fin.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</strong></div>':'')
+        +(dur!==null?'<div style="font-size:12px">⏱ Duración: <strong style="color:'+(dur<5?'#dc2626':'#16a34a')+'">'+dur+' min</strong></div>':'')
+      +'</div>';
+    }
+    html+='</div>';
+
+    // OTs
+    ots.forEach(ot=>{
+      const est=ot.estados_ot?.nombre||'';
+      const tipo=ot.tipo_item||ot.tipo_tarea||'';
+      const fotos=(fotosArr||[]).filter(f=>f.ot_id===ot.id);
+      const mats=(matsArr||[]).filter(m=>m.ot_id===ot.id);
+      const alertas=calcAlertasVal([ot]);
+      const yaValidado=!!ot.validado_admin_at;
+
+      html+='<div class="card" style="margin-bottom:1rem;border-left:4px solid '+(est==='FINALIZADA_TECNICO'?'#0891b2':est==='RECHAZADA_TECNICO'?'#d97706':'#94a3b8')+'">';
+      // OT header
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">'
+        +'<div><span style="font-size:13px;font-weight:700;color:#1e3a5f">OT '+numOT(ot.numero_ot)+'</span> '+badgeTipo(ot.tipo_tarea,ot.tipo_item)+' '+badgeE(est)+'</div>'
+        +(yaValidado?'<span style="font-size:11px;font-weight:700;color:#16a34a;background:#dcfce7;padding:2px 10px;border-radius:6px">✓ Validado por '+ot.validado_admin_por+'</span>':'')
+      +'</div>';
+
+      // Alertas
+      if(alertas.bloq.length||alertas.advert.length){
+        html+='<div style="margin-bottom:.75rem">';
+        alertas.bloq.forEach(a=>html+='<div style="font-size:11px;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:6px;padding:3px 10px;margin-bottom:3px">🚨 '+a+'</div>');
+        alertas.advert.forEach(a=>html+='<div style="font-size:11px;font-weight:700;color:#d97706;background:#fef3c7;border-radius:6px;padding:3px 10px;margin-bottom:3px">⚠️ '+a+'</div>');
+        html+='</div>';
+      }
+
+      // Materiales
+      if(mats.length){
+        html+='<div style="margin-bottom:.5rem"><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:4px">Materiales</div>';
+        mats.forEach(m=>{html+='<div style="font-size:12px;padding:2px 0">• '+(m.catalogo_materiales?.nombre||'?')+' × '+m.cantidad+' '+(m.catalogo_materiales?.unidad||'')+'</div>';});
+        html+='</div>';
+      }
+      // Seriales / precinto
+      if(ot.tag)html+='<div style="font-size:12px;margin-bottom:.25rem">📌 Precinto: <code>'+ot.tag+'</code></div>';
+      if(ot.equipo_instalado)html+='<div style="font-size:12px;margin-bottom:.25rem">📱 Serial: <code>'+ot.equipo_instalado+'</code></div>';
+      // Obs
+      if(ot.obs_trabajo)html+='<div style="font-size:12px;color:#64748b;background:#f8fafc;border-radius:6px;padding:6px 10px;margin-bottom:.5rem">'+ot.obs_trabajo+'</div>';
+      // Fotos
+      if(fotos.length){
+        html+='<div style="margin-bottom:.5rem"><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:4px">Fotos ('+fotos.length+')</div>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+          +fotos.map(f=>'<a href="'+f.url+'" target="_blank"><img src="'+f.url+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"/></a>').join('')
+          +'</div></div>';
+      }
+
+      // Acciones por OT
+      html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.5rem">';
+      if(est==='FINALIZADA_TECNICO'){
+        html+='<button class="btn btn-sm" style="font-size:11px;background:#16a34a;color:#fff;border-color:#16a34a" onclick="aprobarOT('+ot.id+','+grupoId+')">✅ Aprobar</button>';
+      }else if(est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA'){
+        html+='<button class="btn btn-sm" style="font-size:11px;background:#0891b2;color:#fff;border-color:#0891b2" onclick="validarRechazadaAdmin('+ot.id+','+grupoId+')">✓ Validar rechazo</button>';
+      }
+      html+='<button class="btn btn-sm" style="font-size:11px" onclick="otAPendienteAdmin('+ot.id+','+grupoId+')">↺ Pendiente</button>';
+      html+='<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:#fca5a5" onclick="otAGigaradAdmin('+ot.id+','+grupoId+')">🚫 Gigared</button>';
+      if(est==='FINALIZADA_TECNICO')html+='<button class="btn btn-sm" style="font-size:11px;color:#2563eb" onclick="abrirEditarCierre('+ot.id+')">✏️ Editar</button>';
+      html+='</div>';
+
+      html+='</div>';
+    });
+
+    // Acciones de grupo
+    html+='<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:1rem;border-top:1px solid var(--border)">'
+      +'<button class="btn btn-primary" style="font-size:12px" onclick="aprobarGrupo('+grupoId+')">✅ Aprobar todo el grupo</button>'
+      +'<button class="btn btn-sm" style="font-size:12px" onclick="reasignarGrupo('+grupoId+',\''+encodeURIComponent(g.cuadrillas?.nombre||'')+'\')">🔀 Reasignar cuadrilla</button>'
+      +'<button class="btn btn-sm" style="font-size:12px;color:#64748b" onclick="document.getElementById(\'val-detalle\').style.display=\'none\'">✕ Cerrar detalle</button>'
+    +'</div>';
+
+    det.innerHTML=html;
+  }catch(e){det.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';}
+}
+
+// ── ACCIONES ADMINISTRATIVAS ──────────────────────────────────────────────────
+
+async function aprobarOT(otId, grupoId){
+  if(!confirm('¿Aprobar esta OT? Pasará a FINALIZADA.'))return;
+  const eFin=ESTADOS.find(e=>e.nombre==='FINALIZADA');
+  if(!eFin){alert('Estado FINALIZADA no encontrado.');return;}
+  try{
+    const ot=(await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id&eliminado=eq.false`))||[];
+    const estadoAnt=ot[0]?.estado_id;
+    const now=new Date().toISOString();
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{
+      estado_id:eFin.id,
+      fecha_fin:now.slice(0,10),
+      validado_admin_at:now,
+      validado_admin_por:CU.nombre||CU.email||'admin'
+    });
+    await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:estadoAnt,estado_nuevo_id:eFin.id,observacion:'APROBADO POR ADMIN: '+(CU.nombre||CU.email),usuario_id:CU.id});
+    await verGrupoValidacion(grupoId);
+    renderValidacion();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function validarRechazadaAdmin(otId, grupoId){
+  if(!confirm('¿Validar este rechazo? Quedará registrado como revisado por el admin (sin cambio de estado).'))return;
+  try{
+    const ot=(await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id&eliminado=eq.false`))||[];
+    const estadoAct=ot[0]?.estado_id;
+    const now=new Date().toISOString();
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{
+      validado_admin_at:now,
+      validado_admin_por:CU.nombre||CU.email||'admin'
+    });
+    await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:estadoAct,estado_nuevo_id:estadoAct,observacion:'VALIDADO POR ADMIN: '+(CU.nombre||CU.email)+' — rechazo confirmado',usuario_id:CU.id});
+    await verGrupoValidacion(grupoId);
+    renderValidacion();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function otAPendienteAdmin(otId, grupoId){
+  const motivo=prompt('Motivo para devolver a PENDIENTE (obligatorio):');
+  if(!motivo||!motivo.trim()){alert('El motivo es obligatorio.');return;}
+  const ePend=ESTADOS.find(e=>e.nombre==='PENDIENTE');
+  if(!ePend){alert('Estado PENDIENTE no encontrado.');return;}
+  try{
+    const ot=(await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id&eliminado=eq.false`))||[];
+    const estadoAnt=ot[0]?.estado_id;
+    // Solo cambia estado + limpia timing técnico. NO toca cuadrilla_id, fecha_trabajo, grupo_id
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{
+      estado_id:ePend.id,
+      hora_inicio_tec:null,
+      hora_fin_tec:null,
+      validado_admin_at:null,
+      validado_admin_por:null
+    });
+    // Historial de la OT
+    await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:estadoAnt,estado_nuevo_id:ePend.id,observacion:'DEVUELTA A PENDIENTE POR ADMIN: '+motivo.trim(),usuario_id:CU.id});
+    // Acumular en observaciones del grupo (sin borrar asignación)
+    const g=(await sbGet('grupos_ot',`?id=eq.${grupoId}&select=estado_id,observaciones,cuadrillas(nombre),fecha_trabajo,horario_visita&eliminado=eq.false`))||[];
+    const gData=g[0]||{};
+    const ts=new Date().toLocaleString('es-AR');
+    const entrada=`[${ts}] OT ${otId} devuelta a PENDIENTE por ${CU.nombre||CU.email}. Motivo: ${motivo.trim()}`;
+    const obsAcum=(gData.observaciones?gData.observaciones+'\n':'')+entrada;
+    await sbPatch('grupos_ot',`?id=eq.${grupoId}`,{estado_id:ePend.id,observaciones:obsAcum});
+    await verGrupoValidacion(grupoId);
+    renderValidacion();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function otAGigaradAdmin(otId, grupoId){
+  if(!confirm('¿Devolver esta OT a Gigared?'))return;
+  const eDev=ESTADOS.find(e=>e.nombre==='DEVUELTA_GIGARED');
+  if(!eDev){alert('Estado DEVUELTA_GIGARED no encontrado.');return;}
+  try{
+    const ot=(await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id&eliminado=eq.false`))||[];
+    const estadoAnt=ot[0]?.estado_id;
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eDev.id});
+    await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:estadoAnt,estado_nuevo_id:eDev.id,observacion:'DEVUELTA A GIGARED POR ADMIN: '+(CU.nombre||CU.email),usuario_id:CU.id});
+    await verGrupoValidacion(grupoId);
+    renderValidacion();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// ── APROBAR TODO EL GRUPO CON VALIDACIONES ────────────────────────────────────
+async function aprobarGrupo(grupoId){
+  // Cargar datos completos para validar
+  const [ots, fotosAll, matsAll]=await Promise.all([
+    sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id,numero_ot,tipo_item,tipo_tarea,tag,hora_inicio_tec,hora_fin_tec,estados_ot(nombre)&eliminado=eq.false`)||[],
+    sbGet('ot_fotos',`?ot_id=in.(${((await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id`)||[])).map(o=>o.id).join(',')})&select=ot_id`)||[],
+    sbGet('ot_materiales_usados',`?ot_id=in.(${((await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id`)||[])).map(o=>o.id).join(',')})&select=ot_id,cantidad,catalogo_materiales(serial_tipo)`)||[]
+  ]);
+
+  const bloq=[], advert=[];
+  (ots||[]).forEach(ot=>{
+    const est=ot.estados_ot?.nombre||'';
+    const nOT='OT '+numOT(ot.numero_ot);
+    const tipo=ot.tipo_item||ot.tipo_tarea||'';
+    const fotosCnt=(fotosAll||[]).filter(f=>f.ot_id===ot.id).length;
+    const matsCnt=(matsAll||[]).filter(m=>m.ot_id===ot.id).length;
+
+    if(est==='FINALIZADA_TECNICO'){
+      if(!fotosCnt) bloq.push(nOT+': sin fotos de cierre');
+      if(tipo==='BASICA'&&!ot.tag) bloq.push(nOT+': BASICA sin número de precinto');
+      if(!matsCnt) bloq.push(nOT+': sin materiales registrados');
+      if(ot.hora_inicio_tec&&ot.hora_fin_tec){
+        const dur=Math.round((new Date(ot.hora_fin_tec)-new Date(ot.hora_inicio_tec))/60000);
+        if(dur<5) advert.push(nOT+': duración sospechosa ('+dur+' min)');
+      }
+    }
+    if((est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA')&&!fotosCnt){
+      advert.push(nOT+': rechazo sin evidencia fotográfica');
+    }
+  });
+
+  if(bloq.length){
+    alert('⛔ No se puede aprobar el grupo.\n\nProblemas críticos:\n• '+bloq.join('\n• ')+'\n\nResolv estos problemas antes de aprobar.');
+    return;
+  }
+  if(advert.length){
+    if(!confirm('⚠️ Hay advertencias:\n• '+advert.join('\n• ')+'\n\n¿Confirmar la aprobación igualmente?'))return;
+  }
+
+  const eFin=ESTADOS.find(e=>e.nombre==='FINALIZADA');
+  if(!eFin){alert('Estado FINALIZADA no encontrado.');return;}
+
+  try{
+    const now=new Date().toISOString();
+    const adminNombre=CU.nombre||CU.email||'admin';
+    for(const ot of (ots||[])){
+      const est=ot.estados_ot?.nombre||'';
+      if(est==='FINALIZADA_TECNICO'){
+        await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{estado_id:eFin.id,fecha_fin:now.slice(0,10),validado_admin_at:now,validado_admin_por:adminNombre});
+        await sbPost('historial_estados_ot',{ot_id:ot.id,estado_nuevo_id:eFin.id,observacion:'APROBADO POR ADMIN (grupal): '+adminNombre,usuario_id:CU.id});
+      }else if(est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA'){
+        await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{validado_admin_at:now,validado_admin_por:adminNombre});
+        await sbPost('historial_estados_ot',{ot_id:ot.id,estado_nuevo_id:ot.estados_ot?.id||null,observacion:'VALIDADO POR ADMIN (grupal): '+adminNombre,usuario_id:CU.id});
+      }
+    }
+    await verGrupoValidacion(grupoId);
+    renderValidacion();
+    alert('✅ Grupo aprobado correctamente.');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// ── REASIGNACIÓN ENTRE CUADRILLAS ────────────────────────────────────────────
+async function reasignarGrupo(grupoId, cuadNombreEnc){
+  const cuadNombreOrig=decodeURIComponent(cuadNombreEnc||'');
+  // Verificar estados — solo PENDIENTE o ASIGNADA
+  const ots=await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id,estados_ot(nombre)&eliminado=eq.false`)||[];
+  const PERM=['PENDIENTE','ASIGNADA'];
+  const estadosBloq=[...new Set(ots.map(o=>o.estados_ot?.nombre||'').filter(e=>!PERM.includes(e)))];
+  if(estadosBloq.length){
+    alert('⛔ No se puede reasignar.\n\nEl grupo tiene OTs en: '+estadosBloq.join(', ')+'\n\nSolo se pueden reasignar grupos en PENDIENTE o ASIGNADA.');
+    return;
+  }
+
+  // Cargar cuadrillas disponibles
+  const cuads=await sbGet('cuadrillas','?activo=eq.true&order=nombre&select=id,nombre')||[];
+  const opciones=cuads.map(c=>`${c.id}|${c.nombre}`).join('\n');
+
+  // Modal simple con prompt por ahora — se puede mejorar a modal real
+  const seleccion=prompt(
+    `Reasignar grupo — actualmente en: ${cuadNombreOrig}\n\nCuadrillas disponibles:\n${cuads.map((c,i)=>`${i+1}. ${c.nombre}`).join('\n')}\n\nIngresá el número de la nueva cuadrilla:`
+  );
+  if(!seleccion||!seleccion.trim())return;
+  const idx=parseInt(seleccion.trim())-1;
+  if(isNaN(idx)||idx<0||idx>=cuads.length){alert('Número inválido.');return;}
+  const nuevaCuad=cuads[idx];
+  if(nuevaCuad.nombre===cuadNombreOrig){alert('La cuadrilla nueva es la misma que la actual.');return;}
+
+  const motivo=prompt(`Motivo de la reasignación (obligatorio):\n${cuadNombreOrig} → ${nuevaCuad.nombre}`);
+  if(!motivo||!motivo.trim()){alert('El motivo es obligatorio.');return;}
+
+  const nuevoHorario=prompt('Nuevo horario (HH:MM, opcional — Enter para mantener el actual):');
+
+  try{
+    const gData=(await sbGet('grupos_ot',`?id=eq.${grupoId}&select=cuadrilla_id,horario_visita,fecha_trabajo,observaciones&eliminado=eq.false`))||[];
+    const g=gData[0]||{};
+    const ts=new Date().toLocaleString('es-AR');
+    const entrada=`[${ts}] REASIGNADO por ${CU.nombre||CU.email}: de "${cuadNombreOrig}" (id:${g.cuadrilla_id}) → "${nuevaCuad.nombre}" (id:${nuevaCuad.id}). Motivo: ${motivo.trim()}`;
+    const obsAcum=(g.observaciones?g.observaciones+'\n':'')+entrada;
+
+    const patch={cuadrilla_id:nuevaCuad.id,observaciones:obsAcum};
+    if(nuevoHorario&&nuevoHorario.trim())patch.horario_visita=nuevoHorario.trim();
+
+    await sbPatch('grupos_ot',`?id=eq.${grupoId}`,patch);
+
+    // Registrar en historial de la primera OT como evidencia
+    if(ots.length){
+      await sbPost('historial_estados_ot',{
+        ot_id:ots[0].id,
+        estado_nuevo_id:ots[0].estados_ot?.id||null,
+        observacion:`REASIGNADO: de "${cuadNombreOrig}" (id:${g.cuadrilla_id}) → "${nuevaCuad.nombre}" (id:${nuevaCuad.id}). Motivo: ${motivo.trim()}`,
+        usuario_id:CU.id
+      });
+    }
+
+    alert(`✅ Grupo reasignado a ${nuevaCuad.nombre} correctamente.`);
+    renderValidacion();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// ── FIN MÓDULO VALIDACIÓN ADMINISTRATIVA ──────────────────────────────────────
 
 
 </script>
