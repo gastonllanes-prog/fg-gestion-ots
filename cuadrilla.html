@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.8</title>
+<title>FG Cuadrillas v4.9</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.8 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.9 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -392,7 +392,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.8';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.9';
 
   // Cargar estados con fallback
   try{
@@ -786,14 +786,43 @@ async function abrirWizard(){
     var resultados=await Promise.all([
       sbGet('catalogo_materiales','?activo=eq.true&order=orden_display'),
       sbGet('catalogo_servicios','?activo=eq.true&order=orden_display'),
-      sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&select=material_id,cantidad')
+      sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&select=material_id,cantidad'),
+      sbGet('grupos_ot','?cuadrilla_id=eq.'+cuadId+'&select=id')
     ]);
     var mats=resultados[0]||[];
     var servs=resultados[1]||[];
     var scuad=resultados[2]||[];
+    var gruposDeEstaCuad=(resultados[3]||[]).map(function(g){return g.id;});
 
     var scMap={};
     scuad.forEach(function(s){scMap[s.material_id]=s.cantidad||0;});
+
+    // ── Stock pendiente: materiales de OTs FINALIZADA_TECNICO no validadas ────
+    // pendienteMap = { material_id: cantidad_comprometida_no_validada }
+    var pendienteMap={};
+    try{
+      var eFinTecId=(ESTADOS.find(function(e){return e.nombre==='FINALIZADA_TECNICO';})||{}).id;
+      if(gruposDeEstaCuad.length&&eFinTecId){
+        var otsPend=await sbGet('ordenes_trabajo',
+          '?grupo_id=in.('+gruposDeEstaCuad.join(',')+')'
+          +'&estado_id=eq.'+eFinTecId
+          +'&validado_admin_at=is.null'
+          +'&select=id'
+        )||[];
+        if(otsPend.length){
+          var otPendIds=otsPend.map(function(o){return o.id;});
+          var matsPend=await sbGet('ot_materiales_usados',
+            '?ot_id=in.('+otPendIds.join(',')+')'
+            +'&activo=eq.true'
+            +'&select=material_id,cantidad'
+          )||[];
+          matsPend.forEach(function(m){
+            pendienteMap[m.material_id]=(pendienteMap[m.material_id]||0)+(parseInt(m.cantidad)||0);
+          });
+        }
+      }
+    }catch(ep){console.warn('[pendienteMap] Error calculando pendiente:',ep.message);}
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Cargar seriales disponibles de la cuadrilla
     var serialesMap={};
@@ -810,7 +839,7 @@ async function abrirWizard(){
       pasos:ots.map(function(ot){return{ot:ot,accion:null,mats:{},servs:{},seriales:{},corrSels:{},motivo:'',motivoOtro:false,obs:'',fotos:[]};}),
       paso:0,
       catalogoMats:mats,catalogoServs:servs,
-      scMap:scMap,serialesMap:serialesMap
+      scMap:scMap,pendienteMap:pendienteMap,serialesMap:serialesMap
     };
     // Agregar paso resumen al final
     PWIZ.pasos.push({ot:null,accion:'RESUMEN'});
@@ -923,11 +952,25 @@ function renderWizMateriales(p){
     +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Materiales usados *</div>';
   mats.forEach(function(m){
     var qty=p.mats[m.id]||0;
-    var stock=PWIZ.scMap[m.id]||0;
+    var fisico=PWIZ.scMap[m.id]||0;
+    var pendiente=PWIZ.pendienteMap[m.material_id||m.id]||0;
+    var disponible=Math.max(0,fisico-pendiente);
     var badge=m.serial_tipo==='INDIVIDUAL'?' <span style="font-size:10px;background:var(--blue-l);color:var(--blue);padding:1px 6px;border-radius:5px;font-weight:700">SERIAL</span>':m.serial_tipo==='CORRELATIVO'?' <span style="font-size:10px;background:var(--amber-l);color:var(--amber);padding:1px 6px;border-radius:5px;font-weight:700">PRECINTO</span>':'';
+    // UI de stock: compacta si no hay pendiente, desglosada si hay
+    var stockHtml;
+    if(pendiente>0){
+      stockHtml='<div style="font-size:11px;margin-top:2px">'
+        +'<span style="color:var(--muted)">Físico: <strong>'+fisico+'</strong></span>'
+        +' · <span style="color:var(--amber)">Pendiente: <strong>'+pendiente+'</strong></span>'
+        +' · <span style="color:'+(disponible<=0?'var(--red)':'var(--green)')+'">Disponible: <strong>'+disponible+'</strong></span>'
+        +' '+(m.unidad||'')
+        +'</div>';
+    }else{
+      stockHtml='<div class="mat-stock">Stock: '+fisico+' '+(m.unidad||'')+'</div>';
+    }
     html+='<div class="mat-row">'
       +'<div style="flex:1;min-width:0"><div class="mat-nombre">'+m.nombre+badge+'</div>'
-        +'<div class="mat-stock">Stock cuadrilla: '+stock+' '+(m.unidad||'')+'</div></div>'
+        +stockHtml+'</div>'
       +'<div class="mat-ctrl">'
         +'<button class="mat-btn" onclick="wizCambiarMat('+m.id+',-1)" '+(qty<=0?'disabled':'')+'>−</button>'
         +'<input type="number" inputmode="numeric" class="mat-qty" id="wiz-mat-qty-'+m.id+'" value="'+(qty||'')+'" min="0" step="1" onchange="wizSetMatQty('+m.id+',this.value)" oninput="wizSetMatQty('+m.id+',this.value)"/>'
