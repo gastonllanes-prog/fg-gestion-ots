@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.9</title>
+<title>FG Cuadrillas v4.10</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.9 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.10 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -392,7 +392,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.9';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.10';
 
   // Cargar estados con fallback
   try{
@@ -420,7 +420,7 @@ async function cargarDatos(){
       sbGet('cuadrilla_tecnicos','?cuadrilla_id=eq.'+CUAD.id+'&activo=eq.true&select=tecnicos(nombre)'),
       sbGet('grupos_ot',
         '?fecha_trabajo=eq.'+hoy()+'&cuadrilla_id=eq.'+CUAD.id+'&eliminado=eq.false'
-        +'&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,hora_inicio_tec,hora_fin_tec,estado_id,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,localidad,nodo,telefono1,telefono2,lat_domicilio,lng_domicilio,fecha_gps_domicilio))'
+        +'&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,hora_inicio_tec,hora_fin_tec,lat_inicio_tec,lng_inicio_tec,lat_fin_tec,lng_fin_tec,estado_id,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,localidad,nodo,telefono1,telefono2,lat_domicilio,lng_domicilio,fecha_gps_domicilio))'
         +'&order=horario_visita.asc.nullslast'
       )
     ]);
@@ -574,16 +574,22 @@ function renderGrupo(){
   }else if(est==='TERMINADA'){
     var realizadas=ots.filter(function(o){return o.estados_ot&&(o.estados_ot.nombre==='FINALIZADA_TECNICO'||o.estados_ot.nombre==='FINALIZADA');}).length;
     var noRealizadas=ots.filter(function(o){return o.estados_ot&&o.estados_ot.nombre==='NO_REALIZADA';}).length;
+    var tieneGpsInicio=ots.some(function(o){return o.lat_inicio_tec;});
+    var tieneGpsFin=ots.some(function(o){return o.lat_fin_tec;});
     html+='<div class="est-banner ter"><div class="est-banner-icon">🎯</div>'
       +'<div class="est-banner-txt" style="color:var(--cyan)">Visita terminada</div>'
       +'<div class="est-banner-sub">'+realizadas+' realizad'+(realizadas!==1?'as':'a')+(noRealizadas?' · '+noRealizadas+' no realizad'+(noRealizadas!==1?'as':'a'):'')+'</div>'
+      +(tieneGpsInicio?'<div style="font-size:11px;color:var(--green);background:var(--green-l);padding:2px 8px;border-radius:99px;margin-top:4px;display:inline-block">📍 Ubicación de inicio registrada</div>':'')
+      +(tieneGpsFin?'<div style="font-size:11px;color:var(--green);background:var(--green-l);padding:2px 8px;border-radius:99px;margin-top:4px;display:inline-block">📍 Ubicación de finalización registrada</div>':'')
       +'</div>';
   }else if(est==='RECHAZADA_TECNICO'){
-    var obsRec='';
-    for(var j=0;j<ots.length;j++){if(ots[j].obs_trabajo){obsRec=ots[j].obs_trabajo;break;}}
+    var obsRec2='';
+    for(var j=0;j<ots.length;j++){if(ots[j].obs_trabajo){obsRec2=ots[j].obs_trabajo;break;}}
+    var tieneGpsRechazo=ots.some(function(o){return o.lat_fin_tec;});
     html+='<div class="est-banner rec"><div class="est-banner-icon">⛔</div>'
       +'<div class="est-banner-txt" style="color:var(--orange)">Visita rechazada</div>'
-      +(obsRec?'<div class="est-banner-sub">'+obsRec+'</div>':'')
+      +(obsRec2?'<div class="est-banner-sub">'+obsRec2+'</div>':'')
+      +(tieneGpsRechazo?'<div style="font-size:11px;color:var(--green);background:var(--green-l);padding:2px 8px;border-radius:99px;margin-top:4px;display:inline-block">📍 Ubicación de rechazo registrada</div>':'')
       +'</div>';
   }
   html+='</div>';
@@ -613,7 +619,7 @@ async function iniciarVisita(){
     var ahora=new Date().toISOString();
     var ots=GRUPO_ACTIVO.ordenes_trabajo||[];
     for(var i=0;i<ots.length;i++){
-      await sbPatch('ordenes_trabajo','?id=eq.'+ots[i].id,{estado_id:eEnP.id,hora_inicio_tec:ahora});
+      await sbPatch('ordenes_trabajo','?id=eq.'+ots[i].id,{estado_id:eEnP.id,hora_inicio_tec:ahora,lat_inicio_tec:parseFloat(gps.lat),lng_inicio_tec:parseFloat(gps.lng)});
     }
     // GPS al cliente solo si no tiene aún
     var cl=ots[0]?ots[0].clientes:null;
@@ -624,7 +630,7 @@ async function iniciarVisita(){
     var nuevoEst={id:eEnP.id,nombre:'EN_PROCESO'};
     var clAct=cl?Object.assign({},cl,{lat_domicilio:parseFloat(gps.lat),lng_domicilio:parseFloat(gps.lng)}):cl;
     GRUPO_ACTIVO=Object.assign({},GRUPO_ACTIVO,{
-      ordenes_trabajo:ots.map(function(o){return Object.assign({},o,{hora_inicio_tec:ahora,estados_ot:nuevoEst,clientes:clAct});})
+      ordenes_trabajo:ots.map(function(o){return Object.assign({},o,{hora_inicio_tec:ahora,lat_inicio_tec:parseFloat(gps.lat),lng_inicio_tec:parseFloat(gps.lng),estados_ot:nuevoEst,clientes:clAct});})
     });
     GRUPOS=GRUPOS.map(function(g){return g.id===GRUPO_ACTIVO.id?GRUPO_ACTIVO:g;});
     renderGrupo();
@@ -725,7 +731,7 @@ async function confirmarRechazo(){
       +(fotasOkRec.length?'\nFOTOS: '+fotasOkRec.length+' foto(s) registrada(s) como evidencia del rechazo':'');
     var ots=GRUPO_ACTIVO.ordenes_trabajo||[];
     for(var i=0;i<ots.length;i++){
-      await sbPatch('ordenes_trabajo','?id=eq.'+ots[i].id,{estado_id:eRec.id,hora_inicio_tec:ahora,obs_trabajo:obsTexto});
+      await sbPatch('ordenes_trabajo','?id=eq.'+ots[i].id,{estado_id:eRec.id,hora_inicio_tec:ahora,obs_trabajo:obsTexto,lat_fin_tec:parseFloat(gps.lat),lng_fin_tec:parseFloat(gps.lng)});
     }
     // GPS al cliente solo si no tiene aún
     var cl=ots[0]?ots[0].clientes:null;
@@ -743,7 +749,7 @@ async function confirmarRechazo(){
     // Actualizar memoria
     var nuevoEst={id:eRec.id,nombre:'RECHAZADA_TECNICO'};
     GRUPO_ACTIVO=Object.assign({},GRUPO_ACTIVO,{
-      ordenes_trabajo:ots.map(function(o){return Object.assign({},o,{estados_ot:nuevoEst,hora_inicio_tec:ahora,obs_trabajo:obsTexto});})
+      ordenes_trabajo:ots.map(function(o){return Object.assign({},o,{estados_ot:nuevoEst,hora_inicio_tec:ahora,obs_trabajo:obsTexto,lat_fin_tec:parseFloat(gps.lat),lng_fin_tec:parseFloat(gps.lng)});})
     });
     GRUPOS=GRUPOS.map(function(g){return g.id===GRUPO_ACTIVO.id?GRUPO_ACTIVO:g;});
     document.getElementById('s-rechazo').style.display='none';
@@ -1519,6 +1525,10 @@ async function confirmarWizard(){
     if(!eFinTec||!eFinTec.id)throw new Error('No se encontró estado FINALIZADA_TECNICO. Ejecutá el SQL de configuración.');
     if(!eRecTec||!eRecTec.id)throw new Error('No se encontró estado RECHAZADA_TECNICO. Avisá al administrador.');
 
+    // GPS no bloqueante — si falla, el cierre sigue igual sin coordenadas
+    var gpsFin=null;
+    try{gpsFin=await obtenerGPS();}catch(e){console.warn('[GPS fin] No disponible:',e.message);}
+
     var ahora=new Date().toISOString();
     var cuadId=PWIZ.cuadId;
     var pasos=PWIZ.pasos.filter(function(p){return p.accion!=='RESUMEN';});
@@ -1588,6 +1598,7 @@ async function confirmarWizard(){
         var pOT={estado_id:eFinTec.id,hora_fin_tec:ahora};
         if(serDesc)pOT.equipo_instalado=serDesc;
         if(corrTodos.length)pOT.tag=corrTodos.join(' - ');
+        if(gpsFin){pOT.lat_fin_tec=parseFloat(gpsFin.lat);pOT.lng_fin_tec=parseFloat(gpsFin.lng);}
         await sbPatch('ordenes_trabajo','?id=eq.'+otId,pOT);
         try{await sbPost('historial_estados_ot',{ot_id:otId,estado_nuevo_id:eFinTec.id});}catch(e){}
 
@@ -1599,7 +1610,9 @@ async function confirmarWizard(){
 
       }else if(p.accion==='RECHAZADA_TECNICO'){
         var obsRec='RECHAZADA: '+p.motivo+(p.obs?'\nOBS: '+p.obs:'');
-        await sbPatch('ordenes_trabajo','?id=eq.'+otId,{estado_id:eRecTec.id,hora_fin_tec:ahora,obs_trabajo:obsRec});
+        var pRec={estado_id:eRecTec.id,hora_fin_tec:ahora,obs_trabajo:obsRec};
+        if(gpsFin){pRec.lat_fin_tec=parseFloat(gpsFin.lat);pRec.lng_fin_tec=parseFloat(gpsFin.lng);}
+        await sbPatch('ordenes_trabajo','?id=eq.'+otId,pRec);
         try{await sbPost('historial_estados_ot',{ot_id:otId,estado_nuevo_id:eRecTec.id,observacion:obsRec});}catch(e){}
         // Guardar fotos del rechazo (si las hay)
         var fotasRec=(p.fotos||[]).filter(function(f){return f.estado==='ok'&&f.url;});
