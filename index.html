@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v168</title>
+<title>FG Gestión OTs v169</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V168</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V169</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v168</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v169</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -10341,8 +10341,8 @@ async function verGrupoValidacion(grupoId){
     const [g,fotosArr,matsArr,servsArr,catMats,catServs]=await Promise.all([
       sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
       sbGet('ot_fotos',`?ot_id=in.(${idList})&select=id,ot_id,url`)||[],
-      sbGet('ot_materiales_usados',`?ot_id=in.(${idList})&select=id,ot_id,material_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo,orden_display)`)||[],
-      sbGet('ot_servicios_realizados',`?ot_id=in.(${idList})&select=id,ot_id,servicio_id,cantidad,catalogo_servicios(id,nombre)`)||[],
+      sbGet('ot_materiales_usados',`?ot_id=in.(${idList})&activo=eq.true&select=id,ot_id,material_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo,orden_display)`)||[],
+      sbGet('ot_servicios_realizados',`?ot_id=in.(${idList})&activo=eq.true&select=id,ot_id,servicio_id,cantidad,catalogo_servicios(id,nombre)`)||[],
       sbGet('catalogo_materiales','?activo=eq.true&order=orden_display&select=id,nombre,unidad,serial_tipo,orden_display')||[],
       sbGet('catalogo_servicios','?activo=eq.true&order=orden_display&select=id,nombre')||[]
     ]);
@@ -10444,8 +10444,8 @@ async function verGrupoValidacion(grupoId){
         html+='</div>';
       }
 
-      // — Doble columna —
-      html+='<div style="display:grid;grid-template-columns:1fr 1fr;min-height:160px">';
+      // — Doble columna 40% / 60% —
+      html+='<div style="display:grid;grid-template-columns:2fr 3fr;min-height:160px">';
 
       // COL IZQ — lectura
       html+='<div style="padding:1rem;border-right:1px solid var(--border)">';
@@ -10453,7 +10453,7 @@ async function verGrupoValidacion(grupoId){
       // Fotos
       if(fotos.length){
         html+='<div style="margin-bottom:.875rem">'
-          +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Fotos ('+fotos.length+')</div>'
+          +'<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Fotos ('+fotos.length+')</div>'
           +'<div style="display:flex;flex-wrap:wrap;gap:7px">'
           +fotos.map(f=>'<a href="'+f.url+'" target="_blank"><img src="'+f.url+'" style="width:95px;height:95px;object-fit:cover;border-radius:9px;border:2px solid #e2e8f0;transition:border-color .15s" onmouseover="this.style.borderColor=\'#2563eb\'" onmouseout="this.style.borderColor=\'#e2e8f0\'"/></a>').join('')
           +'</div></div>';
@@ -10469,7 +10469,7 @@ async function verGrupoValidacion(grupoId){
         html+='<div style="margin-bottom:.75rem">'
           +(i2?'<div style="font-size:14px;font-weight:600;color:#475569">▶ '+i2.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</div>':'')
           +(f2?'<div style="font-size:14px;font-weight:600;color:#475569">■ '+f2.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</div>':'')
-          +(d2!==null?'<div style="font-size:17px;font-weight:800;color:'+(d2<5?'#dc2626':'#16a34a')+'">⏱ '+d2+' min</div>':'')
+          +(d2!==null?'<div style="font-size:18px;font-weight:800;color:'+(d2<5?'#dc2626':'#16a34a')+'">⏱ '+d2+' min</div>':'')
         +'</div>';
       }
 
@@ -10479,82 +10479,117 @@ async function verGrupoValidacion(grupoId){
       }
       html+='</div>'; // fin col izq
 
-      // COL DER — editable
-      html+='<div style="padding:1rem">';
+      // ── Helpers inline ─────────────────────────────────────────────────────
+      const LBL='font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.06em';
+      const BTN_ADD='font-size:11px;padding:3px 10px;border-radius:6px;border:1.5px solid #2563eb;background:#eff6ff;color:#2563eb;cursor:pointer;font-family:inherit;font-weight:700';
+      const ROW='display:flex;align-items:center;gap:7px;min-height:38px;margin-bottom:8px';
+      const NOMBRE='flex:1;font-size:14px;color:#1e293b;line-height:1.3';
+      const BTN_M='width:30px;height:30px;border-radius:6px;border:1.5px solid #cbd5e1;background:#fff;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:#475569;flex-shrink:0;line-height:1';
+      const BTN_P='width:30px;height:30px;border-radius:6px;border:1.5px solid #22c55e;background:#f0fdf4;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:#16a34a;flex-shrink:0;line-height:1';
+      const INP_QTY='width:56px;padding:4px 4px;border:1.5px solid #cbd5e1;border-radius:7px;font-size:15px;font-weight:700;text-align:center;font-family:inherit';
+      const UNI='font-size:12px;color:#94a3b8;min-width:32px';
+      const BTN_X='width:24px;height:24px;border-radius:5px;border:1.5px solid #fca5a5;background:#fff;font-size:12px;cursor:pointer;color:#dc2626;flex-shrink:0;font-weight:700';
 
-      // Materiales
+      // COL DER — editable
+      html+='<div style="padding:1rem 1.25rem">';
+
+      // ── MATERIALES ─────────────────────────────────────────────────────────
       html+='<div style="margin-bottom:1rem">'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-          +'<span style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em">Materiales</span>'
-          +'<button onclick="valMostrarAddMat(\''+ot.id+'\',\''+grupoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1.5px solid #2563eb;background:#eff6ff;color:#2563eb;cursor:pointer;font-family:inherit;font-weight:700">+ Añadir</button>'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+          +'<span style="'+LBL+'">Materiales</span>'
+          +'<button onclick="valMostrarAddMat(\''+ot.id+'\',\''+grupoId+'\')" style="'+BTN_ADD+'">+ Añadir</button>'
         +'</div>';
 
       mats.forEach(m=>{
         const matId=m.catalogo_materiales?.id||m.material_id;
         const serTipo=m.catalogo_materiales?.serial_tipo||'NINGUNO';
         const sers=serialesMap[matId]||[];
+        const origQty=m.cantidad;
         html+='<div id="mat-blk-'+m.id+'">';
-        // Fila del material
-        html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
-          +'<span style="flex:1;font-size:13px;color:#1e293b;line-height:1.3">'+(m.catalogo_materiales?.nombre||'?')+'</span>'
-          +'<button onclick="valQtyBtn(-1,\''+m.id+'\',\''+ot.id+'\',\''+grupoId+'\')" style="width:28px;height:28px;border-radius:6px;border:1.5px solid #cbd5e1;background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:#475569;flex-shrink:0;line-height:1">−</button>'
-          +'<input id="mqty-'+m.id+'" type="number" min="0" step="1" value="'+m.cantidad+'" data-mid="'+m.id+'" data-ot="'+ot.id+'" data-grp="'+grupoId+'" data-sertype="'+serTipo+'" oninput="valQtyInput(this)"'
-            +' style="width:54px;padding:4px 4px;border:1.5px solid #cbd5e1;border-radius:7px;font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>'
-          +'<button onclick="valQtyBtn(1,\''+m.id+'\',\''+ot.id+'\',\''+grupoId+'\')" style="width:28px;height:28px;border-radius:6px;border:1.5px solid #22c55e;background:#f0fdf4;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:#16a34a;flex-shrink:0;line-height:1">+</button>'
-          +'<span style="font-size:11px;color:#94a3b8;min-width:34px">'+(m.catalogo_materiales?.unidad||'')+'</span>'
-          +'<button onclick="valEliminarMat(\''+m.id+'\',\''+grupoId+'\')" style="width:24px;height:24px;border-radius:5px;border:1.5px solid #fca5a5;background:#fff;font-size:12px;cursor:pointer;color:#dc2626;flex-shrink:0;font-weight:700" title="Eliminar">✕</button>'
+        // Fila del material — ✕ solo si qty > 0
+        html+='<div style="'+ROW+'">'
+          +'<span style="'+NOMBRE+'">'+(m.catalogo_materiales?.nombre||'?')+'</span>'
+          +'<button onclick="valQtyBtn(-1,\''+m.id+'\',\''+ot.id+'\',\''+grupoId+'\')" style="'+BTN_M+'">−</button>'
+          +'<input id="mqty-'+m.id+'" type="number" min="0" step="1" value="'+origQty+'" data-mid="'+m.id+'" data-ot="'+ot.id+'" data-grp="'+grupoId+'" data-sertype="'+serTipo+'" data-orig="'+origQty+'" oninput="valQtyInput(this)"'
+            +' style="'+INP_QTY+'"/>'
+          +'<button onclick="valQtyBtn(1,\''+m.id+'\',\''+ot.id+'\',\''+grupoId+'\')" style="'+BTN_P+'">+</button>'
+          +'<span style="'+UNI+'">'+(m.catalogo_materiales?.unidad||'')+'</span>'
+          +(origQty>0?'<button onclick="valEliminarMat(\''+m.id+'\',\''+grupoId+'\')" style="'+BTN_X+'" title="Eliminar">✕</button>':'<span style="width:24px"></span>')
         +'</div>';
-        // Serial/precinto del material (si qty > 0 y tiene serial)
-        if(serTipo!=='NINGUNO'&&m.cantidad>0){
+        // Serial (si qty > 0 y tiene serial)
+        if(serTipo!=='NINGUNO'&&origQty>0){
           const campoOT=serTipo==='INDIVIDUAL'?'equipo_instalado':'tag';
           const valActual=campoOT==='tag'?(ot.tag||''):(ot.equipo_instalado||'');
-          html+='<div id="ser-row-'+m.id+'" style="margin-bottom:6px;margin-left:8px;padding:6px 10px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0">'
-            +'<div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;margin-bottom:4px">'+(serTipo==='CORRELATIVO'?'📌 Precinto':'📱 Serial')+'</div>'
-            +'<select id="ser-sel-'+m.id+'-'+ot.id+'" data-ot="'+ot.id+'" data-campo="'+campoOT+'" onchange="valSerialSelectChange(this)" style="width:100%;padding:5px 8px;border:1.5px solid #cbd5e1;border-radius:7px;font-size:13px;font-family:monospace;color:#5b21b6;margin-bottom:4px">'
-            +(sers.length?sers.map(s=>'<option value="'+s+'"'+(s===valActual?' selected':'')+'>'+s+'</option>').join(''):'')
-            +'<option value="__manual__"'+((!sers.length||!sers.includes(valActual))&&valActual?' selected':'')+'>✍️ Escribir manualmente...</option>'
+          const isManual=valActual&&(!sers.length||!sers.includes(valActual));
+          html+='<div id="ser-row-'+m.id+'" style="margin-bottom:8px;margin-left:10px;padding:7px 10px;background:#faf5ff;border-radius:8px;border:1px solid #e9d5ff">'
+            +'<div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;margin-bottom:5px">'+(serTipo==='CORRELATIVO'?'📌 Precinto':'📱 Serial')+'</div>'
+            +'<select id="ser-sel-'+m.id+'-'+ot.id+'" data-ot="'+ot.id+'" data-campo="'+campoOT+'" onchange="valSerialSelectChange(this)" style="width:100%;padding:6px 8px;border:1.5px solid #c4b5fd;border-radius:7px;font-size:13px;font-family:monospace;color:#5b21b6;margin-bottom:'+(isManual?'5px':'0')+'">'
+            +(sers.length?sers.map(s=>'<option value="'+s+'"'+(s===valActual&&!isManual?' selected':'')+'>'+s+'</option>').join(''):'')
+            +'<option value="__manual__"'+(isManual?' selected':'')+'>✍️ Escribir manualmente...</option>'
             +'</select>'
-            +'<input id="ser-manual-'+m.id+'-'+ot.id+'" type="text" value="'+valActual+'" data-ot="'+ot.id+'" data-campo="'+campoOT+'" placeholder="Serial / número de precinto" oninput="valSerialManualInput(this)"'
-              +' style="width:100%;padding:5px 8px;border:1.5px solid #c4b5fd;border-radius:7px;font-size:13px;font-family:monospace;color:#5b21b6;display:'+((!sers.length||!sers.includes(valActual))&&valActual?'block':'none')+'"/>'
+            +'<input id="ser-manual-'+m.id+'-'+ot.id+'" type="text" value="'+(isManual?valActual:'')+'" data-ot="'+ot.id+'" data-campo="'+campoOT+'" placeholder="Ingresá el serial..." oninput="valSerialManualInput(this)"'
+              +' style="width:100%;padding:6px 8px;border:1.5px solid #c4b5fd;border-radius:7px;font-size:13px;font-family:monospace;color:#5b21b6;display:'+(isManual?'block':'none')+'"/>'
           +'</div>';
         }
         html+='</div>'; // fin mat-blk
       });
 
-      // Zona add material (oculta hasta click)
-      html+='<div id="add-mat-'+ot.id+'" style="display:none;margin-top:6px;padding:8px;background:#eff6ff;border-radius:8px;border:1px dashed #93c5fd">'
-        +'<select id="add-mat-sel-'+ot.id+'" style="width:100%;padding:6px;border:1.5px solid #93c5fd;border-radius:7px;font-size:13px;font-family:inherit;margin-bottom:6px">'
+      // Panel agregar material
+      html+='<div id="add-mat-'+ot.id+'" style="display:none;margin-top:6px;padding:10px;background:#eff6ff;border-radius:8px;border:1px dashed #93c5fd">'
+        +'<select id="add-mat-sel-'+ot.id+'" style="width:100%;padding:7px;border:1.5px solid #93c5fd;border-radius:7px;font-size:13px;font-family:inherit;margin-bottom:7px">'
         +'<option value="">— Seleccioná un material —</option>'
         +(catMats||[]).filter(cm=>!mats.find(m=>(m.catalogo_materiales?.id||m.material_id)===cm.id))
           .map(cm=>'<option value="'+cm.id+'">'+cm.nombre+'</option>').join('')
         +'</select>'
-        +'<div style="display:flex;gap:6px;align-items:center">'
-          +'<input id="add-mat-qty-'+ot.id+'" type="number" min="1" value="1" style="width:64px;padding:5px 6px;border:1.5px solid #93c5fd;border-radius:7px;font-size:13px;font-weight:700;text-align:center;font-family:inherit">'
-          +'<button onclick="valConfirmarAddMat(\''+ot.id+'\',\''+grupoId+'\')" style="flex:1;padding:6px;border-radius:7px;border:none;background:#2563eb;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Agregar</button>'
-          +'<button onclick="document.getElementById(\'add-mat-'+ot.id+'\').style.display=\'none\'" style="padding:6px 10px;border-radius:7px;border:1.5px solid #cbd5e1;background:#fff;font-size:13px;cursor:pointer;color:#64748b">✕</button>'
+        +'<div style="display:flex;gap:7px;align-items:center">'
+          +'<input id="add-mat-qty-'+ot.id+'" type="number" min="1" value="1" style="width:64px;padding:6px;border:1.5px solid #93c5fd;border-radius:7px;font-size:14px;font-weight:700;text-align:center;font-family:inherit">'
+          +'<button onclick="valConfirmarAddMat(\''+ot.id+'\',\''+grupoId+'\')" style="flex:1;padding:7px;border-radius:7px;border:none;background:#2563eb;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Agregar</button>'
+          +'<button onclick="document.getElementById(\'add-mat-'+ot.id+'\').style.display=\'none\'" style="padding:7px 10px;border-radius:7px;border:1.5px solid #cbd5e1;background:#fff;font-size:13px;cursor:pointer;color:#64748b">✕</button>'
         +'</div>'
       +'</div>';
+      html+='</div>'; // fin bloque materiales
 
-      html+='</div>'; // fin materiales
+      // ── SEPARADOR ──────────────────────────────────────────────────────────
+      html+='<div style="border-top:1.5px solid #e2e8f0;margin:12px 0"></div>';
 
-      // Mano de obra
-      html+='<div style="margin-bottom:.875rem">'
-        +'<div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Mano de obra</div>';
+      // ── MANO DE OBRA ───────────────────────────────────────────────────────
+      html+='<div style="margin-bottom:.5rem">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+          +'<span style="'+LBL+'">Mano de obra</span>'
+          +'<button onclick="valMostrarAddServ(\''+ot.id+'\',\''+grupoId+'\')" style="'+BTN_ADD+'">+ Agregar</button>'
+        +'</div>';
+
       if(servs.length){
         servs.forEach(s=>{
-          html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">'
-            +'<span style="flex:1;font-size:13px;color:#1e293b">'+(s.catalogo_servicios?.nombre||'?')+'</span>'
-            +'<button onclick="valServBtn(-1,\''+s.id+'\')" style="width:28px;height:28px;border-radius:6px;border:1.5px solid #cbd5e1;background:#fff;font-size:16px;cursor:pointer;font-weight:700;color:#475569;flex-shrink:0;line-height:1">−</button>'
-            +'<input id="sqty-'+s.id+'" type="number" min="0" step="1" value="'+s.cantidad+'" data-id="'+s.id+'" data-tabla="ot_servicios_realizados" oninput="valAutosave(this)"'
-              +' style="width:54px;padding:4px 4px;border:1.5px solid #cbd5e1;border-radius:7px;font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>'
-            +'<button onclick="valServBtn(1,\''+s.id+'\')" style="width:28px;height:28px;border-radius:6px;border:1.5px solid #22c55e;background:#f0fdf4;font-size:16px;cursor:pointer;font-weight:700;color:#16a34a;flex-shrink:0;line-height:1">+</button>'
-            +'<span style="font-size:11px;color:#94a3b8;min-width:34px">un</span>'
+          const origSQty=s.cantidad;
+          html+='<div id="serv-blk-'+s.id+'" style="'+ROW+'">'
+            +'<span style="'+NOMBRE+'">'+(s.catalogo_servicios?.nombre||'?')+'</span>'
+            +'<button onclick="valServQtyBtn(-1,\''+s.id+'\',\''+grupoId+'\')" style="'+BTN_M+'">−</button>'
+            +'<input id="sqty-'+s.id+'" type="number" min="0" step="1" value="'+origSQty+'" data-sid="'+s.id+'" data-grp="'+grupoId+'" data-orig="'+origSQty+'" oninput="valServQtyInput(this)"'
+              +' style="'+INP_QTY+'"/>'
+            +'<button onclick="valServQtyBtn(1,\''+s.id+'\',\''+grupoId+'\')" style="'+BTN_P+'">+</button>'
+            +'<span style="'+UNI+'">un</span>'
+            +(origSQty>0?'<button onclick="valEliminarServ(\''+s.id+'\',\''+grupoId+'\')" style="'+BTN_X+'" title="Eliminar">✕</button>':'<span style="width:24px"></span>')
           +'</div>';
         });
       }else{
-        html+='<div style="font-size:12px;color:#94a3b8;font-style:italic">Sin MO registrada</div>';
+        html+='<div style="font-size:13px;color:#94a3b8;font-style:italic;padding:4px 0">Sin MO registrada</div>';
       }
-      html+='</div>';
+
+      // Panel agregar MO
+      html+='<div id="add-serv-'+ot.id+'" style="display:none;margin-top:6px;padding:10px;background:#f0fdf4;border-radius:8px;border:1px dashed #86efac">'
+        +'<select id="add-serv-sel-'+ot.id+'" style="width:100%;padding:7px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-family:inherit;margin-bottom:7px">'
+        +'<option value="">— Seleccioná mano de obra —</option>'
+        +(catServs||[]).filter(cs=>!servs.find(s=>(s.catalogo_servicios?.id||s.servicio_id)===cs.id))
+          .map(cs=>'<option value="'+cs.id+'">'+cs.nombre+'</option>').join('')
+        +'</select>'
+        +'<div style="display:flex;gap:7px;align-items:center">'
+          +'<input id="add-serv-qty-'+ot.id+'" type="number" min="1" value="1" style="width:64px;padding:6px;border:1.5px solid #86efac;border-radius:7px;font-size:14px;font-weight:700;text-align:center;font-family:inherit">'
+          +'<button onclick="valConfirmarAddServ(\''+ot.id+'\',\''+grupoId+'\')" style="flex:1;padding:7px;border-radius:7px;border:none;background:#16a34a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Agregar</button>'
+          +'<button onclick="document.getElementById(\'add-serv-'+ot.id+'\').style.display=\'none\'" style="padding:7px 10px;border-radius:7px;border:1.5px solid #cbd5e1;background:#fff;font-size:13px;cursor:pointer;color:#64748b">✕</button>'
+        +'</div>'
+      +'</div>';
+      html+='</div>'; // fin MO
 
       html+='</div>'; // fin col der
       html+='</div>'; // fin grid
@@ -10639,29 +10674,81 @@ async function otAPendienteAdmin(otId, grupoId){
   if(!motivo||!motivo.trim()){alert('El motivo es obligatorio.');return;}
   const ePend=ESTADOS.find(e=>e.nombre==='PENDIENTE');
   if(!ePend){alert('Estado PENDIENTE no encontrado.');return;}
+
   try{
-    const ot=(await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id&eliminado=eq.false`))||[];
-    const estadoAnt=ot[0]?.estado_id;
-    // Solo cambia estado + limpia timing técnico. NO toca cuadrilla_id, fecha_trabajo, grupo_id
+    // 1. Leer datos actuales de la OT
+    const otBD=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id,validado_admin_at,grupos_ot(cuadrilla_id)&eliminado=eq.false`)||[];
+    const otData=otBD[0];
+    if(otData?.validado_admin_at){alert('Esta OT ya fue validada por el admin. No se puede revertir.');return;}
+    const estadoAnt=otData?.estado_id;
+    const cuadId=otData?.grupos_ot?.cuadrilla_id;
+
+    // 2. Leer materiales activos actuales (los que están en stock)
+    const mats=await sbGet('ot_materiales_usados',`?ot_id=eq.${otId}&activo=eq.true&select=id,material_id,cantidad,catalogo_materiales(serial_tipo)`)||[];
+
+    // 3. Devolver stock por cada material
+    if(cuadId){
+      for(const m of mats){
+        if(!m.cantidad||!m.material_id)continue;
+        const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${m.material_id}`)||[];
+        if(sc.length){
+          await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${m.material_id}`,
+            {cantidad:(sc[0].cantidad||0)+m.cantidad});
+        }
+        await sbPost('movimientos_stock',{
+          tipo_movimiento:'DEVOLUCION',
+          material_id:m.material_id,
+          cuadrilla_id:parseInt(cuadId),
+          cantidad:m.cantidad,
+          obs:`PENDIENTE OT ${otId}: ${motivo.trim()}`
+        });
+      }
+
+      // 4. Devolver seriales a cuadrilla (todos los asignados a esta OT)
+      const sers=await sbGet('stock_seriales',`?ot_id=eq.${otId}&ubicacion=eq.CLIENTE&select=id,serial,material_id`)||[];
+      for(const s of sers){
+        await sbPatch('stock_seriales',`?id=eq.${s.id}`,{ubicacion:`CUADRILLA_${cuadId}`,ot_id:null});
+      }
+    }
+
+    // 5. Soft delete de materiales y servicios — conserva historial
+    if(mats.length) await sbPatch('ot_materiales_usados',`?ot_id=eq.${otId}&activo=eq.true`,{activo:false});
+    const servs=await sbGet('ot_servicios_realizados',`?ot_id=eq.${otId}&activo=eq.true&select=id`)||[];
+    if(servs.length) await sbPatch('ot_servicios_realizados',`?ot_id=eq.${otId}&activo=eq.true`,{activo:false});
+
+    // 6. Limpiar campos de cierre en la OT (NO toca cuadrilla_id, fecha_trabajo, grupo_id)
     await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{
       estado_id:ePend.id,
       hora_inicio_tec:null,
       hora_fin_tec:null,
+      tag:null,
+      equipo_instalado:null,
       validado_admin_at:null,
       validado_admin_por:null
     });
-    // Historial de la OT
-    await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:estadoAnt,estado_nuevo_id:ePend.id,observacion:'DEVUELTA A PENDIENTE POR ADMIN: '+motivo.trim(),usuario_id:CU.id});
-    // Acumular en observaciones del grupo (sin borrar asignación)
-    const g=(await sbGet('grupos_ot',`?id=eq.${grupoId}&select=estado_id,observaciones,cuadrillas(nombre),fecha_trabajo,horario_visita&eliminado=eq.false`))||[];
-    const gData=g[0]||{};
+
+    // 7. Historial
+    await sbPost('historial_estados_ot',{
+      ot_id:otId,
+      estado_anterior_id:estadoAnt,
+      estado_nuevo_id:ePend.id,
+      observacion:`DEVUELTA A PENDIENTE POR ADMIN: ${motivo.trim()}. Stock revertido.`,
+      usuario_id:CU.id
+    });
+
+    // 8. Acumular en observaciones del grupo
+    const gBD=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=estado_id,observaciones&eliminado=eq.false`)||[];
+    const gData=gBD[0]||{};
     const ts=new Date().toLocaleString('es-AR');
-    const entrada=`[${ts}] OT ${otId} devuelta a PENDIENTE por ${CU.nombre||CU.email}. Motivo: ${motivo.trim()}`;
-    const obsAcum=(gData.observaciones?gData.observaciones+'\n':'')+entrada;
-    await sbPatch('grupos_ot',`?id=eq.${grupoId}`,{estado_id:ePend.id,observaciones:obsAcum});
+    const entrada=`[${ts}] OT ${otId} devuelta a PENDIENTE por ${CU.nombre||CU.email}. Stock revertido. Motivo: ${motivo.trim()}`;
+    await sbPatch('grupos_ot',`?id=eq.${grupoId}`,{
+      estado_id:ePend.id,
+      observaciones:(gData.observaciones?gData.observaciones+'\n':'')+entrada
+    });
+
     await verGrupoValidacion(grupoId);
     renderValidacion();
-  }catch(e){alert('Error: '+e.message);}
+  }catch(e){alert('Error: '+e.message);console.error('[otAPendienteAdmin]',e);}
 }
 
 async function otAGigaradAdmin(otId, grupoId){
@@ -10834,7 +10921,21 @@ function valFeedback(el,ok){
   if(!el)return;
   el.style.borderColor=ok?'#16a34a':'#dc2626';
   el.style.background=ok?'#f0fdf4':'#fff1f2';
-  if(ok)setTimeout(()=>{el.style.borderColor='#cbd5e1';el.style.background='';},1800);
+  if(ok)setTimeout(()=>{
+    // Si el valor cambió respecto al original, mantener tinte azul leve
+    const orig=el.dataset.orig;
+    if(orig!==undefined&&String(el.value)!==String(orig)){
+      el.style.borderColor='#93c5fd';el.style.background='#eff6ff';
+    }else{el.style.borderColor='#cbd5e1';el.style.background='';}
+  },1800);
+}
+
+// Resaltado visual: diferente al original → tinte azul; guardando → ámbar
+function valMarkChanged(el){
+  const orig=el.dataset.orig;
+  if(orig!==undefined&&String(el.value)!==String(orig)){
+    el.style.borderColor='#93c5fd';el.style.background='#eff6ff';
+  }
 }
 
 function valAutosave(input){
@@ -10863,30 +10964,89 @@ function valAutosave(input){
   },500);
 }
 
-// Qty input: debounce + si qty=0 eliminar fila
+// ── MATERIALES QTY ────────────────────────────────────────────────────────────
+
+// Helper: ajustar stock de cuadrilla por diferencia + registrar movimiento
+async function _ajustarStock(cuadId, materialId, diferencia, obs){
+  if(!cuadId||!materialId||!diferencia)return;
+  const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${materialId}`)||[];
+  if(!sc.length)return; // sin registro de stock → no tocar
+  const nueva=Math.max(0,(sc[0].cantidad||0)-diferencia); // diferencia>0=consumo, <0=devolucion
+  await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${materialId}`,{cantidad:nueva});
+  await sbPost('movimientos_stock',{
+    tipo_movimiento:'AJUSTE_VALIDACION',
+    material_id:parseInt(materialId),
+    cuadrilla_id:parseInt(cuadId),
+    cantidad:-diferencia,
+    obs:obs||'Ajuste validación admin'
+  });
+}
+
+// Helper: devolver seriales CORRELATIVO LIFO al reducir cantidad
+async function _devolverSerialCorrelativoLIFO(otId, materialId, cuadId, cantDevolver){
+  if(cantDevolver<=0)return;
+  // Leer seriales asignados a esta OT para este material, ordenados DESC (LIFO)
+  const sers=await sbGet('stock_seriales',
+    `?ot_id=eq.${otId}&material_id=eq.${materialId}&ubicacion=eq.CLIENTE&order=serial.desc&limit=${cantDevolver}`
+  )||[];
+  for(const s of sers){
+    await sbPatch('stock_seriales',`?id=eq.${s.id}`,{ubicacion:`CUADRILLA_${cuadId}`,ot_id:null});
+  }
+  // Reconstruir tag sin los seriales devueltos
+  if(sers.length){
+    const todosOT=await sbGet('stock_seriales',`?ot_id=eq.${otId}&material_id=eq.${materialId}&ubicacion=eq.CLIENTE`)||[];
+    const tagNuevo=todosOT.map(s=>s.serial).join(' - ')||null;
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{tag:tagNuevo});
+  }
+}
+
 function valQtyInput(input){
   const mid=input.dataset.mid;
   const otId=input.dataset.ot;
   const grupoId=input.dataset.grp;
+  const serTipo=input.dataset.sertype||'NINGUNO';
+  const cuadId=window._valCtx?.cuadId;
   input.style.borderColor='#f59e0b';
   clearTimeout(_valTimers['qty-'+mid]);
   _valTimers['qty-'+mid]=setTimeout(async()=>{
-    const cant=Math.max(0,parseInt(input.value)||0);
-    input.value=cant;
+    const cantNueva=Math.max(0,parseInt(input.value)||0);
+    input.value=cantNueva;
     try{
-      if(cant===0){
-        await sbFetch('ot_materiales_usados','DELETE',null,`?id=eq.${mid}`);
+      // Leer cantidad actual en BD (no data-orig) para calcular diferencia real
+      const rowBD=await sbGet('ot_materiales_usados',`?id=eq.${mid}&select=id,cantidad,material_id&activo=eq.true`)||[];
+      const cantBD=rowBD[0]?.cantidad??0;
+      const materialId=rowBD[0]?.material_id;
+      const diferencia=cantNueva-cantBD;
+
+      if(cantNueva===0){
+        // Soft delete
+        await sbPatch('ot_materiales_usados',`?id=eq.${mid}`,{activo:false,cantidad:0});
+        // Devolver todo al stock
+        if(cuadId&&materialId&&cantBD>0){
+          await _ajustarStock(cuadId,materialId,-cantBD,`Eliminación en validación OT ${otId}`);
+          // Si era correlativo, devolver seriales LIFO
+          if(serTipo==='CORRELATIVO') await _devolverSerialCorrelativoLIFO(otId,materialId,cuadId,cantBD);
+        }
         const blk=document.getElementById('mat-blk-'+mid);
         if(blk)blk.remove();
       }else{
-        await sbPatch('ot_materiales_usados',`?id=eq.${mid}`,{cantidad:cant});
+        await sbPatch('ot_materiales_usados',`?id=eq.${mid}`,{cantidad:cantNueva});
+        // Ajustar stock por diferencia
+        if(cuadId&&materialId&&diferencia!==0){
+          // Si se reduce y es correlativo → devolver seriales LIFO
+          if(diferencia<0&&serTipo==='CORRELATIVO'){
+            await _devolverSerialCorrelativoLIFO(otId,materialId,cuadId,Math.abs(diferencia));
+          }
+          await _ajustarStock(cuadId,materialId,diferencia,`Ajuste ${cantBD}→${cantNueva} en validación OT ${otId}`);
+        }
+        // Actualizar data-orig al valor confirmado en BD
+        input.dataset.orig=cantNueva;
         valFeedback(input,true);
-        // Mostrar/ocultar serial según qty
-        const serTipo=input.dataset.sertype||'NINGUNO';
+        valMarkChanged(input);
         const serRow=document.getElementById('ser-row-'+mid);
-        if(serRow)serRow.style.display=cant>0&&serTipo!=='NINGUNO'?'':'none';
+        if(serRow)serRow.style.display=cantNueva>0&&serTipo!=='NINGUNO'?'':'none';
       }
-    }catch(e){valFeedback(input,false);input.title='Error: '+e.message;}
+    }catch(e){valFeedback(input,false);input.title='Error: '+e.message;console.error('[valQtyInput]',e.message);}
   },500);
 }
 
@@ -10899,24 +11059,33 @@ function valQtyBtn(delta,mid,otId,grupoId){
   valQtyInput(inp);
 }
 
-function valServBtn(delta,servId){
-  const inp=document.getElementById('sqty-'+servId);
-  if(!inp)return;
-  inp.value=Math.max(0,(parseInt(inp.value)||0)+delta);
-  inp.dataset.id=servId;inp.dataset.tabla='ot_servicios_realizados';
-  valAutosave(inp);
-}
-
 async function valEliminarMat(mid,grupoId){
   if(!confirm('¿Eliminar este material de la OT?'))return;
+  const cuadId=window._valCtx?.cuadId;
   try{
-    await sbFetch('ot_materiales_usados','DELETE',null,`?id=eq.${mid}`);
+    // Leer antes de borrar para conocer qty y material
+    const rowBD=await sbGet('ot_materiales_usados',`?id=eq.${mid}&select=cantidad,material_id,ot_id,catalogo_materiales(serial_tipo)&activo=eq.true`)||[];
+    const row=rowBD[0];
+    // Soft delete
+    await sbPatch('ot_materiales_usados',`?id=eq.${mid}`,{activo:false,cantidad:0});
+    // Devolver stock
+    if(cuadId&&row?.material_id&&row?.cantidad>0){
+      await _ajustarStock(cuadId,row.material_id,-row.cantidad,`Eliminación admin validación OT ${row.ot_id}`);
+      if(row.catalogo_materiales?.serial_tipo==='CORRELATIVO'){
+        await _devolverSerialCorrelativoLIFO(row.ot_id,row.material_id,cuadId,row.cantidad);
+      }else if(row.catalogo_materiales?.serial_tipo==='INDIVIDUAL'){
+        // Devolver serial individual al stock de cuadrilla
+        const sers=await sbGet('stock_seriales',`?ot_id=eq.${row.ot_id}&material_id=eq.${row.material_id}&ubicacion=eq.CLIENTE`)||[];
+        for(const s of sers) await sbPatch('stock_seriales',`?id=eq.${s.id}`,{ubicacion:`CUADRILLA_${cuadId}`,ot_id:null});
+        await sbPatch('ordenes_trabajo',`?id=eq.${row.ot_id}`,{equipo_instalado:null});
+      }
+    }
     const blk=document.getElementById('mat-blk-'+mid);
     if(blk)blk.remove();
   }catch(e){alert('Error al eliminar: '+e.message);}
 }
 
-function valMostrarAddMat(otId,grupoId){
+function valMostrarAddMat(otId){
   const div=document.getElementById('add-mat-'+otId);
   if(div)div.style.display=div.style.display==='none'?'block':'none';
 }
@@ -10926,17 +11095,85 @@ async function valConfirmarAddMat(otId,grupoId){
   const qtyInp=document.getElementById('add-mat-qty-'+otId);
   const matId=parseInt(sel?.value||0);
   const cant=Math.max(1,parseInt(qtyInp?.value||1));
+  const cuadId=window._valCtx?.cuadId;
   if(!matId){alert('Seleccioná un material.');return;}
   try{
-    await sbPost('ot_materiales_usados',{ot_id:parseInt(otId),material_id:matId,cantidad:cant});
+    await sbPost('ot_materiales_usados',{ot_id:parseInt(otId),material_id:matId,cantidad:cant,activo:true});
+    // Descontar del stock de cuadrilla
+    if(cuadId){
+      await _ajustarStock(cuadId,matId,cant,`Agregado admin en validación OT ${otId}`);
+    }
     await verGrupoValidacion(grupoId);
-  }catch(e){alert('Error al agregar material: '+e.message);}
+  }catch(e){alert('Error al agregar: '+e.message);}
 }
+
+// ── MANO DE OBRA QTY (misma lógica que materiales) ────────────────────────────
+
+function valServQtyInput(input){
+  const sid=input.dataset.sid;
+  const grupoId=input.dataset.grp;
+  input.style.borderColor='#f59e0b';
+  clearTimeout(_valTimers['sqty-'+sid]);
+  _valTimers['sqty-'+sid]=setTimeout(async()=>{
+    const cant=Math.max(0,parseInt(input.value)||0);
+    input.value=cant;
+    try{
+      if(cant===0){
+        await sbFetch('ot_servicios_realizados','DELETE',null,`?id=eq.${sid}`);
+        const blk=document.getElementById('serv-blk-'+sid);
+        if(blk)blk.remove();
+      }else{
+        await sbPatch('ot_servicios_realizados',`?id=eq.${sid}`,{cantidad:cant});
+        valFeedback(input,true);
+        valMarkChanged(input);
+      }
+    }catch(e){valFeedback(input,false);input.title='Error: '+e.message;}
+  },500);
+}
+
+function valServQtyBtn(delta,sid,grupoId){
+  const inp=document.getElementById('sqty-'+sid);
+  if(!inp)return;
+  const nueva=Math.max(0,(parseInt(inp.value)||0)+delta);
+  inp.value=nueva;
+  inp.dataset.sid=sid;inp.dataset.grp=grupoId;
+  valServQtyInput(inp);
+}
+
+async function valEliminarServ(sid,grupoId){
+  if(!confirm('¿Eliminar este ítem de mano de obra?'))return;
+  try{
+    await sbFetch('ot_servicios_realizados','DELETE',null,`?id=eq.${sid}`);
+    const blk=document.getElementById('serv-blk-'+sid);
+    if(blk)blk.remove();
+  }catch(e){alert('Error al eliminar: '+e.message);}
+}
+
+function valMostrarAddServ(otId){
+  const div=document.getElementById('add-serv-'+otId);
+  if(div)div.style.display=div.style.display==='none'?'block':'none';
+}
+
+async function valConfirmarAddServ(otId,grupoId){
+  const sel=document.getElementById('add-serv-sel-'+otId);
+  const qtyInp=document.getElementById('add-serv-qty-'+otId);
+  const servId=parseInt(sel?.value||0);
+  const cant=Math.max(1,parseInt(qtyInp?.value||1));
+  if(!servId){alert('Seleccioná un ítem de mano de obra.');return;}
+  try{
+    await sbPost('ot_servicios_realizados',{ot_id:parseInt(otId),servicio_id:servId,cantidad:cant});
+    await verGrupoValidacion(grupoId);
+  }catch(e){alert('Error al agregar: '+e.message);}
+}
+
+// ── SERIAL HANDLERS ───────────────────────────────────────────────────────────
 
 async function valSerialSelectChange(select){
   const otId=select.dataset.ot;
   const campo=select.dataset.campo;
+  const matId=select.dataset.matid; // puede ser undefined si no se pasó
   const val=select.value;
+  const cuadId=window._valCtx?.cuadId;
   const manualInp=select.nextElementSibling;
   if(val==='__manual__'){
     if(manualInp)manualInp.style.display='block';
@@ -10945,10 +11182,25 @@ async function valSerialSelectChange(select){
   if(manualInp)manualInp.style.display='none';
   select.style.borderColor='#f59e0b';
   try{
+    // Leer serial anterior para devolverlo al stock
+    const otBD=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=${campo}`)||[];
+    const serialAnterior=otBD[0]?.[campo]||null;
+
+    if(serialAnterior&&serialAnterior!==val&&cuadId){
+      // Devolver serial anterior a la cuadrilla
+      await sbPatch('stock_seriales',`?serial=eq.${encodeURIComponent(serialAnterior)}&ot_id=eq.${otId}`,
+        {ubicacion:`CUADRILLA_${cuadId}`,ot_id:null});
+    }
+    // Asignar nuevo serial al cliente
+    if(val&&cuadId){
+      await sbPatch('stock_seriales',`?serial=eq.${encodeURIComponent(val)}`,
+        {ubicacion:'CLIENTE',ot_id:parseInt(otId)});
+    }
+    // Actualizar campo en OT
     const patch={};patch[campo]=val||null;
     await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,patch);
     valFeedback(select,true);
-  }catch(e){valFeedback(select,false);}
+  }catch(e){valFeedback(select,false);console.error('[valSerialSelectChange]',e.message);}
 }
 
 function valSerialManualInput(input){
