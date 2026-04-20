@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v173</title>
+<title>FG Gestión OTs v175</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V173</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V175</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v173</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v175</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2294,6 +2294,18 @@ async function verOT(numeroOT, otIdDirecto){
           <div class="ot-info-item"><div class="ot-info-label">Finalización</div><div class="ot-info-val">${fmtF(ot.fecha_fin?.slice(0,10))}</div></div>
         `:`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val" style="color:#94a3b8">Sin asignar</div></div>`}
       </div>
+      ${(ot.lat_inicio_tec||ot.lat_fin_tec)?`
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem">
+          <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">📍 Ubicaciones del técnico</div>
+          ${ot.lat_inicio_tec?`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #dcfce7">
+            <span style="font-size:12px;color:#475569"><strong>Inicio:</strong> ${ot.lat_inicio_tec}, ${ot.lng_inicio_tec}</span>
+            <a href="https://maps.google.com/?q=${ot.lat_inicio_tec},${ot.lng_inicio_tec}" target="_blank" style="font-size:11px;color:#16a34a;font-weight:600;white-space:nowrap">Ver mapa →</a>
+          </div>`:''}
+          ${ot.lat_fin_tec?`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
+            <span style="font-size:12px;color:#475569"><strong>${est==='RECHAZADA_TECNICO'?'Rechazo':'Finalización'}:</strong> ${ot.lat_fin_tec}, ${ot.lng_fin_tec}</span>
+            <a href="https://maps.google.com/?q=${ot.lat_fin_tec},${ot.lng_fin_tec}" target="_blank" style="font-size:11px;color:#16a34a;font-weight:600;white-space:nowrap">Ver mapa →</a>
+          </div>`:''}
+        </div>`:''}
       ${ot.obs_gigared?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#92400e"><strong>${esRep?'Servicios contratados':'Obs Gigared'}:</strong> ${ot.obs_gigared}</div>`:''}
       ${ot.grupos_ot?.observaciones?`<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem">
         <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">📋 Historial de la OT</div>
@@ -6162,7 +6174,7 @@ async function abrirDetalleCli(cliId){
   try{
     const [cArr,ots]=await Promise.all([
       sbGet('clientes',`?id=eq.${cliId}&eliminado=eq.false`),
-      sbGet('ordenes_trabajo',`?cliente_id=eq.${cliId}&select=id,numero_ot,tipo_tarea,tipo_item,tag,fecha_emision,fecha_impresion,estados_ot(nombre),grupos_ot(cuadrillas(nombre))&order=fecha_impresion.desc.nullslast&limit=200&eliminado=eq.false`)
+      sbGet('ordenes_trabajo',`?cliente_id=eq.${cliId}&select=id,numero_ot,tipo_tarea,tipo_item,tag,fecha_emision,fecha_impresion,hora_inicio_tec,hora_fin_tec,lat_inicio_tec,lng_inicio_tec,lat_fin_tec,lng_fin_tec,estados_ot(nombre),grupos_ot(cuadrillas(nombre))&order=fecha_impresion.desc.nullslast&limit=200&eliminado=eq.false`)
     ]);
     const c=(cArr||[])[0];if(!c)return;
     const otsArr=ots||[];
@@ -6182,6 +6194,27 @@ async function abrirDetalleCli(cliId){
         <div class="ot-info-item"><div class="ot-info-label">Nodo</div><div class="ot-info-val" style="font-weight:700;color:#2563eb">${c.nodo||'—'}</div></div>
         <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Teléfonos</div><div class="ot-info-val">${renderTelefonos(c.telefono1,c.telefono2,'',null,c)}</div></div>
       </div>`;
+
+    // Última ubicación registrada — buscar OT más reciente con GPS
+    const otConGps=otsArr.find(o=>o.lat_fin_tec||o.lat_inicio_tec);
+    if(otConGps){
+      const usaFin=!!otConGps.lat_fin_tec;
+      const lat=usaFin?otConGps.lat_fin_tec:otConGps.lat_inicio_tec;
+      const lng=usaFin?otConGps.lng_fin_tec:otConGps.lng_inicio_tec;
+      const tsRaw=usaFin?otConGps.hora_fin_tec:otConGps.hora_inicio_tec;
+      const estNom=otConGps.estados_ot?.nombre||'';
+      const tipoEvento=usaFin?(estNom==='RECHAZADA_TECNICO'?'Rechazo':'Finalización'):'Inicio';
+      const tsFmt=tsRaw?new Date(tsRaw).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+      document.getElementById('cli-det-info').innerHTML+=`
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:.75rem 1rem;margin-top:.75rem">
+          <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">📍 Última ubicación registrada</div>
+          <div style="font-size:12px;color:#475569;margin-bottom:2px"><strong>OT ${numOT(otConGps.numero_ot)}</strong> · ${tipoEvento} · ${tsFmt}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;color:#64748b;font-family:monospace">${lat}, ${lng}</span>
+            <a href="https://maps.google.com/?q=${lat},${lng}" target="_blank" style="font-size:12px;color:#16a34a;font-weight:700">Ver en mapa →</a>
+          </div>
+        </div>`;
+    }
 
     // Stats card
     const pend=otsArr.filter(o=>o.estados_ot?.nombre==='PENDIENTE').length;
@@ -11002,6 +11035,25 @@ function valAutosave(input){
 
 // ── MATERIALES QTY ────────────────────────────────────────────────────────────
 
+// Helper: registrar cambio en ot_cambios (fire-and-forget, no bloquea el flujo)
+async function _registrarCambio(otId, campo, anterior, nuevo, origen){
+  if(String(anterior)===String(nuevo))return; // sin cambio real → no registrar
+  try{
+    await sbPost('ot_cambios',{
+      ot_id:parseInt(otId),
+      campo:campo,
+      valor_anterior:String(anterior??''),
+      valor_nuevo:String(nuevo??''),
+      usuario_id:CU?.id||null,
+      origen:origen||'ADMIN'
+    });
+    // Solo el técnico puede marcar modificada_post_cierre
+    if(origen==='TECNICO'){
+      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{modificada_post_cierre:true});
+    }
+  }catch(e){console.warn('[ot_cambios] No se pudo registrar cambio:',e.message);}
+}
+
 // Helper: ajustar stock de cuadrilla por diferencia + registrar movimiento
 async function _ajustarStock(cuadId, materialId, diferencia, obs){
   if(!cuadId||!materialId||!diferencia)return;
@@ -11049,9 +11101,10 @@ function valQtyInput(input){
     input.value=cantNueva;
     try{
       // Leer cantidad actual en BD (no data-orig) para calcular diferencia real
-      const rowBD=await sbGet('ot_materiales_usados',`?id=eq.${mid}&select=id,cantidad,material_id&activo=eq.true`)||[];
+      const rowBD=await sbGet('ot_materiales_usados',`?id=eq.${mid}&select=id,cantidad,material_id,catalogo_materiales(nombre)&activo=eq.true`)||[];
       const cantBD=rowBD[0]?.cantidad??0;
       const materialId=rowBD[0]?.material_id;
+      const nombreMat=rowBD[0]?.catalogo_materiales?.nombre||String(materialId);
       const diferencia=cantNueva-cantBD;
 
       if(cantNueva===0){
@@ -11060,22 +11113,22 @@ function valQtyInput(input){
         // Devolver todo al stock
         if(cuadId&&materialId&&cantBD>0){
           await _ajustarStock(cuadId,materialId,-cantBD,`Eliminación en validación OT ${otId}`);
-          // Si era correlativo, devolver seriales LIFO
           if(serTipo==='CORRELATIVO') await _devolverSerialCorrelativoLIFO(otId,materialId,cuadId,cantBD);
         }
+        // Registrar eliminación en ot_cambios
+        _registrarCambio(otId,`material:${nombreMat}`,cantBD,0,'ADMIN');
         const blk=document.getElementById('mat-blk-'+mid);
         if(blk)blk.remove();
       }else{
         await sbPatch('ot_materiales_usados',`?id=eq.${mid}`,{cantidad:cantNueva});
-        // Ajustar stock por diferencia
         if(cuadId&&materialId&&diferencia!==0){
-          // Si se reduce y es correlativo → devolver seriales LIFO
           if(diferencia<0&&serTipo==='CORRELATIVO'){
             await _devolverSerialCorrelativoLIFO(otId,materialId,cuadId,Math.abs(diferencia));
           }
           await _ajustarStock(cuadId,materialId,diferencia,`Ajuste ${cantBD}→${cantNueva} en validación OT ${otId}`);
         }
-        // Actualizar data-orig al valor confirmado en BD
+        // Registrar cambio de cantidad solo si hubo diferencia real
+        if(diferencia!==0) _registrarCambio(otId,`material:${nombreMat}`,cantBD,cantNueva,'ADMIN');
         input.dataset.orig=cantNueva;
         valFeedback(input,true);
         valMarkChanged(input);
@@ -11099,9 +11152,9 @@ async function valEliminarMat(mid,grupoId){
   if(!confirm('¿Eliminar este material de la OT?'))return;
   const cuadId=window._valCtx?.cuadId;
   try{
-    // Leer antes de borrar para conocer qty y material
-    const rowBD=await sbGet('ot_materiales_usados',`?id=eq.${mid}&select=cantidad,material_id,ot_id,catalogo_materiales(serial_tipo)&activo=eq.true`)||[];
+    const rowBD=await sbGet('ot_materiales_usados',`?id=eq.${mid}&select=cantidad,material_id,ot_id,catalogo_materiales(nombre,serial_tipo)&activo=eq.true`)||[];
     const row=rowBD[0];
+    const nombreMat=row?.catalogo_materiales?.nombre||String(row?.material_id||mid);
     // Soft delete
     await sbPatch('ot_materiales_usados',`?id=eq.${mid}`,{activo:false,cantidad:0});
     // Devolver stock
@@ -11110,12 +11163,13 @@ async function valEliminarMat(mid,grupoId){
       if(row.catalogo_materiales?.serial_tipo==='CORRELATIVO'){
         await _devolverSerialCorrelativoLIFO(row.ot_id,row.material_id,cuadId,row.cantidad);
       }else if(row.catalogo_materiales?.serial_tipo==='INDIVIDUAL'){
-        // Devolver serial individual al stock de cuadrilla
         const sers=await sbGet('stock_seriales',`?ot_id=eq.${row.ot_id}&material_id=eq.${row.material_id}&ubicacion=eq.CLIENTE`)||[];
         for(const s of sers) await sbPatch('stock_seriales',`?id=eq.${s.id}`,{ubicacion:`CUADRILLA_${cuadId}`,ot_id:null});
         await sbPatch('ordenes_trabajo',`?id=eq.${row.ot_id}`,{equipo_instalado:null});
       }
     }
+    // Registrar eliminación
+    if(row?.ot_id) _registrarCambio(row.ot_id,`material:${nombreMat}`,row?.cantidad??0,0,'ADMIN');
     const blk=document.getElementById('mat-blk-'+mid);
     if(blk)blk.remove();
   }catch(e){alert('Error al eliminar: '+e.message);}
@@ -11134,11 +11188,11 @@ async function valConfirmarAddMat(otId,grupoId){
   const cuadId=window._valCtx?.cuadId;
   if(!matId){alert('Seleccioná un material.');return;}
   try{
+    const nombreMat=sel?.options[sel.selectedIndex]?.text||String(matId);
     await sbPost('ot_materiales_usados',{ot_id:parseInt(otId),material_id:matId,cantidad:cant,activo:true});
-    // Descontar del stock de cuadrilla
-    if(cuadId){
-      await _ajustarStock(cuadId,matId,cant,`Agregado admin en validación OT ${otId}`);
-    }
+    if(cuadId) await _ajustarStock(cuadId,matId,cant,`Agregado admin en validación OT ${otId}`);
+    // Registrar agregado
+    _registrarCambio(otId,`material:${nombreMat}`,0,cant,'ADMIN');
     await verGrupoValidacion(grupoId);
   }catch(e){alert('Error al agregar: '+e.message);}
 }
@@ -11148,18 +11202,31 @@ async function valConfirmarAddMat(otId,grupoId){
 function valServQtyInput(input){
   const sid=input.dataset.sid;
   const grupoId=input.dataset.grp;
+  const otId=input.dataset.ot||input.closest('[data-ot-id]')?.dataset.otId;
   input.style.borderColor='#f59e0b';
   clearTimeout(_valTimers['sqty-'+sid]);
   _valTimers['sqty-'+sid]=setTimeout(async()=>{
-    const cant=Math.max(0,parseInt(input.value)||0);
-    input.value=cant;
+    const cantNueva=Math.max(0,parseInt(input.value)||0);
+    input.value=cantNueva;
     try{
-      if(cant===0){
-        await sbFetch('ot_servicios_realizados','DELETE',null,`?id=eq.${sid}`);
+      if(cantNueva===0){
+        // Leer antes de borrar
+        const rowBD=await sbGet('ot_servicios_realizados',`?id=eq.${sid}&select=cantidad,ot_id,catalogo_servicios(nombre)&activo=eq.true`)||[];
+        const row=rowBD[0];
+        const nombreServ=row?.catalogo_servicios?.nombre||String(sid);
+        const cantBD=row?.cantidad??0;
+        await sbPatch('ot_servicios_realizados',`?id=eq.${sid}`,{activo:false,cantidad:0});
+        if(row?.ot_id) _registrarCambio(row.ot_id,`servicio:${nombreServ}`,cantBD,0,'ADMIN');
         const blk=document.getElementById('serv-blk-'+sid);
         if(blk)blk.remove();
       }else{
-        await sbPatch('ot_servicios_realizados',`?id=eq.${sid}`,{cantidad:cant});
+        // Leer valor anterior de BD
+        const rowBD=await sbGet('ot_servicios_realizados',`?id=eq.${sid}&select=cantidad,ot_id,catalogo_servicios(nombre)&activo=eq.true`)||[];
+        const row=rowBD[0];
+        const cantBD=row?.cantidad??cantNueva;
+        const nombreServ=row?.catalogo_servicios?.nombre||String(sid);
+        await sbPatch('ot_servicios_realizados',`?id=eq.${sid}`,{cantidad:cantNueva});
+        if(row?.ot_id&&cantBD!==cantNueva) _registrarCambio(row.ot_id,`servicio:${nombreServ}`,cantBD,cantNueva,'ADMIN');
         valFeedback(input,true);
         valMarkChanged(input);
       }
@@ -11179,7 +11246,11 @@ function valServQtyBtn(delta,sid,grupoId){
 async function valEliminarServ(sid,grupoId){
   if(!confirm('¿Eliminar este ítem de mano de obra?'))return;
   try{
+    const rowBD=await sbGet('ot_servicios_realizados',`?id=eq.${sid}&select=cantidad,ot_id,catalogo_servicios(nombre)&activo=eq.true`)||[];
+    const row=rowBD[0];
+    const nombreServ=row?.catalogo_servicios?.nombre||String(sid);
     await sbFetch('ot_servicios_realizados','DELETE',null,`?id=eq.${sid}`);
+    if(row?.ot_id) _registrarCambio(row.ot_id,`servicio:${nombreServ}`,row?.cantidad??0,0,'ADMIN');
     const blk=document.getElementById('serv-blk-'+sid);
     if(blk)blk.remove();
   }catch(e){alert('Error al eliminar: '+e.message);}
@@ -11197,7 +11268,9 @@ async function valConfirmarAddServ(otId,grupoId){
   const cant=Math.max(1,parseInt(qtyInp?.value||1));
   if(!servId){alert('Seleccioná un ítem de mano de obra.');return;}
   try{
+    const nombreServ=sel?.options[sel.selectedIndex]?.text||String(servId);
     await sbPost('ot_servicios_realizados',{ot_id:parseInt(otId),servicio_id:servId,cantidad:cant});
+    _registrarCambio(otId,`servicio:${nombreServ}`,0,cant,'ADMIN');
     await verGrupoValidacion(grupoId);
   }catch(e){alert('Error al agregar: '+e.message);}
 }
