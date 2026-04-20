@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v169</title>
+<title>FG Gestión OTs v171</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V169</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V171</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v169</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v171</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -4608,7 +4608,7 @@ function renderEditarCierre(){
     const uni=m.catalogo_materiales?.unidad||'';
     html+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border2)">'
       +'<span style="flex:1;font-size:12px">'+nom+'</span>'
-      +'<input type="number" min="0" value="'+m.cantidad+'" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"'
+      +'<input type="number" min="0" value="'+(m.cantidad||'')+'" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"'
         +' onchange="EC.mats['+i+'].cantidad=parseInt(this.value)||0"/>'
       +'<span style="font-size:11px;color:#64748b">'+uni+'</span>'
       +'<button type="button" onclick="EC.mats['+i+']._eliminar=true;renderEditarCierre()"'
@@ -4654,7 +4654,7 @@ function renderEditarCierre(){
     const nom=s.catalogo_servicios?.nombre||'?';
     html+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border2)">'
       +'<span style="flex:1;font-size:12px">'+nom+'</span>'
-      +'<input type="number" min="0" value="'+s.cantidad+'" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"'
+      +'<input type="number" min="0" value="'+(s.cantidad||'')+'" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"'
         +' onchange="EC.servs['+i+'].cantidad=parseInt(this.value)||0"/>'
       +'<button type="button" onclick="EC.servs['+i+']._eliminar=true;renderEditarCierre()"'
         +' style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;line-height:1;padding:0 4px">×</button>'
@@ -8275,6 +8275,8 @@ async function renderConfig(tab){
           +'<td style="font-size:12px">'+(tipoLabel[m.serial_tipo||'NINGUNO']||'—')+'</td>'
           +'<td><span class="badge '+(m.activo?'b-green':'b-gray')+'">'+(m.activo?'Activo':'Inactivo')+'</span></td>'
           +'<td style="display:flex;gap:4px">'
+          +'<button class="btn btn-sm" style="font-size:13px;padding:2px 7px" title="Subir" onclick="moverMaterial('+m.id+','+(d[idx-1]?.id??-1)+',\'up\')">↑</button>'
+          +'<button class="btn btn-sm" style="font-size:13px;padding:2px 7px" title="Bajar" onclick="moverMaterial('+m.id+','+(d[idx+1]?.id??-1)+',\'down\')">↓</button>'
           +'<button class="btn btn-sm" style="font-size:11px" onclick="abrirModalMaterial('+JSON.stringify(m).replace(/"/g,"\'").replace(/\'/g,"&#39;")+')">✏️</button>'
           +'<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarMaterial('+m.id+',\''+m.nombre.replace(/'/g,'')+'\')" >🗑️</button>'
           +'</td></tr>').join('')
@@ -8313,15 +8315,20 @@ async function renderConfig(tab){
     else if(tab==='servicios'){
       const d=await sbGet('catalogo_servicios','?order=orden_display')||[];
       el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
-        +'<div style="font-size:12px;color:#64748b">'+d.length+' servicios — <strong>arrastrá</strong> para reordenar 🟰</div>'
+        +'<div style="font-size:12px;color:#64748b">'+d.length+' servicios — <strong>arrastrá</strong> o usá ↑↓ para reordenar</div>'
         +'<button class="btn btn-sm btn-primary" onclick="abrirModalServicio()">+ Nuevo servicio</button></div>'
         +'<div class="ot-table-wrap"><table class="ot-table" id="svc-drag-table"><thead><tr>'
         +'<th style="width:28px"></th><th>Servicio / Mano de obra</th><th>Estado</th><th></th></tr></thead><tbody id="svc-drag-body">'
-        +d.map(s=>'<tr draggable="true" data-id="'+s.id+'" style="cursor:grab;'+(s.activo?'':'opacity:.5')+'">'
+        +d.map((s,idx)=>'<tr draggable="true" data-id="'+s.id+'" style="cursor:grab;'+(s.activo?'':'opacity:.5')+'">'
           +'<td style="color:#94a3b8;font-size:16px;text-align:center;cursor:grab">⠿</td>'
           +'<td style="font-weight:600;font-size:12px">'+s.nombre+'</td>'
           +'<td><span class="badge '+(s.activo?'b-green':'b-gray')+'">'+(s.activo?'Activo':'Inactivo')+'</span></td>'
-          +'<td style="display:flex;gap:4px"><button class="btn btn-sm" style="font-size:11px" onclick="abrirModalServicio('+JSON.stringify(s).replace(/"/g,"'").replace(/'/g,"&#39;")+')" >✏️</button>'+'<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarServicio('+s.id+',\''+s.nombre.replace(/'/g,'')+'\')">🗑️</button></td>'
+          +'<td style="display:flex;gap:4px">'
+          +'<button class="btn btn-sm" style="font-size:13px;padding:2px 7px" title="Subir" onclick="moverServicio('+s.id+','+(d[idx-1]?.id??-1)+')">↑</button>'
+          +'<button class="btn btn-sm" style="font-size:13px;padding:2px 7px" title="Bajar" onclick="moverServicio('+s.id+','+(d[idx+1]?.id??-1)+')">↓</button>'
+          +'<button class="btn btn-sm" style="font-size:11px" onclick="abrirModalServicio('+JSON.stringify(s).replace(/"/g,"'").replace(/'/g,"&#39;")+')" >✏️</button>'
+          +'<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarServicio('+s.id+',\''+s.nombre.replace(/'/g,'')+'\')">🗑️</button>'
+          +'</td>'
           +'</tr>').join('')
         +'</tbody></table></div>';
       initDragServicios();
@@ -9069,14 +9076,42 @@ async function guardarOrdenMateriales(){
 async function moverMaterial(matId, otroId, dir){
   if(otroId===-1)return;
   try{
-    const mat=await sbGet('catalogo_materiales','?id=eq.'+matId)||[];
-    const otro=await sbGet('catalogo_materiales','?id=eq.'+otroId)||[];
-    if(!mat[0]||!otro[0])return;
-    const ordenA=mat[0].orden_display;
-    const ordenB=otro[0].orden_display;
-    await sbPatch('catalogo_materiales','?id=eq.'+matId,{orden_display:ordenB});
-    await sbPatch('catalogo_materiales','?id=eq.'+otroId,{orden_display:ordenA});
+    // Leer todos los materiales ordenados
+    const todos=await sbGet('catalogo_materiales','?order=activo.desc,orden_display&select=id')||[];
+    const ids=todos.map(r=>r.id);
+    const posA=ids.indexOf(matId);
+    const posB=ids.indexOf(otroId);
+    if(posA===-1||posB===-1)return;
+    // Intercambiar posiciones en el array
+    ids[posA]=otroId; ids[posB]=matId;
+    // Renumerar todo en lotes de 5
+    for(let i=0;i<ids.length;i+=5){
+      await Promise.all(ids.slice(i,i+5).map((id,j)=>
+        sbPatch('catalogo_materiales','?id=eq.'+id,{orden_display:(i+j+1)*10})
+      ));
+    }
     renderConfig('materiales');
+  }catch(e){alert('Error al reordenar: '+e.message);}
+}
+
+async function moverServicio(servId, otroId){
+  if(otroId===-1)return;
+  try{
+    // Leer todos los servicios ordenados
+    const todos=await sbGet('catalogo_servicios','?order=orden_display&select=id')||[];
+    const ids=todos.map(r=>r.id);
+    const posA=ids.indexOf(servId);
+    const posB=ids.indexOf(otroId);
+    if(posA===-1||posB===-1)return;
+    // Intercambiar posiciones en el array
+    ids[posA]=otroId; ids[posB]=servId;
+    // Renumerar todo en lotes de 5
+    for(let i=0;i<ids.length;i+=5){
+      await Promise.all(ids.slice(i,i+5).map((id,j)=>
+        sbPatch('catalogo_servicios','?id=eq.'+id,{orden_display:(i+j+1)*10})
+      ));
+    }
+    renderConfig('servicios');
   }catch(e){alert('Error al reordenar: '+e.message);}
 }
 async function guardarMaterial(){
@@ -10510,7 +10545,7 @@ async function verGrupoValidacion(grupoId){
         html+='<div style="'+ROW+'">'
           +'<span style="'+NOMBRE+'">'+(m.catalogo_materiales?.nombre||'?')+'</span>'
           +'<button onclick="valQtyBtn(-1,\''+m.id+'\',\''+ot.id+'\',\''+grupoId+'\')" style="'+BTN_M+'">−</button>'
-          +'<input id="mqty-'+m.id+'" type="number" min="0" step="1" value="'+origQty+'" data-mid="'+m.id+'" data-ot="'+ot.id+'" data-grp="'+grupoId+'" data-sertype="'+serTipo+'" data-orig="'+origQty+'" oninput="valQtyInput(this)"'
+          +'<input id="mqty-'+m.id+'" type="number" min="0" step="1" value="'+(origQty||'')+'" data-mid="'+m.id+'" data-ot="'+ot.id+'" data-grp="'+grupoId+'" data-sertype="'+serTipo+'" data-orig="'+origQty+'" oninput="valQtyInput(this)"'
             +' style="'+INP_QTY+'"/>'
           +'<button onclick="valQtyBtn(1,\''+m.id+'\',\''+ot.id+'\',\''+grupoId+'\')" style="'+BTN_P+'">+</button>'
           +'<span style="'+UNI+'">'+(m.catalogo_materiales?.unidad||'')+'</span>'
@@ -10565,7 +10600,7 @@ async function verGrupoValidacion(grupoId){
           html+='<div id="serv-blk-'+s.id+'" style="'+ROW+'">'
             +'<span style="'+NOMBRE+'">'+(s.catalogo_servicios?.nombre||'?')+'</span>'
             +'<button onclick="valServQtyBtn(-1,\''+s.id+'\',\''+grupoId+'\')" style="'+BTN_M+'">−</button>'
-            +'<input id="sqty-'+s.id+'" type="number" min="0" step="1" value="'+origSQty+'" data-sid="'+s.id+'" data-grp="'+grupoId+'" data-orig="'+origSQty+'" oninput="valServQtyInput(this)"'
+            +'<input id="sqty-'+s.id+'" type="number" min="0" step="1" value="'+(origSQty||'')+'" data-sid="'+s.id+'" data-grp="'+grupoId+'" data-orig="'+origSQty+'" oninput="valServQtyInput(this)"'
               +' style="'+INP_QTY+'"/>'
             +'<button onclick="valServQtyBtn(1,\''+s.id+'\',\''+grupoId+'\')" style="'+BTN_P+'">+</button>'
             +'<span style="'+UNI+'">un</span>'

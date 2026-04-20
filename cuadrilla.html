@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.7</title>
+<title>FG Cuadrillas v4.8</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.7 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.8 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -392,7 +392,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.7';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.8';
 
   // Cargar estados con fallback
   try{
@@ -930,7 +930,7 @@ function renderWizMateriales(p){
         +'<div class="mat-stock">Stock cuadrilla: '+stock+' '+(m.unidad||'')+'</div></div>'
       +'<div class="mat-ctrl">'
         +'<button class="mat-btn" onclick="wizCambiarMat('+m.id+',-1)" '+(qty<=0?'disabled':'')+'>−</button>'
-        +'<input type="number" inputmode="numeric" class="mat-qty" id="wiz-mat-qty-'+m.id+'" value="'+qty+'" min="0" step="1" onchange="wizSetMatQty('+m.id+',this.value)" oninput="wizSetMatQty('+m.id+',this.value)"/>'
+        +'<input type="number" inputmode="numeric" class="mat-qty" id="wiz-mat-qty-'+m.id+'" value="'+(qty||'')+'" min="0" step="1" onchange="wizSetMatQty('+m.id+',this.value)" oninput="wizSetMatQty('+m.id+',this.value)"/>'
         +'<button class="mat-btn plus" onclick="wizCambiarMat('+m.id+',1)">+</button>'
       +'</div></div>';
   });
@@ -1105,8 +1105,7 @@ function wizCambiarMat(matId,delta){
   // Actualizar input en DOM sin re-renderizar (evita perder foco)
   var inp=document.getElementById('wiz-mat-qty-'+matId);
   if(inp){
-    inp.value=nueva;
-    // Actualizar estado del botón menos
+    inp.value=nueva||'';
     var btnMenos=inp.previousElementSibling;
     if(btnMenos)btnMenos.disabled=(nueva<=0);
   }else{
@@ -1122,7 +1121,7 @@ function wizSetMatQty(matId,val){
   // Actualizar botón menos
   var inp=document.getElementById('wiz-mat-qty-'+matId);
   if(inp){
-    inp.value=n;
+    inp.value=n||'';
     var btnMenos=inp.previousElementSibling;
     if(btnMenos)btnMenos.disabled=(n<=0);
   }
