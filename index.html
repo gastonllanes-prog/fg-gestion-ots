@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v171</title>
+<title>FG Gestión OTs v172</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V171</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V172</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v171</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v172</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -457,7 +457,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
 <div id="s-liquidacion" style="display:none">
   <div class="ph">
     <div class="ph-icon blue">📊</div>
-    <div><div class="ph-title">Liquidación diaria</div><div class="ph-sub">Mano de obra y materiales para Gigared</div></div>
+    <div><div class="ph-title">Rendición operativa diaria</div><div class="ph-sub">Mano de obra y materiales para Gigared</div></div>
   </div>
   <div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem;max-width:480px">
     <div class="fg"><label>Desde</label><input type="date" id="liq-desde" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px"/></div>
@@ -1102,7 +1102,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
 <!-- MODAL REPORTE GIGARED -->
 <div class="modal-overlay hidden" id="rep-gigared-modal">
   <div class="modal" style="max-width:440px">
-    <div class="modal-title">📊 Liquidación Gigared <button class="modal-close" onclick="cerrarModal('rep-gigared-modal')">✕</button></div>
+    <div class="modal-title">📊 Rendición operativa <button class="modal-close" onclick="cerrarModal('rep-gigared-modal')">✕</button></div>
     <div class="fg"><label>Desde</label><input type="date" id="rep-g-desde"/></div>
     <div class="fg"><label>Hasta</label><input type="date" id="rep-g-hasta"/></div>
     <p class="err-msg" id="rep-g-err"></p>
@@ -1603,7 +1603,7 @@ function construirMenu(){
   const nav=document.getElementById('sb-nav');
   const items=[
     {sec:'Principal'},{id:'dashboard',icon:'📊',label:'Dashboard'},{id:'ots',icon:'📋',label:'Órdenes de trabajo'},
-    {id:'asignar',icon:'📍',label:'Asignar OTs'},{id:'asignadas',icon:'✓',label:'Cerrar OTs'},{id:'validacion',icon:'✅',label:'Validación'},{id:'liquidacion',icon:'📊',label:'Liquidación diaria'},
+    {id:'asignar',icon:'📍',label:'Asignar OTs'},{id:'asignadas',icon:'✓',label:'Cerrar OTs'},{id:'validacion',icon:'✅',label:'Validación'},{id:'liquidacion',icon:'📊',label:'Rendición operativa'},
     {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},{id:'logistic',icon:'📤',label:'Logistic'},
     {id:'tecnicos',icon:'👷',label:'Técnicos'},
     {sec:'Stock'},{id:'stock-cuad',icon:'🔧',label:'Stock Cuadrillas'},{id:'stock',icon:'📦',label:'Stock Depósito'},
@@ -1623,7 +1623,7 @@ function irA(sec){
   const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
   document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
-  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',validacion:'Validación',liquidacion:'Liquidación diaria',informes:'Informes',clientes:'Clientes',cuadrillas:'Cuadrillas',logistic:'Logistic',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
+  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',validacion:'Validación',liquidacion:'Rendición operativa',informes:'Informes',clientes:'Clientes',cuadrillas:'Cuadrillas',logistic:'Logistic',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
   closeSidebar();
   const fn={dashboard:renderDashboard,ots:()=>{const sel=document.getElementById('ot-fil-estado');if(sel&&!sel.value)sel.value='PENDIENTE';renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,validacion:inicializarValidacion,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:()=>{renderClientes();},cuadrillas:()=>{renderCuadrillas();},logistic:renderLogistic,tecnicos:()=>{renderTecnicos();},'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
@@ -8501,8 +8501,8 @@ async function _cargarDatosLiquidacion(){
   const otIds=ots.map(o=>o.id);
   // Cargar en paralelo: materiales, servicios, movimientos con seriales
   const [mats, servs, movsSerial]=await Promise.all([
-    sbGet('ot_materiales_usados',`?ot_id=in.(${otIds.join(',')})&select=ot_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo)`)||[],
-    sbGet('ot_servicios_realizados',`?ot_id=in.(${otIds.join(',')})&select=ot_id,cantidad,catalogo_servicios(nombre)`)||[],
+    sbGet('ot_materiales_usados',`?ot_id=in.(${otIds.join(',')})&activo=eq.true&select=ot_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo)`)||[],
+    sbGet('ot_servicios_realizados',`?ot_id=in.(${otIds.join(',')})&activo=eq.true&select=ot_id,cantidad,catalogo_servicios(nombre)`)||[],
     sbGet('movimientos_stock',`?tipo_movimiento=eq.CONSUMO_OT&obs=like.*OT%20*serial*&obs=like.*${desde.slice(0,7)}*&select=obs,material_id,catalogo_materiales(nombre,serial_tipo)&limit=2000`)||[]
   ]);
 
@@ -8591,8 +8591,8 @@ async function generarLiquidacionManoObra(){
   const rango=desde===hasta?fmtD(desde):fmtD(desde)+' al '+fmtD(hasta);
 
   const css=_cssLiqReport();
-  let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Liquidación MO</title><style>${css}</style></head><body>`;
-  html+=`<h1>FG Conexiones S.R.L. — Liquidación de Mano de Obra</h1><div class="periodo">Período: ${rango}</div>`;
+  let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rendición MO</title><style>${css}</style></head><body>`;
+  html+=`<h1>FG Conexiones S.R.L. — Rendición Operativa — Mano de Obra</h1><div class="periodo">Período: ${rango}</div>`;
 
   // Resumen totales
   html+=`<div class="section-lbl">Total Mano de Obra</div>`;
@@ -8655,8 +8655,8 @@ async function generarLiquidacionMateriales(){
   const rango=desde===hasta?fmtD(desde):fmtD(desde)+' al '+fmtD(hasta);
 
   const css=_cssLiqReport();
-  let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Liquidación Mat</title><style>${css}</style></head><body>`;
-  html+=`<h1>FG Conexiones S.R.L. — Liquidación de Materiales Utilizados</h1><div class="periodo">Período: ${rango}</div>`;
+  let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rendición Materiales</title><style>${css}</style></head><body>`;
+  html+=`<h1>FG Conexiones S.R.L. — Rendición Operativa — Materiales Utilizados</h1><div class="periodo">Período: ${rango}</div>`;
 
   // Resumen — dos tablas separadas
   if(nomConSerial.length){
