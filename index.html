@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v172</title>
+<title>FG Gestión OTs v173</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V172</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V173</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v172</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v173</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -10246,7 +10246,7 @@ async function renderValidacion(){
     const eIds=ESTADOS.filter(e=>ESTADOS_VAL.includes(e.nombre)).map(e=>e.id);
     if(!eIds.length){el.innerHTML='<div class="card"><p style="color:#dc2626">Estados técnicos no encontrados. Recargá la página.</p></div>';return;}
 
-    let q='?select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false&order=fecha_trabajo.desc,horario_visita.asc';
+    let q='?select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false&order=fecha_trabajo.desc,horario_visita.asc';
     if(desde)q+='&fecha_trabajo=gte.'+desde;
     if(hasta)q+='&fecha_trabajo=lte.'+hasta;
     if(cuadId)q+='&cuadrilla_id=eq.'+cuadId;
@@ -10374,7 +10374,7 @@ async function verGrupoValidacion(grupoId){
     if(!idList){det.innerHTML='<p style="color:#dc2626">Sin OTs en este grupo.</p>';return;}
 
     const [g,fotosArr,matsArr,servsArr,catMats,catServs]=await Promise.all([
-      sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
+      sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
       sbGet('ot_fotos',`?ot_id=in.(${idList})&select=id,ot_id,url`)||[],
       sbGet('ot_materiales_usados',`?ot_id=in.(${idList})&activo=eq.true&select=id,ot_id,material_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo,orden_display)`)||[],
       sbGet('ot_servicios_realizados',`?ot_id=in.(${idList})&activo=eq.true&select=id,ot_id,servicio_id,cantidad,catalogo_servicios(id,nombre)`)||[],
@@ -10467,6 +10467,7 @@ async function verGrupoValidacion(grupoId){
         +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
           +'<span style="font-size:15px;font-weight:800;color:#1e3a5f">OT '+numOT(ot.numero_ot)+'</span>'
           +badgeTipo(ot.tipo_tarea,ot.tipo_item)+' '+badgeE(est)
+          +(ot.modificada_post_cierre?'<span style="font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;padding:2px 9px;border-radius:6px">🔧 Modificada post cierre</span>':'')
         +'</div>'
         +(yaValidado?'<span style="font-size:11px;font-weight:700;color:#16a34a;background:#dcfce7;padding:3px 10px;border-radius:6px">✓ '+ot.validado_admin_por+'</span>':'')
       +'</div>';
