@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v177</title>
+<title>FG Gestión OTs v178</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V177</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V178</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v177</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v178</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1960,6 +1960,20 @@ async function renderOTs(){
     const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1,telefono2)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
     const cuadFil=document.getElementById('ot-fil-cuad')?.value||'';
+
+    // Si hay filtro de cuadrilla, pre-buscar los grupo_id de esa cuadrilla
+    // (PostgREST no admite filtrar por columna de tabla relacionada directamente)
+    let grupoIdsFiltro=null;
+    if(cuadFil){
+      const grps=await sbGet('grupos_ot',`?cuadrilla_id=eq.${cuadFil}&select=id`)||[];
+      grupoIdsFiltro=grps.map(g=>g.id);
+      if(!grupoIdsFiltro.length){
+        // Cuadrilla sin grupos — no hay OTs
+        el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📭</div><div>No hay OTs para esta cuadrilla.</div></div>';
+        return;
+      }
+    }
+
     const extraFiltros=(()=>{
       let f='';
       if(tipo) f+=`&tipo_tarea=eq.${tipo}`;
@@ -1967,9 +1981,7 @@ async function renderOTs(){
       if(OT_FILTRO_FECHA) f+=`&fecha_fin=gte.${OT_FILTRO_FECHA}T00:00:00&fecha_fin=lte.${OT_FILTRO_FECHA}T23:59:59`;
       if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)f+=`&estado_id=eq.${eObj.id}`;}
       else{const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado_id=neq.${eElim.id}`;}
-      // Filtro de cuadrilla: filtra por grupo asignado a esa cuadrilla
-      if(cuadFil) f+=`&grupos_ot.cuadrilla_id=eq.${cuadFil}`;
-      // Filtro de coordinadas
+      if(grupoIdsFiltro) f+=`&grupo_id=in.(${grupoIdsFiltro.join(',')})`;
       if(OT_FILTRO_COORDINADAS&&OT_FILTRO_COORD_DESDE&&OT_FILTRO_COORD_HASTA){
         f+=`&fecha_coordinada=gte.${OT_FILTRO_COORD_DESDE}T00:00:00&fecha_coordinada=lte.${OT_FILTRO_COORD_HASTA}T23:59:59`;
       }
