@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v181</title>
+<title>FG Gestión OTs v182</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V181</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V182</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v181</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v182</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1966,7 +1966,7 @@ async function renderOTs(){
     const sortMap={'fecha_impresion':'fecha_impresion','fecha_asignacion_giga':'fecha_asignacion_giga','fecha_fin':'fecha_fin','created_at':'created_at','clientes.apellido':'clientes(apellido)','numero_ot':'numero_ot'};
     const orderCol=sortMap[OT_SORT]||'fecha_impresion';
     // El orden secundario y los campos cliente (calle, nodo) se ordenan en memoria
-    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,fecha_fin,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1,telefono2)`;
+    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,fecha_fin,hora_fin_tec,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1,telefono2)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
     const cuadFil=document.getElementById('ot-fil-cuad')?.value||'';
 
@@ -2183,7 +2183,14 @@ async function renderOTs(){
           </td>
           <td style="font-size:11px;color:#64748b;white-space:nowrap">${fmtDT(primerFecha)}</td>
           <td style="font-size:11px;color:#64748b;white-space:nowrap">${primerAsig?new Date(primerAsig+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</td>
-          <td style="font-size:11px;white-space:nowrap;${cOts.some(o=>o.fecha_fin)?'color:#16a34a;font-weight:700':'color:#94a3b8'}">${(()=>{const f=cOts.find(o=>o.fecha_fin)?.fecha_fin;return f?new Date(f+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';})()}</td>
+          <td style="font-size:11px;white-space:nowrap;${(cOts.some(o=>o.fecha_fin||o.hora_fin_tec))?'color:#16a34a;font-weight:700':'color:#94a3b8'}">${(()=>{
+            const o=cOts.find(o=>o.fecha_fin||o.hora_fin_tec);
+            if(!o)return'—';
+            const raw=o.fecha_fin||o.hora_fin_tec;
+            // Normalizar: si tiene T es ISO completo, si no, agregar T12:00 para evitar offset
+            const d=raw.includes('T')?new Date(raw):new Date(raw+'T12:00:00');
+            return isNaN(d)?'—':d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+          })()}</td>
           <td style="font-size:11px;color:#64748b;white-space:nowrap">${primerCreado?new Date(primerCreado).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</td>
           <td onclick="event.stopPropagation()">
             ${grupoId&&pendientes.length?`<button class="btn btn-sm btn-primary" style="white-space:nowrap;font-size:11px" onclick="abrirAsignarGrupo([${grupoId}],[${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}])">📍 Asignar</button>`:''}
@@ -6162,7 +6169,7 @@ async function confirmarWizardCierre(){
 
       // Cambiar estado de la OT
       const otAntes=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=estado_id&eliminado=eq.false`).then(d=>d?.[0]);
-      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eNuevo?.id,fecha_fin:new Date().toISOString(),observaciones:p.obs||null});
+      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eNuevo?.id,fecha_fin:new Date().toISOString().slice(0,10),observaciones:p.obs||null});
       try{await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:otAntes?.estado_id,estado_nuevo_id:eNuevo?.id,usuario_id:CU.id,observacion:p.obs||null});}catch(e){}
     }
 
