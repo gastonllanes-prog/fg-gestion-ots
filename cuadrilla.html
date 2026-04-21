@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.12</title>
+<title>FG Cuadrillas v4.13</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.12 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.13 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -213,6 +213,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
       <div class="wiz-prog" id="wiz-prog"></div>
     </div>
     <div class="wiz-cont" id="wiz-cont"></div>
+    <div id="wiz-err" style="display:none;margin:8px 16px 0;padding:10px 14px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;font-size:13px;font-weight:600;color:#dc2626;line-height:1.4"></div>
     <div class="wiz-nav">
       <button id="wiz-ant" class="btn btn-ghost" style="flex:1" onclick="pasoAtras()">← Anterior</button>
       <button id="wiz-sig" class="btn btn-primary" style="flex:2" onclick="pasoAdelante()">Siguiente →</button>
@@ -392,7 +393,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.12';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.13';
 
   // Cargar estados con fallback
   try{
@@ -1159,7 +1160,7 @@ function renderResumen(){
 }
 
 // ── WIZARD — INTERACCIÓN ──────────────────────────────────────────────────────
-function wizSetAccion(accion){var p=PWIZ.pasos[PWIZ.paso];if(p)p.accion=accion;renderWizPaso();}
+function wizSetAccion(accion){var p=PWIZ.pasos[PWIZ.paso];if(p)p.accion=accion;wizErr('');renderWizPaso();}
 
 function wizCambiarMat(matId,delta){
   var p=PWIZ.pasos[PWIZ.paso];if(!p)return;
@@ -1474,12 +1475,22 @@ function pasoAtras(){
   var el=document.getElementById('wiz-cont');if(el)el.scrollTop=0;
 }
 
+function wizErr(msg){
+  var el=document.getElementById('wiz-err');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.display=msg?'block':'none';
+  if(msg){el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+}
+
 function pasoAdelante(){
   var p=PWIZ.pasos[PWIZ.paso];
-  if(p.accion==='RESUMEN'){confirmarWizard();return;}
+  if(p.accion==='RESUMEN'){wizErr('');confirmarWizard();return;}
+
+  wizErr('');
 
   // Validaciones
-  if(!p.accion){alert('Elegí si la OT fue realizada o no.');return;}
+  if(!p.accion){wizErr('⚠️ Elegí si la OT fue realizada o no.');return;}
 
   if(p.accion==='REALIZADA'){
     var tipo=p.ot?p.ot.tipo_item||p.ot.tipo_tarea||'':'';
@@ -1488,50 +1499,46 @@ function pasoAdelante(){
     // BASICA: requiere precinto (CORRELATIVO) con qty > 0 y al menos un serial — bloqueo duro
     if(esBasica){
       var matsCor=PWIZ.catalogoMats.filter(function(m){return m.serial_tipo==='CORRELATIVO';});
-      console.log('[BASICA] Precintos CORRELATIVO encontrados:',matsCor.map(function(m){return m.nombre+'(id:'+m.id+')';}));
       // Sincronizar qty desde corrSels por si el técnico cargó serial sin usar +
       matsCor.forEach(function(m){
         var corrLen=(p.corrSels[m.id]||[]).length;
         if(corrLen>(p.mats[m.id]||0)){p.mats[m.id]=corrLen;}
       });
       var tienePrecintoQty=matsCor.some(function(m){return(p.mats[m.id]||0)>0;});
-      console.log('[BASICA] qty por material:',matsCor.map(function(m){return m.id+':qty='+(p.mats[m.id]||0);}));
-      if(!tienePrecintoQty){alert('BASICA requiere precinto telecrafter.\nAgregá la cantidad en Materiales antes de continuar.');return;}
+      if(!tienePrecintoQty){wizErr('⚠️ Esta OT requiere precinto telecrafter. Agregá la cantidad en la sección Materiales.');return;}
       var tienePrecintoSerial=matsCor.some(function(m){return(p.mats[m.id]||0)>0&&(p.corrSels[m.id]||[]).length>0;});
-      console.log('[BASICA] seriales por material:',matsCor.map(function(m){return m.id+':sels='+JSON.stringify(p.corrSels[m.id]||[]);}));
-      console.log('[BASICA] tienePrecintoQty:',tienePrecintoQty,'tienePrecintoSerial:',tienePrecintoSerial);
-      if(!tienePrecintoSerial){alert('BASICA requiere el número de serie del precinto.\nSeleccioná o ingresá el serial antes de continuar.');return;}
+      if(!tienePrecintoSerial){wizErr('⚠️ Falta el número de serie del precinto. Seleccioná o ingresá el serial en la sección Seriales.');return;}
     }
 
     // INDIVIDUAL con qty > 0 sin serial — bloqueo duro
     var sinSerial=PWIZ.catalogoMats.filter(function(m){return m.serial_tipo==='INDIVIDUAL'&&(p.mats[m.id]||0)>0&&!p.seriales[m.id];});
     if(sinSerial.length){
       var nombres=sinSerial.map(function(m){return m.nombre;}).join(', ');
-      alert('Falta asignar el serial de: '+nombres+'.\nSeleccioná o ingresá el serial antes de continuar.');return;
+      wizErr('⚠️ Falta asignar el serial de: '+nombres+'. Seleccioná o ingresá el serial en la sección Seriales.');return;
     }
 
     // Fotos: al menos 1 subida correctamente — bloqueo duro
     var fotosOk=(p.fotos||[]).filter(function(f){return f.estado==='ok';});
     if(!fotosOk.length){
       var haySubiendo=(p.fotos||[]).some(function(f){return f.estado==='subiendo';});
-      alert(haySubiendo?'Esperá a que terminen de subirse las fotos antes de continuar.':'Se requiere al menos 1 foto para esta OT.\nAgregá una foto con el botón 📷.');
+      wizErr(haySubiendo?'⏳ Las fotos todavía se están subiendo. Esperá un momento y volvé a intentar.':'📷 Necesitás al menos 1 foto para esta OT. Usá el botón 📷 para agregar.');
       return;
     }
   }
 
   if(p.accion==='RECHAZADA_TECNICO'){
-    if(!p.motivo.trim()){alert('Seleccioná un motivo.');return;}
-    // Foto obligatoria si el motivo tiene requiere_foto
+    if(!p.motivo.trim()){wizErr('⚠️ Seleccioná un motivo de rechazo.');return;}
     var motiRec=MOTIVOS.find(function(m){return m.descripcion===p.motivo;});
     if(motiRec&&motiRec.requiere_foto){
       var fotosOkRec=(p.fotos||[]).filter(function(f){return f.estado==='ok';});
       if(!fotosOkRec.length){
-        alert('Este motivo requiere al menos 1 foto como evidencia.\nAgregá una foto antes de continuar.');return;
+        wizErr('📷 Este motivo requiere foto como evidencia. Usá el botón 📷 para agregar una foto.');return;
       }
     }
   }
 
   PWIZ.paso++;
+  wizErr('');
   renderWizPaso();
   var el2=document.getElementById('wiz-cont');if(el2)el2.scrollTop=0;
 }
