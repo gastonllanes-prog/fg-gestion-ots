@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v180</title>
+<title>FG Gestión OTs v181</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V180</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V181</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v180</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v181</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2097,6 +2097,10 @@ async function renderOTs(){
       if(!cliMap[k]){cliMap[k]={cl:o.clientes||{},ots:[],primerFecha:o.fecha_impresion,primerAsig:o.fecha_asignacion_giga,primerCreado:o.created_at};}
       cliMap[k].ots.push(o);
     });
+    // Ordenar OTs dentro de cada grupo por jerarquía (BASICA primero)
+    Object.values(cliMap).forEach(entry=>{
+      entry.ots.sort((a,b)=>ordenJerarquiaOT(a.tipo_item||a.tipo_tarea||'')-ordenJerarquiaOT(b.tipo_item||b.tipo_tarea||''));
+    });
 
     // Ordenamiento en memoria para columnas cliente (calle, nodo) y sort compuesto
     const getValSort=(entry,sortKey)=>{
@@ -2252,8 +2256,9 @@ async function verOT(numeroOT, otIdDirecto){
     const tieneCierre=esFinalizada||est==='FINALIZADA_TECNICO'||est==='RECHAZADA_TECNICO';
     const fmtF=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
 
-    const grupo=ot.grupo_id?await sbGet('ordenes_trabajo',
-      `?grupo_id=eq.${ot.grupo_id}&select=id,numero_ot,tipo_item,tipo_tarea,estados_ot(nombre)&eliminado=eq.false&order=orden_cierre`)||[]:[];
+    const grupo=ot.grupo_id?((await sbGet('ordenes_trabajo',
+      `?grupo_id=eq.${ot.grupo_id}&select=id,numero_ot,tipo_item,tipo_tarea,estados_ot(nombre)&eliminado=eq.false&order=orden_cierre`)||[])
+      .sort((a,b)=>ordenJerarquiaOT(a.tipo_item||a.tipo_tarea||'')-ordenJerarquiaOT(b.tipo_item||b.tipo_tarea||''))):[];
 
     let items=[];
     try{items=await sbGet('ot_items_contratados',`?ot_id=eq.${ot.id}&select=descripcion,cantidad`)||[];}catch(e){}
@@ -10471,7 +10476,8 @@ function renderTablaValidacion(lista){
     +'<th>Fecha</th><th>Cuadrilla</th><th>Cliente</th><th>OTs</th><th>Estado</th><th>Alertas</th><th>Acciones</th>'
     +'</tr></thead><tbody>'
     +lista.map(g=>{
-      const ots=g.ordenes_trabajo||[];
+      const ots=(g.ordenes_trabajo||[])
+        .sort((a,b)=>ordenJerarquiaOT(a.tipo_item||a.tipo_tarea||'')-ordenJerarquiaOT(b.tipo_item||b.tipo_tarea||''));
       const cl=ots[0]?.clientes||{};
       const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
       const estG=calcEstadoGrupoVal(ots);
@@ -10527,7 +10533,8 @@ async function verGrupoValidacion(grupoId){
     const serialesMap={};
     serialesDisp.forEach(s=>{if(!serialesMap[s.material_id])serialesMap[s.material_id]=[];serialesMap[s.material_id].push(s.serial);});
 
-    const ots=g.ordenes_trabajo||[];
+    const ots=(g.ordenes_trabajo||[])
+      .sort((a,b)=>ordenJerarquiaOT(a.tipo_item||a.tipo_tarea||'')-ordenJerarquiaOT(b.tipo_item||b.tipo_tarea||''));
     const cl=ots[0]?.clientes||{};
     const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
 
