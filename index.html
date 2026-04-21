@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v179</title>
+<title>FG Gestión OTs v180</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V179</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V180</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v179</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v180</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1626,7 +1626,15 @@ function irA(sec){
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
   document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',validacion:'Validación',liquidacion:'Rendición operativa',informes:'Informes',clientes:'Clientes',cuadrillas:'Cuadrillas',logistic:'Logistic',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
   closeSidebar();
-  const fn={dashboard:renderDashboard,ots:()=>{const sel=document.getElementById('ot-fil-estado');if(sel&&!sel.value)sel.value='PENDIENTE';renderOTs();},asignar:renderAsignarOTs,asignadas:inicializarAsignadas,validacion:inicializarValidacion,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:()=>{renderClientes();},cuadrillas:()=>{renderCuadrillas();},logistic:renderLogistic,tecnicos:()=>{renderTecnicos();},'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
+  const fn={dashboard:renderDashboard,ots:()=>{
+    const selE=document.getElementById('ot-fil-estado');
+    const selT=document.getElementById('ot-fil-tipo');
+    const selC=document.getElementById('ot-fil-cuad');
+    if(selE)selE.value='';
+    if(selT)selT.value='';
+    if(selC)selC.value='';
+    renderOTs();
+  },asignar:renderAsignarOTs,asignadas:inicializarAsignadas,validacion:inicializarValidacion,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:()=>{renderClientes();},cuadrillas:()=>{renderCuadrillas();},logistic:renderLogistic,tecnicos:()=>{renderTecnicos();},'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
 }
 
@@ -1955,10 +1963,10 @@ async function renderOTs(){
     const estFil=document.getElementById('ot-fil-estado').value;
     const q=document.getElementById('ot-search').value.trim().toLowerCase();
     // Mapeo de columnas a campos Supabase (solo las que el server puede ordenar)
-    const sortMap={'fecha_impresion':'fecha_impresion','fecha_asignacion_giga':'fecha_asignacion_giga','created_at':'created_at','clientes.apellido':'clientes(apellido)','numero_ot':'numero_ot'};
+    const sortMap={'fecha_impresion':'fecha_impresion','fecha_asignacion_giga':'fecha_asignacion_giga','fecha_fin':'fecha_fin','created_at':'created_at','clientes.apellido':'clientes(apellido)','numero_ot':'numero_ot'};
     const orderCol=sortMap[OT_SORT]||'fecha_impresion';
     // El orden secundario y los campos cliente (calle, nodo) se ordenan en memoria
-    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1,telefono2)`;
+    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,fecha_fin,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1,telefono2)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
     const cuadFil=document.getElementById('ot-fil-cuad')?.value||'';
 
@@ -2139,6 +2147,7 @@ async function renderOTs(){
         <th>OTs</th>
         <th onclick="sortOTs('fecha_impresion')" class="${OT_SORT==='fecha_impresion'||OT_SORT2==='fecha_impresion'?'sorted':''}">F. Impresión ${sortIcon('fecha_impresion')}</th>
         <th onclick="sortOTs('fecha_asignacion_giga')" class="${OT_SORT==='fecha_asignacion_giga'||OT_SORT2==='fecha_asignacion_giga'?'sorted':''}">F. Asignación ${sortIcon('fecha_asignacion_giga')}</th>
+        <th onclick="sortOTs('fecha_fin')" class="${OT_SORT==='fecha_fin'||OT_SORT2==='fecha_fin'?'sorted':''}">F. Fin ${sortIcon('fecha_fin')}</th>
         <th onclick="sortOTs('created_at')" class="${OT_SORT==='created_at'||OT_SORT2==='created_at'?'sorted':''}">F. Carga ${sortIcon('created_at')}</th>
         <th></th>
       </tr></thead>
@@ -2170,6 +2179,7 @@ async function renderOTs(){
           </td>
           <td style="font-size:11px;color:#64748b;white-space:nowrap">${fmtDT(primerFecha)}</td>
           <td style="font-size:11px;color:#64748b;white-space:nowrap">${primerAsig?new Date(primerAsig+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</td>
+          <td style="font-size:11px;white-space:nowrap;${cOts.some(o=>o.fecha_fin)?'color:#16a34a;font-weight:700':'color:#94a3b8'}">${(()=>{const f=cOts.find(o=>o.fecha_fin)?.fecha_fin;return f?new Date(f+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';})()}</td>
           <td style="font-size:11px;color:#64748b;white-space:nowrap">${primerCreado?new Date(primerCreado).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</td>
           <td onclick="event.stopPropagation()">
             ${grupoId&&pendientes.length?`<button class="btn btn-sm btn-primary" style="white-space:nowrap;font-size:11px" onclick="abrirAsignarGrupo([${grupoId}],[${JSON.stringify([...new Set(cOts.map(o=>o.tipo_tarea))])}])">📍 Asignar</button>`:''}
@@ -2239,6 +2249,7 @@ async function verOT(numeroOT, otIdDirecto){
     const est=ot.estados_ot?.nombre||'';
     const esRep=ot.tipo_tarea==='REPARACION';
     const esFinalizada=est==='FINALIZADA';
+    const tieneCierre=esFinalizada||est==='FINALIZADA_TECNICO'||est==='RECHAZADA_TECNICO';
     const fmtF=d=>d?new Date(d+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
 
     const grupo=ot.grupo_id?await sbGet('ordenes_trabajo',
@@ -2247,11 +2258,12 @@ async function verOT(numeroOT, otIdDirecto){
     let items=[];
     try{items=await sbGet('ot_items_contratados',`?ot_id=eq.${ot.id}&select=descripcion,cantidad`)||[];}catch(e){}
 
-    let matsUsados=[], servRealiz=[], serialesCliente=[];
-    if(esFinalizada){
-      [matsUsados, servRealiz]=await Promise.all([
-        sbGet('ot_materiales_usados',`?ot_id=eq.${ot.id}&select=cantidad,catalogo_materiales(nombre,unidad,serial_tipo)`)||[],
-        sbGet('ot_servicios_realizados',`?ot_id=eq.${ot.id}&select=cantidad,catalogo_servicios(nombre,categoria)`)||[]
+    let matsUsados=[], servRealiz=[], serialesCliente=[], fotosOT=[];
+    if(tieneCierre){
+      [matsUsados, servRealiz, fotosOT]=await Promise.all([
+        sbGet('ot_materiales_usados',`?ot_id=eq.${ot.id}&activo=eq.true&select=cantidad,catalogo_materiales(nombre,unidad,serial_tipo)`)||[],
+        sbGet('ot_servicios_realizados',`?ot_id=eq.${ot.id}&activo=eq.true&select=cantidad,catalogo_servicios(nombre,categoria)`)||[],
+        sbGet('ot_fotos',`?ot_id=eq.${ot.id}&select=id,url,nombre_archivo`)||[]
       ]);
       if(matsUsados.length){
         serialesCliente=await sbGet('stock_seriales',`?ot_id=eq.${ot.id}&select=serial,material_id,catalogo_materiales(nombre)`)||[];
@@ -2284,7 +2296,7 @@ async function verOT(numeroOT, otIdDirecto){
           ${ot.sintoma_reportado?`<div style="margin-bottom:.35rem"><strong>🔧 Tarea:</strong> ${ot.sintoma_reportado}</div>`:''}
           ${ot.obs_trabajo?`<div><strong>📋 Obs:</strong> ${ot.obs_trabajo}</div>`:''}
         </div>`:''}
-      ${esFinalizada&&(ot.tag||ot.equipo_instalado)?`
+      ${tieneCierre&&(ot.tag||ot.equipo_instalado)?`
         <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1.5px solid #bfdbfe;border-radius:12px;padding:.875rem 1rem;margin-bottom:1rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center">
           ${ot.tag?`<div><div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📌 Precinto(s)</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#5b21b6">${ot.tag}</div></div>`:''}
           ${ot.equipo_instalado?`<div><div style="font-size:10px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📱 Serial(es)</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#1d4ed8">${ot.equipo_instalado}</div></div>`:''}
@@ -2325,7 +2337,14 @@ async function verOT(numeroOT, otIdDirecto){
         ${ot.grupos_ot.observaciones.split('\n').filter(Boolean).map(l=>`<div style="font-size:12px;color:#1e3a5f;padding:3px 0;border-bottom:1px solid #e0f2fe">${l}</div>`).join('')}
       </div>`:''}
       ${items.length?`<div class="card" style="margin-bottom:.75rem"><div class="card-title">${esRep?'Servicios (referencia)':'Items contratados'}</div>${items.map(i=>`<div class="row"><span>${i.descripcion}</span><span style="font-weight:700">x${i.cantidad}</span></div>`).join('')}</div>`:''}
-      ${esFinalizada?`
+      ${tieneCierre&&fotosOT.length?`
+        <div class="card" style="margin-bottom:.75rem;border-color:#bae6fd">
+          <div class="card-title" style="color:#0369a1">📷 Fotos (${fotosOT.length})</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:.5rem">
+            ${fotosOT.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:110px;height:110px;object-fit:cover;border-radius:10px;border:2px solid #e2e8f0" title="${f.nombre_archivo||''}"/></a>`).join('')}
+          </div>
+        </div>`:''}
+      ${tieneCierre?`
         ${matsUsados&&matsUsados.length?`<div class="card" style="margin-bottom:.75rem;border-color:#bbf7d0">
           <div class="card-title" style="color:#16a34a">🔩 Materiales usados</div>
           ${matsUsados.map(m=>{
@@ -10729,7 +10748,7 @@ async function verGrupoValidacion(grupoId){
           html+='<div id="serv-blk-'+s.id+'" style="'+ROW+'">'
             +'<span style="'+NOMBRE+'">'+(s.catalogo_servicios?.nombre||'?')+'</span>'
             +'<button onclick="valServQtyBtn(-1,\''+s.id+'\',\''+grupoId+'\')" style="'+BTN_M+'">−</button>'
-            +'<input id="sqty-'+s.id+'" type="number" min="0" step="1" value="'+(origSQty||'')+'" data-sid="'+s.id+'" data-grp="'+grupoId+'" data-orig="'+origSQty+'" oninput="valServQtyInput(this)"'
+            +'<input id="sqty-'+s.id+'" type="number" inputmode="numeric" min="0" step="1" value="'+(origSQty||'')+'" data-sid="'+s.id+'" data-grp="'+grupoId+'" data-orig="'+origSQty+'" oninput="valServQtyInput(this)"'
               +' style="'+INP_QTY+'"/>'
             +'<button onclick="valServQtyBtn(1,\''+s.id+'\',\''+grupoId+'\')" style="'+BTN_P+'">+</button>'
             +'<span style="'+UNI+'">un</span>'
@@ -11347,7 +11366,7 @@ function valServQtyBtn(delta,sid,grupoId){
   const inp=document.getElementById('sqty-'+sid);
   if(!inp)return;
   const nueva=Math.max(0,(parseInt(inp.value)||0)+delta);
-  inp.value=nueva;
+  inp.value=nueva||'';
   inp.dataset.sid=sid;inp.dataset.grp=grupoId;
   valServQtyInput(inp);
 }
