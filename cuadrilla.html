@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.14</title>
+<title>FG Cuadrillas v4.15</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.14 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.15 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -396,7 +396,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.14';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.15';
 
   // Cargar estados con fallback
   try{
@@ -1919,7 +1919,7 @@ async function guardarModificacion(){
         if(sc.length){
           var nueva=Math.max(0,(sc[0].cantidad||0)-dif);
           await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+matId,{cantidad:nueva});
-          await sbPost('movimientos_stock',{tipo_movimiento:'AJUSTE_VALIDACION',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:-dif,obs:'Corrección post-cierre OT '+otId});
+          await sbPost('movimientos_stock',{tipo_movimiento:'AJUSTE_TECNICO',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:-dif,obs:'Corrección post-cierre OT '+otId});
         }
       }catch(es){console.warn('[mod stock]',es.message);}
 
