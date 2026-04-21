@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v178</title>
+<title>FG Gestión OTs v179</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V178</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V179</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v178</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v179</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -496,8 +496,9 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <!-- Barra de selección fija — aparece cuando hay checkboxes tildados -->
   <div id="ot-sel-bar" style="display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:12px;padding:.75rem 1.25rem;margin-bottom:1rem;color:#fff">
     <div style="font-weight:700;font-size:14px">📋 <span id="ot-sel-count">0 clientes seleccionados</span></div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="limpiarSeleccion()">✕ Limpiar</button>
+      <button class="btn btn-sm" style="background:#d97706;color:#fff;border-color:#d97706;font-size:13px;font-weight:700;padding:7px 18px" onclick="volverAPendienteMasivo()">↩ Volver a pendiente</button>
       <button class="btn btn-sm" style="background:#dc2626;color:#fff;border-color:#dc2626;font-size:13px;font-weight:700;padding:7px 18px" onclick="abrirDevolucionMasiva()">↩️ Devolver a Gigared</button>
       <button class="btn btn-sm" style="background:#16a34a;color:#fff;border-color:#16a34a;font-size:13px;font-weight:700;padding:7px 18px" onclick="asignarSeleccionados()">📍 Asignar seleccionados</button>
     </div>
@@ -4317,6 +4318,61 @@ function limpiarSeleccion(){
   if(cb)cb.checked=false;
   const bar=document.getElementById('ot-sel-bar');
   if(bar)bar.style.display='none';
+}
+
+async function volverAPendienteMasivo(){
+  const sels=[...document.querySelectorAll('.ot-sel-cb:checked')];
+  if(!sels.length)return;
+  const grupoIds=[...new Set(sels.map(c=>parseInt(c.dataset.grupo)).filter(Boolean))];
+  if(!grupoIds.length)return;
+
+  const motivo=prompt(`Volver a PENDIENTE — ${grupoIds.length} grupo(s) seleccionado(s)\n\nMotivo (obligatorio):`);
+  if(!motivo||!motivo.trim()){alert('El motivo es obligatorio.');return;}
+
+  const ePend=ESTADOS.find(e=>e.nombre==='PENDIENTE');
+  if(!ePend){alert('Estado PENDIENTE no encontrado.');return;}
+
+  if(!confirm(`¿Volver a PENDIENTE ${grupoIds.length} grupo(s)?\n\nEsto va a:\n• Cambiar el estado de todas las OTs a PENDIENTE\n• Desasignar la cuadrilla y fecha de los grupos\n\nMotivo: ${motivo.trim()}`))return;
+
+  let ok=0,err=0;
+  for(const grupoId of grupoIds){
+    try{
+      // Traer OTs del grupo
+      const ots=await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id,estados_ot(nombre)&eliminado=eq.false`)||[];
+      const ts=new Date().toLocaleString('es-AR');
+      // Volver cada OT a PENDIENTE
+      for(const ot of ots){
+        await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{
+          estado_id:ePend.id,
+          hora_inicio_tec:null,hora_fin_tec:null,
+          lat_inicio_tec:null,lng_inicio_tec:null,
+          lat_fin_tec:null,lng_fin_tec:null
+        });
+        await sbPost('historial_estados_ot',{
+          ot_id:ot.id,
+          estado_anterior_id:ot.estados_ot?.id||null,
+          estado_nuevo_id:ePend.id,
+          observacion:`MASIVO: vuelta a PENDIENTE por ${CU.nombre||CU.email}. Motivo: ${motivo.trim()}`,
+          usuario_id:CU.id
+        }).catch(()=>{});
+      }
+      // Desasignar grupo
+      const entrada=`[${ts}] Vuelta a PENDIENTE (masivo) por ${CU.nombre||CU.email}. Motivo: ${motivo.trim()}`;
+      const gBD=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=observaciones`)||[];
+      await sbPatch('grupos_ot',`?id=eq.${grupoId}`,{
+        estado_id:ePend.id,
+        cuadrilla_id:null,
+        fecha_trabajo:null,
+        horario_visita:null,
+        observaciones:((gBD[0]?.observaciones||'')+'\n'+entrada).trim()
+      });
+      ok++;
+    }catch(e){console.error('[pendienteMasivo] grupo '+grupoId,e.message);err++;}
+  }
+
+  limpiarSeleccion();
+  renderOTs();
+  alert(`✅ ${ok} grupo(s) vueltos a PENDIENTE.`+(err?`\n⚠️ ${err} grupo(s) con error — revisá la consola.`:''));
 }
 async function asignarSeleccionados(){
   const sels=[...document.querySelectorAll('.ot-sel-cb:checked')];
