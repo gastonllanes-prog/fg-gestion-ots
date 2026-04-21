@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v185</title>
+<title>FG Gestión OTs v186</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V185</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V186</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v185</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v186</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1645,11 +1645,7 @@ function abrirModal(id){const el=document.getElementById(id);if(!el)return;el.st
 
 // Ir a OTs con filtro de tipo preseleccionado
 function irAConFiltroItem(tipoItem){
-  // Navegar a OTs con filtro de tipo_item (se pasa como parámetro especial)
-  mostrarSeccion('s-ots');
-  document.getElementById('ot-fil-tipo').value='';
-  window._filtroItem=tipoItem;
-  buscarOTs();
+  irAConFiltro(tipoItem, true);
 }
 function irAConFiltro(tipo,isItem=false){
   irA('ots');
@@ -4371,7 +4367,7 @@ async function volverAPendienteMasivo(){
   for(const grupoId of grupoIds){
     try{
       // Traer OTs del grupo
-      const ots=await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id,estados_ot(nombre)&eliminado=eq.false`)||[];
+      const ots=await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id,estado_id,estados_ot(id,nombre)&eliminado=eq.false`)||[];
       const ts=new Date().toLocaleString('es-AR');
       // Volver cada OT a PENDIENTE
       for(const ot of ots){
@@ -4383,7 +4379,7 @@ async function volverAPendienteMasivo(){
         });
         await sbPost('historial_estados_ot',{
           ot_id:ot.id,
-          estado_anterior_id:ot.estados_ot?.id||null,
+          estado_anterior_id:ot.estado_id||null,
           estado_nuevo_id:ePend.id,
           observacion:`MASIVO: vuelta a PENDIENTE por ${CU.nombre||CU.email}. Motivo: ${motivo.trim()}`,
           usuario_id:CU.id
@@ -7404,7 +7400,10 @@ async function renderStock(tab){
               <option value="ENTRADA_DEPOSITO">Entrada depósito</option>
               <option value="REPARTO_CUADRILLA">Reparto cuadrilla</option>
               <option value="CONSUMO_OT">Consumo OT</option>
-              <option value="AJUSTE_VALIDACION">Ajuste</option>
+              <option value="AJUSTE_VALIDACION">Ajuste admin</option>
+              <option value="AJUSTE_TECNICO">Ajuste técnico</option>
+              <option value="DEVOLUCION">Devolución</option>
+              <option value="FALTANTE">⚠️ Faltante</option>
               <option value="DEVOLUCION">Devolución</option>
             </select>
           </div>
