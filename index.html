@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v175</title>
+<title>FG Gestión OTs v177</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V175</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V177</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v175</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v177</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -10296,6 +10296,24 @@ async function renderValidacion(){
       return true;
     });
 
+    // Calcular _fotos_count y _mats_count para alertas correctas en bandeja
+    const todosOtIds=VAL_DATA.flatMap(g=>(g.ordenes_trabajo||[]).map(o=>o.id));
+    if(todosOtIds.length){
+      const [fotsBand,matsBand]=await Promise.all([
+        sbGet('ot_fotos',`?ot_id=in.(${todosOtIds.join(',')})&select=ot_id`)||[],
+        sbGet('ot_materiales_usados',`?ot_id=in.(${todosOtIds.join(',')})&activo=eq.true&select=ot_id`)||[]
+      ]);
+      const fotSet={},matSet={};
+      fotsBand.forEach(f=>{fotSet[f.ot_id]=(fotSet[f.ot_id]||0)+1;});
+      matsBand.forEach(m=>{matSet[m.ot_id]=(matSet[m.ot_id]||0)+1;});
+      VAL_DATA.forEach(g=>{
+        (g.ordenes_trabajo||[]).forEach(ot=>{
+          ot._fotos_count=fotSet[ot.id]||0;
+          ot._mats_count=matSet[ot.id]||0;
+        });
+      });
+    }
+
     filtrarValidacion();
   }catch(e){el.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';}
 }
@@ -10407,7 +10425,7 @@ async function verGrupoValidacion(grupoId){
     if(!idList){det.innerHTML='<p style="color:#dc2626">Sin OTs en este grupo.</p>';return;}
 
     const [g,fotosArr,matsArr,servsArr,catMats,catServs]=await Promise.all([
-      sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
+      sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,lat_inicio_tec,lng_inicio_tec,lat_fin_tec,lng_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
       sbGet('ot_fotos',`?ot_id=in.(${idList})&select=id,ot_id,url`)||[],
       sbGet('ot_materiales_usados',`?ot_id=in.(${idList})&activo=eq.true&select=id,ot_id,material_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo,orden_display)`)||[],
       sbGet('ot_servicios_realizados',`?ot_id=in.(${idList})&activo=eq.true&select=id,ot_id,servicio_id,cantidad,catalogo_servicios(id,nombre)`)||[],
@@ -10546,6 +10564,15 @@ async function verGrupoValidacion(grupoId){
       if(ot.obs_trabajo){
         html+='<div style="font-size:12px;color:#475569;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 6px 6px 0;padding:6px 10px">'+ot.obs_trabajo+'</div>';
       }
+
+      // GPS técnico
+      if(ot.lat_inicio_tec||ot.lat_fin_tec){
+        html+='<div style="margin-top:.75rem;font-size:11px;color:#166534">';
+        if(ot.lat_inicio_tec)html+='<div>📍 Inicio: <a href="https://maps.google.com/?q='+ot.lat_inicio_tec+','+ot.lng_inicio_tec+'" target="_blank" style="color:#16a34a;font-weight:700">Ver mapa →</a></div>';
+        if(ot.lat_fin_tec)html+='<div>📍 '+(est==='RECHAZADA_TECNICO'?'Rechazo':'Fin')+': <a href="https://maps.google.com/?q='+ot.lat_fin_tec+','+ot.lng_fin_tec+'" target="_blank" style="color:#16a34a;font-weight:700">Ver mapa →</a></div>';
+        html+='</div>';
+      }
+
       html+='</div>'; // fin col izq
 
       // ── Helpers inline ─────────────────────────────────────────────────────
@@ -10790,6 +10817,10 @@ async function otAPendienteAdmin(otId, grupoId){
       estado_id:ePend.id,
       hora_inicio_tec:null,
       hora_fin_tec:null,
+      lat_inicio_tec:null,
+      lng_inicio_tec:null,
+      lat_fin_tec:null,
+      lng_fin_tec:null,
       tag:null,
       equipo_instalado:null,
       validado_admin_at:null,
@@ -10836,11 +10867,13 @@ async function otAGigaradAdmin(otId, grupoId){
 
 // ── APROBAR TODO EL GRUPO CON VALIDACIONES ────────────────────────────────────
 async function aprobarGrupo(grupoId){
-  // Cargar datos completos para validar
-  const [ots, fotosAll, matsAll]=await Promise.all([
-    sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id,numero_ot,tipo_item,tipo_tarea,tag,hora_inicio_tec,hora_fin_tec,estados_ot(nombre)&eliminado=eq.false`)||[],
-    sbGet('ot_fotos',`?ot_id=in.(${((await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id`)||[])).map(o=>o.id).join(',')})&select=ot_id`)||[],
-    sbGet('ot_materiales_usados',`?ot_id=in.(${((await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id`)||[])).map(o=>o.id).join(',')})&select=ot_id,cantidad,catalogo_materiales(serial_tipo)`)||[]
+  // Cargar OTs una sola vez, luego fotos y materiales en paralelo
+  const ots=await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id,numero_ot,tipo_item,tipo_tarea,tag,hora_inicio_tec,hora_fin_tec,estados_ot(nombre)&eliminado=eq.false`)||[];
+  if(!ots.length){alert('Sin OTs en este grupo.');return;}
+  const otIds=ots.map(o=>o.id).join(',');
+  const [fotosAll,matsAll]=await Promise.all([
+    sbGet('ot_fotos',`?ot_id=in.(${otIds})&select=ot_id`)||[],
+    sbGet('ot_materiales_usados',`?ot_id=in.(${otIds})&activo=eq.true&select=ot_id`)||[]
   ]);
 
   const bloq=[], advert=[];
@@ -11024,9 +11057,17 @@ function valAutosave(input){
         input.value=cant;
         await sbPatch('ot_servicios_realizados',`?id=eq.${id}`,{cantidad:cant});
       }else if(tabla==='ordenes_trabajo_tag'){
-        await sbPatch('ordenes_trabajo',`?id=eq.${id}`,{tag:input.value.trim()||null});
+        const anterior=input.dataset.orig??'';
+        const nuevo=input.value.trim()||null;
+        await sbPatch('ordenes_trabajo',`?id=eq.${id}`,{tag:nuevo});
+        _registrarCambio(id,'tag',anterior,nuevo??'','ADMIN');
+        input.dataset.orig=nuevo??'';
       }else if(tabla==='ordenes_trabajo_equipo'){
-        await sbPatch('ordenes_trabajo',`?id=eq.${id}`,{equipo_instalado:input.value.trim()||null});
+        const anterior=input.dataset.orig??'';
+        const nuevo=input.value.trim()||null;
+        await sbPatch('ordenes_trabajo',`?id=eq.${id}`,{equipo_instalado:nuevo});
+        _registrarCambio(id,'equipo_instalado',anterior,nuevo??'','ADMIN');
+        input.dataset.orig=nuevo??'';
       }
       valFeedback(input,true);
     }catch(e){valFeedback(input,false);input.title='Error: '+e.message;console.error('[autosave]',e.message);}
@@ -11249,7 +11290,7 @@ async function valEliminarServ(sid,grupoId){
     const rowBD=await sbGet('ot_servicios_realizados',`?id=eq.${sid}&select=cantidad,ot_id,catalogo_servicios(nombre)&activo=eq.true`)||[];
     const row=rowBD[0];
     const nombreServ=row?.catalogo_servicios?.nombre||String(sid);
-    await sbFetch('ot_servicios_realizados','DELETE',null,`?id=eq.${sid}`);
+    await sbPatch('ot_servicios_realizados',`?id=eq.${sid}`,{activo:false,cantidad:0});
     if(row?.ot_id) _registrarCambio(row.ot_id,`servicio:${nombreServ}`,row?.cantidad??0,0,'ADMIN');
     const blk=document.getElementById('serv-blk-'+sid);
     if(blk)blk.remove();

@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.10</title>
+<title>FG Cuadrillas v4.11</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.10 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.11 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -392,7 +392,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.10';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.11';
 
   // Cargar estados con fallback
   try{
@@ -1629,7 +1629,9 @@ async function confirmarWizard(){
         for(var i=0;i<pasos.length;i++){if(pasos[i].ot.id===ot.id){paso=pasos[i];break;}}
         if(!paso)return ot;
         var eNuevo=paso.accion==='REALIZADA'?{id:eFinTec.id,nombre:'FINALIZADA_TECNICO'}:{id:eRecTec.id,nombre:'RECHAZADA_TECNICO'};
-        return Object.assign({},ot,{estados_ot:eNuevo,hora_fin_tec:ahora});
+        var extra={estados_ot:eNuevo,hora_fin_tec:ahora};
+        if(gpsFin){extra.lat_fin_tec=parseFloat(gpsFin.lat);extra.lng_fin_tec=parseFloat(gpsFin.lng);}
+        return Object.assign({},ot,extra);
       })
     });
     GRUPOS=GRUPOS.map(function(g){return g.id===GRUPO_ACTIVO.id?GRUPO_ACTIVO:g;});
