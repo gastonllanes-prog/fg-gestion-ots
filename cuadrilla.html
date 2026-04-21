@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.11</title>
+<title>FG Cuadrillas v4.12</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.11 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.12 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -392,7 +392,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.11';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.12';
 
   // Cargar estados con fallback
   try{
@@ -842,7 +842,7 @@ async function abrirWizard(){
 
     PWIZ={
       grupoId:GRUPO_ACTIVO.id,cuadId:cuadId,
-      pasos:ots.map(function(ot){return{ot:ot,accion:null,mats:{},servs:{},seriales:{},corrSels:{},motivo:'',motivoOtro:false,obs:'',fotos:[]};}),
+      pasos:ots.map(function(ot){return{ot:ot,accion:null,mats:{},servs:{},seriales:{},corrSels:{},motivo:'',motivoOtro:false,obs:'',serialRetirado:'',fotos:[]};}),
       paso:0,
       catalogoMats:mats,catalogoServs:servs,
       scMap:scMap,pendienteMap:pendienteMap,serialesMap:serialesMap
@@ -1061,6 +1061,20 @@ function renderWizSeriales(p){
     }
   });
 
+  // Input de serial retirado — solo para tipos que implican reemplazo de equipo
+  var TIPOS_CON_RETIRO=['CM_EXISTENTE','RECONEXION_EQUIPO','CAMBIO_TECNOLOGIA'];
+  var tipoOT=p.ot?p.ot.tipo_item||p.ot.tipo_tarea||'':'';
+  if(TIPOS_CON_RETIRO.indexOf(tipoOT)>=0){
+    html+='<div class="card" style="margin-bottom:12px;border-color:#fde68a;background:#fffbeb">'
+      +'<div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:8px">📦 Equipo retirado (opcional)</div>'
+      +'<input id="wiz-serial-retirado" type="text" inputmode="text" placeholder="MAC / Serial del equipo retirado..."'
+      +' value="'+(p.serialRetirado||'')+'"'
+      +' oninput="wizSetSerialRetirado(this.value)"'
+      +' style="width:100%;padding:10px;border:1.5px solid #fcd34d;border-radius:10px;font-size:14px;font-family:monospace"/>'
+      +'<div style="font-size:11px;color:#92400e;margin-top:5px">Ingresá el serial del equipo que retirás del cliente.</div>'
+      +'</div>';
+  }
+
   html+='</div>';
   return html;
 }
@@ -1186,6 +1200,14 @@ function wizElegirSerial(matId,serial){
   var p=PWIZ.pasos[PWIZ.paso];if(!p)return;
   p.seriales[matId]=serial;
   renderWizPaso();
+}
+
+function wizSetSerialRetirado(val){
+  var p=PWIZ.pasos[PWIZ.paso];if(!p)return;
+  p.serialRetirado=(val||'').trim().toUpperCase().replace(/[^A-Z0-9:.\-]/g,'');
+  // Actualizar el input sin re-renderizar
+  var inp=document.getElementById('wiz-serial-retirado');
+  if(inp&&inp.value.toUpperCase()!==p.serialRetirado)inp.value=p.serialRetirado;
 }
 
 function wizToggleCorrSerial(matId,serial,max){
@@ -1599,6 +1621,7 @@ async function confirmarWizard(){
         if(serDesc)pOT.equipo_instalado=serDesc;
         if(corrTodos.length)pOT.tag=corrTodos.join(' - ');
         if(gpsFin){pOT.lat_fin_tec=parseFloat(gpsFin.lat);pOT.lng_fin_tec=parseFloat(gpsFin.lng);}
+        if(p.serialRetirado)pOT.serial_retirado=p.serialRetirado;
         await sbPatch('ordenes_trabajo','?id=eq.'+otId,pOT);
         try{await sbPost('historial_estados_ot',{ot_id:otId,estado_nuevo_id:eFinTec.id});}catch(e){}
 
