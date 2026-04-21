@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.13</title>
+<title>FG Cuadrillas v4.14</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.13 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.14 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -219,6 +219,9 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
       <button id="wiz-sig" class="btn btn-primary" style="flex:2" onclick="pasoAdelante()">Siguiente →</button>
     </div>
   </div>
+
+  <!-- MODIFICACIÓN POST-CIERRE -->
+  <div id="s-mod-ot" style="display:none" class="page"></div>
 
 </div>
 
@@ -393,7 +396,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.13';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.14';
 
   // Cargar estados con fallback
   try{
@@ -421,7 +424,7 @@ async function cargarDatos(){
       sbGet('cuadrilla_tecnicos','?cuadrilla_id=eq.'+CUAD.id+'&activo=eq.true&select=tecnicos(nombre)'),
       sbGet('grupos_ot',
         '?fecha_trabajo=eq.'+hoy()+'&cuadrilla_id=eq.'+CUAD.id+'&eliminado=eq.false'
-        +'&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,hora_inicio_tec,hora_fin_tec,lat_inicio_tec,lng_inicio_tec,lat_fin_tec,lng_fin_tec,estado_id,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,localidad,nodo,telefono1,telefono2,lat_domicilio,lng_domicilio,fecha_gps_domicilio))'
+        +'&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,hora_inicio_tec,hora_fin_tec,lat_inicio_tec,lng_inicio_tec,lat_fin_tec,lng_fin_tec,validado_admin_at,estado_id,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,localidad,nodo,telefono1,telefono2,lat_domicilio,lng_domicilio,fecha_gps_domicilio))'
         +'&order=horario_visita.asc.nullslast'
       )
     ]);
@@ -583,6 +586,18 @@ function renderGrupo(){
       +(tieneGpsInicio?'<div style="font-size:11px;color:var(--green);background:var(--green-l);padding:2px 8px;border-radius:99px;margin-top:4px;display:inline-block">📍 Ubicación de inicio registrada</div>':'')
       +(tieneGpsFin?'<div style="font-size:11px;color:var(--green);background:var(--green-l);padding:2px 8px;border-radius:99px;margin-top:4px;display:inline-block">📍 Ubicación de finalización registrada</div>':'')
       +'</div>';
+    // Botón Corregir por cada OT FINALIZADA_TECNICO no validada por admin
+    var otsMod=ots.filter(function(o){return o.estados_ot&&o.estados_ot.nombre==='FINALIZADA_TECNICO'&&!o.validado_admin_at;});
+    if(otsMod.length){
+      html+='<div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">';
+      otsMod.forEach(function(o){
+        var label=TIPO_LABELS[o.tipo_item||o.tipo_tarea]||(o.tipo_item||o.tipo_tarea||'OT');
+        html+='<button class="btn" style="background:#fff7ed;border:1.5px solid #fed7aa;color:#c2410c;font-weight:700;font-size:13px;padding:10px 16px;text-align:left" onclick="abrirModificacion('+o.id+')">'
+          +'✏️ Corregir — '+label+' · OT '+numOT(o.numero_ot)
+          +'</button>';
+      });
+      html+='</div>';
+    }
   }else if(est==='RECHAZADA_TECNICO'){
     var obsRec2='';
     for(var j=0;j<ots.length;j++){if(ots[j].obs_trabajo){obsRec2=ots[j].obs_trabajo;break;}}
@@ -1684,6 +1699,7 @@ async function confirmarWizard(){
 function volverAtras(){
   var enWizard=document.getElementById('s-wizard').style.display!=='none';
   var enRechazo=document.getElementById('s-rechazo').style.display!=='none';
+  var enMod=document.getElementById('s-mod-ot').style.display!=='none';
   var enGrupo=document.getElementById('s-grupo').style.display!=='none';
 
   if(enWizard){
@@ -1695,6 +1711,7 @@ function volverAtras(){
     return;
   }
   if(enRechazo){cancelarRechazo();return;}
+  if(enMod){cerrarModificacion();return;}
   if(enGrupo){
     GRUPO_ACTIVO=null;
     document.getElementById('s-grupo').style.display='none';
@@ -1704,6 +1721,265 @@ function volverAtras(){
     renderGrupos();
     return;
   }
+}
+
+// ── MODIFICACIÓN POST-CIERRE ──────────────────────────────────────────────────
+
+var MOD_OT=null; // {ot, mats:[], servs:[], edMats:{id:qty}, edServs:{id:qty}, edEquipo:'', edSerial:''}
+
+// Helper: registrar cambio con origen TECNICO
+async function _registrarCambioTec(otId,campo,anterior,nuevo){
+  if(String(anterior||'')===String(nuevo||''))return;
+  try{
+    await sbPost('ot_cambios',{
+      ot_id:parseInt(otId),campo:campo,
+      valor_anterior:String(anterior??''),
+      valor_nuevo:String(nuevo??''),
+      usuario_id:null,origen:'TECNICO'
+    });
+  }catch(e){console.warn('[ot_cambios tec]',e.message);}
+}
+
+async function abrirModificacion(otId){
+  var el=document.getElementById('s-mod-ot');
+  el.innerHTML='<div class="loading"><div class="spin"></div> Cargando...</div>';
+  document.getElementById('s-grupo').style.display='none';
+  el.style.display='block';
+  document.getElementById('topbar-title').textContent='Corregir OT';
+
+  try{
+    // Doble verificación: OT debe ser FINALIZADA_TECNICO y no validada
+    var otArr=await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=id,numero_ot,tipo_item,tipo_tarea,equipo_instalado,serial_retirado,validado_admin_at,estados_ot(nombre)&eliminado=eq.false')||[];
+    var ot=otArr[0];
+    if(!ot){el.innerHTML='<div class="card"><p style="color:var(--red)">OT no encontrada.</p></div>';return;}
+    if(ot.estados_ot?.nombre!=='FINALIZADA_TECNICO'||ot.validado_admin_at){
+      el.innerHTML='<div class="card"><p style="color:var(--red)">Esta OT ya no puede modificarse.</p></div>';return;
+    }
+
+    // Cargar materiales y MO actuales
+    var [mats,servs]=await Promise.all([
+      sbGet('ot_materiales_usados','?ot_id=eq.'+otId+'&activo=eq.true&select=id,material_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo)')||[],
+      sbGet('ot_servicios_realizados','?ot_id=eq.'+otId+'&activo=eq.true&select=id,servicio_id,cantidad,catalogo_servicios(id,nombre)')||[]
+    ]);
+
+    MOD_OT={
+      ot:ot,
+      mats:mats,
+      servs:servs,
+      edMats:{},   // {id: nueva_qty}
+      edServs:{},  // {id: nueva_qty}
+      edEquipo:ot.equipo_instalado||'',
+      edSerial:ot.serial_retirado||''
+    };
+    // Inicializar edMats y edServs con valores actuales
+    mats.forEach(function(m){MOD_OT.edMats[m.id]=m.cantidad;});
+    servs.forEach(function(s){MOD_OT.edServs[s.id]=s.cantidad;});
+
+    renderModificacion();
+  }catch(e){
+    el.innerHTML='<div class="card"><p style="color:var(--red)">Error: '+e.message+'</p></div>';
+  }
+}
+
+function renderModificacion(){
+  var el=document.getElementById('s-mod-ot');
+  if(!MOD_OT)return;
+  var ot=MOD_OT.ot;
+  var tipo=TIPO_LABELS[ot.tipo_item||ot.tipo_tarea]||(ot.tipo_item||ot.tipo_tarea||'');
+  var TIPOS_CON_RETIRO=['CM_EXISTENTE','RECONEXION_EQUIPO','CAMBIO_TECNOLOGIA'];
+  var tieneEquipo=TIPOS_CON_RETIRO.indexOf(ot.tipo_item||ot.tipo_tarea)>=0||ot.equipo_instalado;
+
+  var html='<div style="padding:16px">';
+  html+='<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:12px;padding:12px 16px;margin-bottom:16px">'
+    +'<div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:4px">✏️ Corrigiendo OT</div>'
+    +'<div style="font-size:17px;font-weight:800;color:#1e3a5f">OT '+numOT(ot.numero_ot)+'</div>'
+    +'<div style="font-size:13px;color:var(--muted)">'+tipo+'</div>'
+    +'<div style="font-size:11px;color:#92400e;margin-top:6px">⚠️ Solo corregí cantidades incorrectas. Estos cambios quedan registrados.</div>'
+  +'</div>';
+
+  // Materiales
+  html+='<div class="card" style="margin-bottom:12px">';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Materiales</div>';
+  if(MOD_OT.mats.length){
+    MOD_OT.mats.forEach(function(m){
+      var qty=MOD_OT.edMats[m.id]??m.cantidad;
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+        +'<span style="flex:1;font-size:13px">'+( m.catalogo_materiales?.nombre||'?')+'</span>'
+        +'<button onclick="modCambiarQty(\'mat\','+m.id+',-1)" style="width:32px;height:32px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font-size:18px;cursor:pointer;color:#475569" '+(qty<=0?'disabled':'')+'>−</button>'
+        +'<input type="number" inputmode="numeric" id="mod-mat-'+m.id+'" value="'+(qty||'')+'" min="0" step="1"'
+          +' oninput="modSetQty(\'mat\','+m.id+',this.value)"'
+          +' style="width:52px;padding:5px 4px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:center;font-family:inherit"/>'
+        +'<button onclick="modCambiarQty(\'mat\','+m.id+',1)" style="width:32px;height:32px;border-radius:7px;border:1.5px solid var(--green);background:var(--green-l);font-size:18px;cursor:pointer;color:var(--green)">+</button>'
+        +'<span style="font-size:11px;color:var(--muted);min-width:28px">'+(m.catalogo_materiales?.unidad||'')+'</span>'
+      +'</div>';
+    });
+  }else{
+    html+='<div style="font-size:13px;color:var(--muted);font-style:italic">Sin materiales registrados.</div>';
+  }
+  html+='</div>';
+
+  // Mano de obra
+  html+='<div class="card" style="margin-bottom:12px">';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Mano de obra</div>';
+  if(MOD_OT.servs.length){
+    MOD_OT.servs.forEach(function(s){
+      var qty=MOD_OT.edServs[s.id]??s.cantidad;
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+        +'<span style="flex:1;font-size:13px">'+(s.catalogo_servicios?.nombre||'?')+'</span>'
+        +'<button onclick="modCambiarQty(\'serv\','+s.id+',-1)" style="width:32px;height:32px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font-size:18px;cursor:pointer;color:#475569" '+(qty<=0?'disabled':'')+'>−</button>'
+        +'<input type="number" inputmode="numeric" id="mod-serv-'+s.id+'" value="'+(qty||'')+'" min="0" step="1"'
+          +' oninput="modSetQty(\'serv\','+s.id+',this.value)"'
+          +' style="width:52px;padding:5px 4px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:center;font-family:inherit"/>'
+        +'<button onclick="modCambiarQty(\'serv\','+s.id+',1)" style="width:32px;height:32px;border-radius:7px;border:1.5px solid var(--green);background:var(--green-l);font-size:18px;cursor:pointer;color:var(--green)">+</button>'
+      +'</div>';
+    });
+  }else{
+    html+='<div style="font-size:13px;color:var(--muted);font-style:italic">Sin mano de obra registrada.</div>';
+  }
+  html+='</div>';
+
+  // Equipo instalado y serial retirado
+  if(tieneEquipo){
+    html+='<div class="card" style="margin-bottom:12px">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Equipos</div>'
+      +'<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">📱 Equipo instalado (MAC/Serial)</label>'
+      +'<input type="text" inputmode="text" id="mod-equipo" value="'+(MOD_OT.edEquipo||'')+'"'
+        +' oninput="MOD_OT.edEquipo=this.value.trim().toUpperCase()"'
+        +' placeholder="MAC o serial del equipo instalado"'
+        +' style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:monospace;margin-bottom:10px"/>'
+      +'<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">📦 Equipo retirado (opcional)</label>'
+      +'<input type="text" inputmode="text" id="mod-serial-ret" value="'+(MOD_OT.edSerial||'')+'"'
+        +' oninput="MOD_OT.edSerial=this.value.trim().toUpperCase()"'
+        +' placeholder="MAC o serial del equipo retirado"'
+        +' style="width:100%;padding:10px;border:1.5px solid #fcd34d;border-radius:10px;font-size:14px;font-family:monospace"/>'
+    +'</div>';
+  }
+
+  html+='<div id="mod-err" style="display:none;margin-bottom:12px;padding:10px 14px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;font-size:13px;font-weight:600;color:#dc2626"></div>';
+  html+='<button id="mod-btn-guardar" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:700" onclick="guardarModificacion()">💾 Guardar cambios</button>';
+  html+='<button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="cerrarModificacion()">← Cancelar sin guardar</button>';
+  html+='</div>';
+
+  el.innerHTML=html;
+}
+
+function modCambiarQty(tipo,id,delta){
+  if(tipo==='mat'){
+    var v=Math.max(0,(MOD_OT.edMats[id]||0)+delta);
+    MOD_OT.edMats[id]=v;
+    var inp=document.getElementById('mod-mat-'+id);
+    if(inp)inp.value=v||'';
+  }else{
+    var v2=Math.max(0,(MOD_OT.edServs[id]||0)+delta);
+    MOD_OT.edServs[id]=v2;
+    var inp2=document.getElementById('mod-serv-'+id);
+    if(inp2)inp2.value=v2||'';
+  }
+  renderModificacion();
+}
+
+function modSetQty(tipo,id,val){
+  var n=Math.max(0,parseInt(val,10)||0);
+  if(tipo==='mat')MOD_OT.edMats[id]=n;
+  else MOD_OT.edServs[id]=n;
+}
+
+async function guardarModificacion(){
+  if(!MOD_OT)return;
+  var btn=document.getElementById('mod-btn-guardar');
+  var errEl=document.getElementById('mod-err');
+  if(btn){btn.disabled=true;btn.textContent='Guardando...';}
+
+  try{
+    var otId=MOD_OT.ot.id;
+    var cuadId=CUAD.id;
+    var hayAlgo=false;
+
+    // ── MATERIALES ────────────────────────────────────────────────────────────
+    for(var i=0;i<MOD_OT.mats.length;i++){
+      var m=MOD_OT.mats[i];
+      var cantVieja=m.cantidad;
+      var cantNueva=MOD_OT.edMats[m.id]??cantVieja;
+      if(cantNueva===cantVieja)continue;
+      hayAlgo=true;
+      var matId=m.catalogo_materiales?.id||m.material_id;
+      var nomMat=m.catalogo_materiales?.nombre||String(matId);
+      var dif=cantNueva-cantVieja;
+
+      if(cantNueva===0){
+        // Soft delete
+        await sbPatch('ot_materiales_usados','?id=eq.'+m.id,{activo:false,cantidad:0});
+      }else{
+        await sbPatch('ot_materiales_usados','?id=eq.'+m.id,{cantidad:cantNueva});
+      }
+
+      // Ajustar stock por diferencia: dif>0=se agregó más=descontar; dif<0=se redujo=devolver
+      try{
+        var sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+matId)||[];
+        if(sc.length){
+          var nueva=Math.max(0,(sc[0].cantidad||0)-dif);
+          await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+matId,{cantidad:nueva});
+          await sbPost('movimientos_stock',{tipo_movimiento:'AJUSTE_VALIDACION',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:-dif,obs:'Corrección post-cierre OT '+otId});
+        }
+      }catch(es){console.warn('[mod stock]',es.message);}
+
+      await _registrarCambioTec(otId,'material:'+nomMat,cantVieja,cantNueva);
+    }
+
+    // ── MANO DE OBRA ──────────────────────────────────────────────────────────
+    for(var j=0;j<MOD_OT.servs.length;j++){
+      var s=MOD_OT.servs[j];
+      var sqVieja=s.cantidad;
+      var sqNueva=MOD_OT.edServs[s.id]??sqVieja;
+      if(sqNueva===sqVieja)continue;
+      hayAlgo=true;
+      var nomServ=s.catalogo_servicios?.nombre||String(s.servicio_id);
+      if(sqNueva===0){
+        await sbPatch('ot_servicios_realizados','?id=eq.'+s.id,{activo:false,cantidad:0});
+      }else{
+        await sbPatch('ot_servicios_realizados','?id=eq.'+s.id,{cantidad:sqNueva});
+      }
+      await _registrarCambioTec(otId,'servicio:'+nomServ,sqVieja,sqNueva);
+    }
+
+    // ── EQUIPO INSTALADO y SERIAL RETIRADO ────────────────────────────────────
+    var patchOT={};
+    var eqViej=MOD_OT.ot.equipo_instalado||'';
+    var eqNuev=MOD_OT.edEquipo||'';
+    var srViej=MOD_OT.ot.serial_retirado||'';
+    var srNuev=MOD_OT.edSerial||'';
+    if(eqNuev!==eqViej){patchOT.equipo_instalado=eqNuev||null;hayAlgo=true;await _registrarCambioTec(otId,'equipo_instalado',eqViej,eqNuev);}
+    if(srNuev!==srViej){patchOT.serial_retirado=srNuev||null;hayAlgo=true;await _registrarCambioTec(otId,'serial_retirado',srViej,srNuev);}
+
+    if(!hayAlgo){
+      if(errEl){errEl.textContent='⚠️ No hiciste ningún cambio.';errEl.style.display='block';}
+      if(btn){btn.disabled=false;btn.textContent='💾 Guardar cambios';}
+      return;
+    }
+
+    // ── MARCAR OT COMO MODIFICADA POST-CIERRE ─────────────────────────────────
+    patchOT.modificada_post_cierre=true;
+    await sbPatch('ordenes_trabajo','?id=eq.'+otId,patchOT);
+
+    // Recargar grupos y volver
+    await cargarGrupos();
+    cerrarModificacion();
+    alert('✅ Cambios guardados correctamente.');
+
+  }catch(e){
+    if(errEl){errEl.textContent='Error al guardar: '+e.message;errEl.style.display='block';}
+    if(btn){btn.disabled=false;btn.textContent='💾 Guardar cambios';}
+    console.error('[guardarModificacion]',e);
+  }
+}
+
+function cerrarModificacion(){
+  MOD_OT=null;
+  document.getElementById('s-mod-ot').style.display='none';
+  document.getElementById('s-grupo').style.display='block';
+  var cl=GRUPO_ACTIVO&&GRUPO_ACTIVO.ordenes_trabajo&&GRUPO_ACTIVO.ordenes_trabajo[0]?GRUPO_ACTIVO.ordenes_trabajo[0].clientes||{}:{};
+  document.getElementById('topbar-title').textContent=((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim()||'Cliente';
+  renderGrupo();
 }
 
 function salir(){
