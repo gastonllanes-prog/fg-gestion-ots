@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v183</title>
+<title>FG Gestión OTs v185</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V183</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V185</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v183</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v185</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -6727,9 +6727,15 @@ async function renderMovimientosCuadrilla(){
     const totales={};
     movs.forEach(m=>{
       const nom=m.catalogo_materiales?.nombre||'?';
-      if(!totales[nom])totales[nom]={nombre:nom,unidad:m.catalogo_materiales?.unidad||'',consumo:0,entrada:0};
-      if(m.tipo_movimiento==='CONSUMO_OT')totales[nom].consumo+=Math.abs(m.cantidad);
-      else totales[nom].entrada+=Math.abs(m.cantidad);
+      if(!totales[nom])totales[nom]={nombre:nom,unidad:m.catalogo_materiales?.unidad||'',consumo:0,entrada:0,faltante:0};
+      const t=m.tipo_movimiento;
+      if(t==='CONSUMO_OT'||t==='AJUSTE_VALIDACION'||t==='AJUSTE_TECNICO')
+        totales[nom].consumo+=Math.abs(m.cantidad);
+      else if(t==='REPARTO_CUADRILLA'||t==='ENTRADA_DEPOSITO'||t==='DEVOLUCION')
+        totales[nom].entrada+=Math.abs(m.cantidad);
+      else if(t==='FALTANTE')
+        totales[nom].faltante+=Math.abs(m.cantidad);
+      // otros tipos: solo aparecen en el detalle, no suman en resumen
     });
 
     html+=`<div class="card" style="margin-bottom:1rem">
@@ -6739,12 +6745,14 @@ async function renderMovimientosCuadrilla(){
           <th style="text-align:left;padding:4px 8px">Material</th>
           <th style="text-align:right;padding:4px 8px;color:#16a34a">Entradas</th>
           <th style="text-align:right;padding:4px 8px;color:#dc2626">Consumo</th>
+          <th style="text-align:right;padding:4px 8px;color:#d97706">Faltante</th>
         </tr></thead>
         <tbody>
           ${Object.values(totales).map(t=>`<tr style="border-top:1px solid var(--border2)">
             <td style="padding:5px 8px">${t.nombre}</td>
             <td style="text-align:right;padding:5px 8px;color:#16a34a;font-weight:600">${t.entrada||'—'}</td>
             <td style="text-align:right;padding:5px 8px;color:#dc2626;font-weight:600">${t.consumo||'—'}</td>
+            <td style="text-align:right;padding:5px 8px;color:#d97706;font-weight:600">${t.faltante||'—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -6909,14 +6917,21 @@ async function renderStockCuadrillaSeleccionada(){
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
     const mats=await sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[];
-    const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[];
+    const [sc, faltMovs]=await Promise.all([
+      sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[],
+      sbGet('movimientos_stock','?cuadrilla_id=eq.'+cuadId+'&tipo_movimiento=eq.FALTANTE&select=material_id,cantidad')||[]
+    ]);
     const scMap={};
     sc.forEach(s=>{scMap[s.material_id]=s.cantidad||0;});
+    // Acumular faltantes por material (todos los históricos)
+    const faltMap={};
+    faltMovs.forEach(f=>{faltMap[f.material_id]=(faltMap[f.material_id]||0)+Math.abs(f.cantidad);});
 
     el.innerHTML='<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
-      +'<th>Material</th><th>Unidad</th><th>Stock actual</th><th>En carrito</th><th>Paquete</th><th></th></tr></thead><tbody>'
+      +'<th>Material</th><th>Unidad</th><th>Stock actual</th><th>Faltante acum.</th><th>En carrito</th><th>Paquete</th><th></th></tr></thead><tbody>'
       +mats.map(m=>{
         const cant=scMap[m.id]||0;
+        const falt=faltMap[m.id]||0;
         const carritoItem=CARRITO_CUAD[m.id];
         const paqInfo=(m.cant_por_paquete||1)>1?m.cant_por_paquete+' '+m.unidad+'/'+m.nombre_paquete:'—';
         const serialTag=m.serial_tipo!=='NINGUNO'?'<span class="badge b-blue" style="font-size:9px;margin-left:4px">'+m.serial_tipo+'</span>':'';
@@ -6924,11 +6939,15 @@ async function renderStockCuadrillaSeleccionada(){
           ?'<span style="color:#2563eb;font-weight:700;font-size:12px">+'+(carritoItem.tipo==='INDIVIDUAL'?carritoItem.seriales.length:carritoItem.cantidad)+' '+m.unidad
            +'</span> <button onclick="quitarDelCarrito('+m.id+')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:12px" title="Quitar del carrito">✕</button>'
           :'<span style="color:#cbd5e1;font-size:11px">—</span>';
-        const rowStyle=carritoItem?'background:#eff6ff;':'';
+        const faltCell=falt>0
+          ?'<span style="color:#dc2626;font-weight:700;font-size:12px" title="Faltante acumulado histórico">⚠️ '+falt+'</span>'
+          :'<span style="color:#cbd5e1;font-size:11px">—</span>';
+        const rowStyle=carritoItem?'background:#eff6ff;':falt>0?'background:#fef2f2;':'';
         return '<tr style="'+rowStyle+'">'
           +'<td style="font-weight:600;font-size:12px">'+m.nombre+serialTag+'</td>'
           +'<td style="font-size:12px;color:#64748b">'+m.unidad+'</td>'
           +'<td style="font-weight:700;color:'+(cant>0?'#16a34a':'#94a3b8')+'">'+cant+'</td>'
+          +'<td>'+faltCell+'</td>'
           +'<td>'+carritoCell+'</td>'
           +'<td style="font-size:11px;color:#64748b">'+paqInfo+'</td>'
           +'<td><button class="btn btn-sm" style="font-size:11px" onclick="asignarACuadrilla('+cuadId+','+m.id+',\''+m.nombre.replace(/'/g,'')+'\','+cant+','+( m.cant_por_paquete||1)+',\''+( m.nombre_paquete||'unidad')+'\',\''+m.unidad+'\',\''+( m.serial_tipo||'NINGUNO')+'\')">✏️</button></td>'
@@ -7436,8 +7455,8 @@ async function aplicarFiltrosMov(){
     if(cuadId) query+='&cuadrilla_id=eq.'+cuadId;
 
     const d=await sbGet('movimientos_stock',query)||[];
-    const tc={ENTRADA_DEPOSITO:'b-green',REPARTO_CUADRILLA:'b-blue',CONSUMO_OT:'b-amber',AJUSTE_VALIDACION:'b-orange',DEVOLUCION:'b-gray'};
-    const label={ENTRADA_DEPOSITO:'Entrada depósito',REPARTO_CUADRILLA:'Reparto cuadrilla',CONSUMO_OT:'Consumo OT',AJUSTE_VALIDACION:'Ajuste',DEVOLUCION:'Devolución'};
+    const tc={ENTRADA_DEPOSITO:'b-green',REPARTO_CUADRILLA:'b-blue',CONSUMO_OT:'b-amber',AJUSTE_VALIDACION:'b-orange',AJUSTE_TECNICO:'b-orange',DEVOLUCION:'b-gray',FALTANTE:'b-red'};
+    const label={ENTRADA_DEPOSITO:'Entrada depósito',REPARTO_CUADRILLA:'Reparto cuadrilla',CONSUMO_OT:'Consumo OT',AJUSTE_VALIDACION:'Ajuste admin',AJUSTE_TECNICO:'Ajuste técnico',DEVOLUCION:'Devolución',FALTANTE:'⚠️ Faltante'};
 
     if(!d.length){
       res.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div>Sin movimientos para los filtros seleccionados</div></div>';
@@ -8310,7 +8329,7 @@ async function verSeriales(matId){
 async function verHistorialMaterial(matId){
   const mat=ES_MATERIALES.find(m=>m.id===matId)||(await sbGet('catalogo_materiales','?id=eq.'+matId)||[])[0];
   const d=await sbGet('movimientos_stock','?material_id=eq.'+matId+'&order=fecha.desc&limit=50')||[];
-  const tc={ENTRADA_DEPOSITO:'b-green',REPARTO_CUADRILLA:'b-blue',CONSUMO_OT:'b-amber',AJUSTE_VALIDACION:'b-orange',DEVOLUCION:'b-gray'};
+  const tc={ENTRADA_DEPOSITO:'b-green',REPARTO_CUADRILLA:'b-blue',CONSUMO_OT:'b-amber',AJUSTE_VALIDACION:'b-orange',AJUSTE_TECNICO:'b-orange',DEVOLUCION:'b-gray',FALTANTE:'b-red'};
   const html='<div style="font-size:13px;font-weight:700;margin-bottom:.75rem">Historial — '+(mat?.nombre||'Material')+'</div>'
     +(d.length?'<div style="max-height:350px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr style="background:#f8fafc">'
       +'<th style="padding:6px 8px;text-align:left">Fecha</th><th style="padding:6px 8px">Tipo</th><th style="padding:6px 8px;text-align:right">Cantidad</th><th style="padding:6px 8px">Obs</th></tr></thead><tbody>'
@@ -11203,7 +11222,9 @@ async function _ajustarStock(cuadId, materialId, diferencia, obs){
   if(!cuadId||!materialId||!diferencia)return;
   const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${materialId}`)||[];
   if(!sc.length)return; // sin registro de stock → no tocar
-  const nueva=Math.max(0,(sc[0].cantidad||0)-diferencia); // diferencia>0=consumo, <0=devolucion
+  const actual=sc[0].cantidad||0;
+  const resultado=actual-diferencia; // diferencia>0=consumo, <0=devolucion
+  const nueva=Math.max(0,resultado);
   await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${materialId}`,{cantidad:nueva});
   await sbPost('movimientos_stock',{
     tipo_movimiento:'AJUSTE_VALIDACION',
@@ -11212,6 +11233,18 @@ async function _ajustarStock(cuadId, materialId, diferencia, obs){
     cantidad:-diferencia,
     obs:obs||'Ajuste validación admin'
   });
+  // Registrar faltante si el stock resultante es negativo
+  if(resultado<0){
+    try{
+      await sbPost('movimientos_stock',{
+        tipo_movimiento:'FALTANTE',
+        material_id:parseInt(materialId),
+        cuadrilla_id:parseInt(cuadId),
+        cantidad:Math.abs(resultado), // magnitud positiva del faltante
+        obs:(obs||'Ajuste validación admin')+' — faltante: '+Math.abs(resultado)+' ud (stock era '+actual+')'
+      });
+    }catch(ef){console.warn('[FALTANTE]',ef.message);}
+  }
 }
 
 // Helper: devolver seriales CORRELATIVO LIFO al reducir cantidad

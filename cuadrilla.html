@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.15</title>
+<title>FG Cuadrillas v4.17</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.15 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.17 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -396,7 +396,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.15';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.17';
 
   // Cargar estados con fallback
   try{
@@ -1562,7 +1562,8 @@ function pasoAdelante(){
 async function confirmarWizard(){
   var sigBtn=document.getElementById('wiz-sig');
   if(sigBtn){sigBtn.disabled=true;sigBtn.textContent='Guardando...';}
-
+  window._wizFaltantes=[];      // limpiar siempre al iniciar — evita contador inflado por reintento
+  window._wizFaltNoGuard=false; // flag para INSERT fallido
   try{
     var eFinTec=await resolverEstado('FINALIZADA_TECNICO');
     var eRecTec=await resolverEstado('RECHAZADA_TECNICO');
@@ -1601,6 +1602,7 @@ async function confirmarWizard(){
 
         // Stock y seriales
         if(cuadId){
+          var hayFaltante=false;
           // Materiales NINGUNO y CORRELATIVO — descontar por cantidad
           for(var mid in p.mats){
             var qty=p.mats[mid]||0;if(!qty)continue;
@@ -1609,8 +1611,15 @@ async function confirmarWizard(){
             try{
               var sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+mid)||[];
               if(sc.length){
-                await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+mid,{cantidad:Math.max(0,(sc[0].cantidad||0)-qty)});
+                var stockActual=sc[0].cantidad||0;
+                var resultado=stockActual-qty;
+                await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+mid,{cantidad:Math.max(0,resultado)});
                 await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:parseInt(mid),cuadrilla_id:parseInt(cuadId),cantidad:-qty,obs:'OT '+otId});
+                if(resultado<0){
+                  try{await sbPost('movimientos_stock',{tipo_movimiento:'FALTANTE',material_id:parseInt(mid),cuadrilla_id:parseInt(cuadId),cantidad:Math.abs(resultado),obs:'Faltante cierre OT '+otId+' — usó '+qty+', tenía '+stockActual});}
+                  catch(ef){console.warn('[FALTANTE]',ef.message);window._wizFaltNoGuard=true;}
+                  hayFaltante=true;
+                }
               }
             }catch(e){console.warn('stock-mat:',e.message);}
             // Precintos (CORRELATIVO) — marcar seriales como CLIENTE
@@ -1628,10 +1637,22 @@ async function confirmarWizard(){
               await sbPatch('stock_seriales','?material_id=eq.'+midI+'&serial=eq.'+serI,{ubicacion:'CLIENTE',ot_id:otId});
               var scI=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+midI)||[];
               if(scI.length){
-                await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+midI,{cantidad:Math.max(0,(scI[0].cantidad||0)-1)});
+                var stockActualI=scI[0].cantidad||0;
+                var resultadoI=stockActualI-1;
+                await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+midI,{cantidad:Math.max(0,resultadoI)});
                 await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:parseInt(midI),cuadrilla_id:parseInt(cuadId),cantidad:-1,obs:'OT '+otId+' serial:'+serI});
+                if(resultadoI<0){
+                  try{await sbPost('movimientos_stock',{tipo_movimiento:'FALTANTE',material_id:parseInt(midI),cuadrilla_id:parseInt(cuadId),cantidad:1,obs:'Faltante cierre OT '+otId+' serial:'+serI});}
+                  catch(ef){console.warn('[FALTANTE]',ef.message);window._wizFaltNoGuard=true;}
+                  hayFaltante=true;
+                }
               }
             }catch(e){console.warn('stock-ind:',e.message);}
+          }
+          if(hayFaltante){
+            // Acumular para mostrar aviso al final del cierre completo
+            if(!window._wizFaltantes)window._wizFaltantes=[];
+            window._wizFaltantes.push(otId);
           }
         }
 
@@ -1687,7 +1708,17 @@ async function confirmarWizard(){
     var cl=GRUPO_ACTIVO.ordenes_trabajo&&GRUPO_ACTIVO.ordenes_trabajo[0]?GRUPO_ACTIVO.ordenes_trabajo[0].clientes||{}:{};
     document.getElementById('topbar-title').textContent=((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim()||'Cliente';
     renderGrupo();
-    alert('✅ Visita registrada correctamente.');
+    var msgFin='✅ Visita registrada correctamente.';
+    if(window._wizFaltantes&&window._wizFaltantes.length){
+      if(window._wizFaltNoGuard){
+        msgFin+='\n\n⚠️ Aviso: en '+window._wizFaltantes.length+' OT(s) el material usado superó el stock disponible, pero NO se pudo registrar el faltante en el sistema. Informá al administrador.';
+      }else{
+        msgFin+='\n\n⚠️ Aviso: en '+window._wizFaltantes.length+' OT(s) el material usado superó el stock disponible. Quedó registrado como faltante. El administrador lo verá en el panel.';
+      }
+      window._wizFaltantes=[];
+      window._wizFaltNoGuard=false;
+    }
+    alert(msgFin);
 
   }catch(e){
     alert('Error al guardar: '+e.message);
@@ -1894,6 +1925,7 @@ async function guardarModificacion(){
     var otId=MOD_OT.ot.id;
     var cuadId=CUAD.id;
     var hayAlgo=false;
+    var hayFaltMod=false;
 
     // ── MATERIALES ────────────────────────────────────────────────────────────
     for(var i=0;i<MOD_OT.mats.length;i++){
@@ -1917,9 +1949,15 @@ async function guardarModificacion(){
       try{
         var sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+matId)||[];
         if(sc.length){
-          var nueva=Math.max(0,(sc[0].cantidad||0)-dif);
+          var stockActM=sc[0].cantidad||0;
+          var resultadoM=stockActM-dif;
+          var nueva=Math.max(0,resultadoM);
           await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+matId,{cantidad:nueva});
           await sbPost('movimientos_stock',{tipo_movimiento:'AJUSTE_TECNICO',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:-dif,obs:'Corrección post-cierre OT '+otId});
+          if(resultadoM<0){
+            try{await sbPost('movimientos_stock',{tipo_movimiento:'FALTANTE',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:Math.abs(resultadoM),obs:'Faltante corrección post-cierre OT '+otId+' — ajuste '+dif+', tenía '+stockActM});}catch(ef){console.warn('[FALTANTE]',ef.message);}
+            hayFaltMod=true;
+          }
         }
       }catch(es){console.warn('[mod stock]',es.message);}
 
@@ -1964,7 +2002,9 @@ async function guardarModificacion(){
     // Recargar grupos y volver
     await cargarGrupos();
     cerrarModificacion();
-    alert('✅ Cambios guardados correctamente.');
+    var msgMod='✅ Cambios guardados correctamente.';
+    if(hayFaltMod)msgMod+='\n\n⚠️ Aviso: el material ajustado superó el stock disponible. Quedó registrado como faltante.';
+    alert(msgMod);
 
   }catch(e){
     if(errEl){errEl.textContent='Error al guardar: '+e.message;errEl.style.display='block';}
