@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v194</title>
+<title>FG Gestión OTs v197</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V194</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V197</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v194</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v197</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -221,6 +221,12 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div class="val" style="color:#0891b2" id="dash-coord">—</div>
       <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-coord-sub"></div>
       <div style="font-size:10px;color:#0891b2;margin-top:4px">próximos 7 días · ver →</div>
+    </div>
+    <div class="stat" style="cursor:pointer;border-left:4px solid #dc2626" onclick="irA('validacion')">
+      <div class="lbl">📤 Pend. devolución</div>
+      <div class="val" style="color:#dc2626" id="dash-pend-dev">—</div>
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-pend-dev-sub"></div>
+      <div style="font-size:10px;color:#dc2626;margin-top:4px">OTs a devolver · ver →</div>
     </div>
   </div>
 
@@ -518,6 +524,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="ntab" onclick="infTab('ots-tipo',this)">OTs por tipo</div>
     <div class="ntab" onclick="infTab('finalizadas',this)">Finalizadas</div>
   </div>
+  <div id="inf-pend-dev-card" style="display:none"></div>
   <div id="inf-devoluciones"></div>
   <div id="inf-ots-estado" style="display:none"></div>
   <div id="inf-ots-tipo" style="display:none"></div>
@@ -1806,11 +1813,11 @@ async function renderDashboard(){
     // Cargar stats del dashboard: OTs activas + finalizadas últimos 90 días
     const hace90=new Date(Date.now()-90*864e5).toISOString().slice(0,10);
     const eFinId=ESTADOS.find(e=>e.nombre==='FINALIZADA')?.id;
-    const [allActivas, allFinalizadas]=await Promise.all([
-      // OTs no finalizadas (pendientes/asignadas/devueltas) — sin límite de fecha
+    const eDevId=ESTADOS.find(e=>e.nombre==='DEVUELTA_GIGARED')?.id;
+    const [allActivas, allFinalizadas, pendDevArr]=await Promise.all([
       sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,grupo_id,cliente_id,estados_ot(nombre)&eliminado=eq.false'+(eFinId?'&estado_id=neq.'+eFinId:'')+'&limit=2000'),
-      // OTs finalizadas en últimos 90 días
-      eFinId?sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,grupo_id,cliente_id,estados_ot(nombre)&eliminado=eq.false&estado_id=eq.'+eFinId+'&fecha_fin=gte.'+hace90+'T00:00:00&limit=2000'):Promise.resolve([])
+      eFinId?sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,grupo_id,cliente_id,estados_ot(nombre)&eliminado=eq.false&estado_id=eq.'+eFinId+'&fecha_fin=gte.'+hace90+'T00:00:00&limit=2000'):Promise.resolve([]),
+      sbGet('ordenes_trabajo','?pendiente_devolucion=eq.true'+(eDevId?'&estado_id=neq.'+eDevId:'')+'&select=id&eliminado=eq.false&limit=500')
     ]);
     const all=[...(allActivas||[]),...(allFinalizadas||[])];
     const hoy=new Date().toISOString().slice(0,10);
@@ -1853,6 +1860,15 @@ async function renderDashboard(){
     setVal('dash-asig',aGrupos.size,a);
     setVal('dash-fin',fGrupos.size,f);
     setVal('dash-repro',rGrupos.size,r);
+
+    // Contador pendientes de devolución
+    const pendDevCnt=(pendDevArr||[]).length;
+    const elPendDev=document.getElementById('dash-pend-dev');
+    const subPendDev=document.getElementById('dash-pend-dev-sub');
+    if(elPendDev)elPendDev.textContent=pendDevCnt;
+    if(subPendDev)subPendDev.textContent=pendDevCnt===1?'1 OT marcada':''+pendDevCnt+' OTs marcadas';
+    const statCard=elPendDev?.closest('.stat');
+    if(statCard)statCard.style.background=pendDevCnt>0?'#fef2f2':'';
 
     // Tipo stats: número grande = clientes únicos, sub = OTs totales
     const g=id=>document.getElementById(id);
@@ -10648,6 +10664,35 @@ async function renderInformes(){
   document.getElementById('inf-finalizadas').style.display='none';
   document.getElementById('inf-devoluciones').style.display='';
   document.querySelectorAll('#inf-nav .ntab').forEach((t,i)=>{t.classList.toggle('active',i===0);});
+
+  // Contador pendientes de devolución en Informes
+  const elInfPendDev=document.getElementById('inf-pend-dev-card');
+  if(elInfPendDev){
+    try{
+      const eDevId=ESTADOS.find(e=>e.nombre==='DEVUELTA_GIGARED')?.id;
+      const pArr=await sbGet('ordenes_trabajo','?pendiente_devolucion=eq.true'+(eDevId?'&estado_id=neq.'+eDevId:'')+'&select=id,numero_ot,clientes(apellido,nombre,codigo_gigared),estados_ot(nombre)&eliminado=eq.false&limit=200')||[];
+      if(pArr.length){
+        elInfPendDev.innerHTML='<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem">'
+          +'<div style="font-size:14px;font-weight:700;color:#dc2626;margin-bottom:.5rem">📤 OTs pendientes de devolución a Gigared ('+pArr.length+')</div>'
+          +'<div style="font-size:12px;color:#64748b;margin-bottom:.5rem">Las siguientes OTs fueron marcadas por el admin para devolver a Gigared:</div>'
+          +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:#94a3b8;font-size:11px;text-transform:uppercase">'
+          +'<th style="text-align:left;padding:3px 8px">OT</th><th style="text-align:left;padding:3px 8px">Cliente</th><th style="text-align:left;padding:3px 8px">Estado</th></tr></thead><tbody>'
+          +pArr.map(o=>'<tr style="border-top:1px solid #fee2e2">'
+            +'<td style="padding:4px 8px;font-family:monospace;font-weight:700">'+numOT(o.numero_ot)+'</td>'
+            +'<td style="padding:4px 8px">'+(o.clientes?.apellido||'?')+' '+( o.clientes?.nombre||'')+'</td>'
+            +'<td style="padding:4px 8px;color:#ea580c">'+( o.estados_ot?.nombre||'?')+'</td>'
+          +'</tr>').join('')
+          +'</tbody></table>'
+          +'<div style="font-size:11px;color:#94a3b8;margin-top:.5rem">Para devolverlas, abrí Validación y confirmá la devolución en cada OT.</div>'
+          +'</div>';
+        elInfPendDev.style.display='';
+      }else{
+        elInfPendDev.innerHTML='';
+        elInfPendDev.style.display='none';
+      }
+    }catch(e){elInfPendDev.style.display='none';}
+  }
+
   renderInfTab('devoluciones');
 }
 
@@ -11370,7 +11415,7 @@ async function verGrupoValidacion(grupoId){
     if(!idList){det.innerHTML='<p style="color:#dc2626">Sin OTs en este grupo.</p>';return;}
 
     const [g,fotosArr,matsArr,servsArr,catMats,catServs]=await Promise.all([
-      sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,lat_inicio_tec,lng_inicio_tec,lat_fin_tec,lng_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
+      sbGet('grupos_ot',`?id=eq.${grupoId}&select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,obs_gigared,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,lat_inicio_tec,lng_inicio_tec,lat_fin_tec,lng_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,pendiente_devolucion,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false`).then(d=>d?.[0]),
       sbGet('ot_fotos',`?ot_id=in.(${idList})&select=id,ot_id,url`)||[],
       sbGet('ot_materiales_usados',`?ot_id=in.(${idList})&activo=eq.true&select=id,ot_id,material_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo,orden_display)`)||[],
       sbGet('ot_servicios_realizados',`?ot_id=in.(${idList})&activo=eq.true&select=id,ot_id,servicio_id,cantidad,catalogo_servicios(id,nombre)`)||[],
@@ -11465,6 +11510,7 @@ async function verGrupoValidacion(grupoId){
           +'<span style="font-size:15px;font-weight:800;color:#1e3a5f">OT '+numOT(ot.numero_ot)+'</span>'
           +badgeTipo(ot.tipo_tarea,ot.tipo_item)+' '+badgeE(est)
           +(ot.modificada_post_cierre?'<span style="font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;padding:2px 9px;border-radius:6px">🔧 Modificada post cierre</span>':'')
+          +(ot.pendiente_devolucion?'<span style="font-size:11px;font-weight:700;color:#dc2626;background:#fee2e2;border:1px solid #fca5a5;padding:2px 9px;border-radius:6px">📤 Pendiente devolución</span>':'')
         +'</div>'
         +(yaValidado?'<span style="font-size:11px;font-weight:700;color:#16a34a;background:#dcfce7;padding:3px 10px;border-radius:6px">✓ '+ot.validado_admin_por+'</span>':'')
       +'</div>';
@@ -11649,7 +11695,12 @@ async function verGrupoValidacion(grupoId){
       }else if(esRec){
         html+='<button class="btn" style="padding:9px 18px;font-size:14px;font-weight:700;background:#0891b2;color:#fff;border-color:#0891b2" onclick="validarRechazadaAdmin('+ot.id+','+grupoId+')">✓ Validar rechazo</button>';
         html+='<button class="btn" style="padding:9px 16px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #cbd5e1;color:#475569" onclick="otAPendienteAdmin('+ot.id+','+grupoId+')">↩ Pendiente</button>';
-        html+='<button class="btn" style="padding:9px 16px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #fca5a5;color:#dc2626" onclick="otAGigaradAdmin('+ot.id+','+grupoId+')">📤 Gigared</button>';
+        if(ot.pendiente_devolucion){
+          html+='<button class="btn" style="padding:9px 16px;font-size:13px;font-weight:600;background:#fee2e2;border:1.5px solid #fca5a5;color:#dc2626;font-weight:700" onclick="desmarcarDevolucion('+ot.id+','+grupoId+')">✕ Desmarcar devolución</button>';
+          html+='<button class="btn" style="padding:9px 16px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #fca5a5;color:#dc2626" onclick="otAGigaradAdmin('+ot.id+','+grupoId+')">📤 Confirmar a Gigared</button>';
+        }else{
+          html+='<button class="btn" style="padding:9px 16px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #fca5a5;color:#dc2626" onclick="marcarParaDevolver('+ot.id+','+grupoId+')">📤 Marcar para devolver</button>';
+        }
       }else if(esFinalizada){
         html+='<span style="font-size:13px;font-weight:700;color:#16a34a">✓ Aprobada</span>';
       }
@@ -11658,11 +11709,20 @@ async function verGrupoValidacion(grupoId){
     });
 
     // — Barra de grupo —
-    const todasRechazadas=ots.every(o=>['RECHAZADA_TECNICO','NO_REALIZADA'].includes(o.estados_ot?.nombre||''));
+    const tieneFinalizadas=ots.some(o=>o.estados_ot?.nombre==='FINALIZADA_TECNICO');
+    const tieneNoFinalizadas=ots.some(o=>!['FINALIZADA_TECNICO','FINALIZADA'].includes(o.estados_ot?.nombre||''));
+    const esMixtoOBloqueado=tieneFinalizadas&&tieneNoFinalizadas;
+    // OTs rechazadas/no-realizadas del grupo
+    const otsRechazadas=ots.filter(o=>['RECHAZADA_TECNICO','NO_REALIZADA'].includes(o.estados_ot?.nombre||''));
+    const otsMarcadas=ots.filter(o=>o.pendiente_devolucion&&o.estados_ot?.nombre!=='DEVUELTA_GIGARED');
+    const hayRechazables=otsRechazadas.length>0;
+    const hayMarcadas=otsMarcadas.length>0;
     html+='<div style="display:flex;gap:8px;flex-wrap:wrap;padding:1rem;background:#f8fafc;border-radius:12px;border:1px solid var(--border);margin-top:.5rem;align-items:center">'
       +'<span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-right:4px">Grupo:</span>'
       +'<button class="btn btn-primary" style="font-size:13px;padding:10px 20px" onclick="aprobarGrupo('+grupoId+')">✅ Aprobar todo</button>'
-      +'<button class="btn" style="font-size:13px;padding:10px 18px;background:#fff;border:1.5px solid #fca5a5;color:#dc2626;'+(todasRechazadas?'':'opacity:.4;cursor:not-allowed')+'" '+(todasRechazadas?'onclick="devolverGrupoGigared('+grupoId+')"':'disabled')+'>📤 Devolver a Gigared</button>'
+      +(esMixtoOBloqueado?'<button class="btn" style="font-size:13px;padding:10px 18px;background:#fff7ed;border:1.5px solid #fed7aa;color:#c2410c;font-weight:700" onclick="aprobarSoloFinalizadas('+grupoId+')">✅ Aprobar finalizadas</button>':'')
+      +(hayRechazables?'<button class="btn" style="font-size:13px;padding:10px 18px;background:#fff;border:1.5px solid #fca5a5;color:#dc2626" onclick="marcarGrupoParaDevolver('+grupoId+')">📤 Marcar grupo p/devolver</button>':'')
+      +(hayMarcadas?'<button class="btn" style="font-size:13px;padding:10px 18px;background:#fee2e2;border:1.5px solid #dc2626;color:#dc2626;font-weight:700" onclick="confirmarDevolucionGrupo('+grupoId+')">✅ Confirmar devolución ('+otsMarcadas.length+')</button>':'')
       +'<button class="btn btn-sm" style="font-size:12px;color:#475569" onclick="reasignarGrupo('+grupoId+',\''+encodeURIComponent(g.cuadrillas?.nombre||'')+'\')">🔀 Reasignar</button>'
       +'<button class="btn btn-sm" style="font-size:12px;color:#94a3b8;margin-left:auto" onclick="document.getElementById(\'val-detalle\').style.display=\'none\'">✕ Cerrar</button>'
     +'</div>';
@@ -11771,6 +11831,7 @@ async function otAPendienteAdmin(otId, grupoId){
       equipo_instalado:null,
       serial_retirado:null,
       modificada_post_cierre:false,
+      pendiente_devolucion:false,
       validado_admin_at:null,
       validado_admin_por:null
     });
@@ -11806,7 +11867,7 @@ async function otAGigaradAdmin(otId, grupoId){
   try{
     const ot=(await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id&eliminado=eq.false`))||[];
     const estadoAnt=ot[0]?.estado_id;
-    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eDev.id});
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eDev.id,pendiente_devolucion:false});
     await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:estadoAnt,estado_nuevo_id:eDev.id,observacion:'DEVUELTA A GIGARED POR ADMIN: '+(CU.nombre||CU.email),usuario_id:CU.id});
     await verGrupoValidacion(grupoId);
     renderValidacion();
@@ -11873,6 +11934,91 @@ async function aprobarGrupo(grupoId){
     await verGrupoValidacion(grupoId);
     renderValidacion();
     alert('✅ Grupo aprobado correctamente.');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function aprobarSoloFinalizadas(grupoId){
+  const ots=await sbGet('ordenes_trabajo',
+    `?grupo_id=eq.${grupoId}&select=id,numero_ot,tipo_item,tipo_tarea,tag,hora_inicio_tec,hora_fin_tec,estados_ot(nombre)&eliminado=eq.false`)||[];
+  const aAprobar=ots.filter(o=>o.estados_ot?.nombre==='FINALIZADA_TECNICO');
+  if(!aAprobar.length){alert('No hay OTs en FINALIZADA_TECNICO para aprobar.');return;}
+
+  const otIds=aAprobar.map(o=>o.id).join(',');
+  const [fotosAll,matsAll]=await Promise.all([
+    sbGet('ot_fotos',`?ot_id=in.(${otIds})&select=ot_id`)||[],
+    sbGet('ot_materiales_usados',`?ot_id=in.(${otIds})&activo=eq.true&select=ot_id`)||[]
+  ]);
+
+  // Armar lista de advertencias por OT (no bloquean — solo informan)
+  const avisos=[];
+  aAprobar.forEach(ot=>{
+    const nOT='OT '+numOT(ot.numero_ot);
+    const tipo=ot.tipo_item||ot.tipo_tarea||'';
+    const fotosCnt=(fotosAll||[]).filter(f=>f.ot_id===ot.id).length;
+    const matsCnt=(matsAll||[]).filter(m=>m.ot_id===ot.id).length;
+    const items=[];
+    if(!fotosCnt)items.push('sin fotos');
+    if(!matsCnt)items.push('sin materiales');
+    if(tipo==='BASICA'&&!ot.tag)items.push('BASICA sin precinto');
+    if(ot.hora_inicio_tec&&ot.hora_fin_tec){
+      const dur=Math.round((new Date(ot.hora_fin_tec)-new Date(ot.hora_inicio_tec))/60000);
+      if(dur<5)items.push('duración '+dur+' min (sospechosa)');
+    }
+    if(items.length)avisos.push(nOT+': '+items.join(', '));
+  });
+
+  // Construir mensaje de confirmación
+  const noTocadas=ots.filter(o=>!['FINALIZADA_TECNICO','FINALIZADA'].includes(o.estados_ot?.nombre||''));
+  let msg=`✅ Aprobar ${aAprobar.length} OT${aAprobar.length!==1?'s':''} finalizadas — pasarán a FINALIZADA.\n`;
+  if(noTocadas.length)msg+=`\n⚠️ ${noTocadas.length} OT${noTocadas.length!==1?'s':''} no se tocan (${[...new Set(noTocadas.map(o=>o.estados_ot?.nombre||'?'))].join(', ')}).\n`;
+  if(avisos.length)msg+=`\n📋 Advertencias (no bloquean):\n• ${avisos.join('\n• ')}\n`;
+  msg+=`\n¿Confirmar aprobación parcial?`;
+
+  if(!confirm(msg))return;
+
+  const eFin=ESTADOS.find(e=>e.nombre==='FINALIZADA');
+  if(!eFin){alert('Estado FINALIZADA no encontrado.');return;}
+
+  try{
+    const now=new Date().toISOString();
+    const adminNombre=CU.nombre||CU.email||'admin';
+    for(const ot of aAprobar){
+      await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{
+        estado_id:eFin.id,
+        fecha_fin:now.slice(0,10),
+        validado_admin_at:now,
+        validado_admin_por:adminNombre
+      });
+      await sbPost('historial_estados_ot',{
+        ot_id:ot.id,
+        estado_nuevo_id:eFin.id,
+        observacion:'APROBADO POR ADMIN (parcial): '+adminNombre,
+        usuario_id:CU.id
+      });
+    }
+    await verGrupoValidacion(grupoId);
+    renderValidacion();
+    alert(`✅ ${aAprobar.length} OT${aAprobar.length!==1?'s':''} aprobadas correctamente.\n${noTocadas.length>0?'Las demás OTs del grupo quedan sin cambios.':''}`);
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function marcarParaDevolver(otId, grupoId){
+  if(!confirm('¿Marcar esta OT como pendiente de devolución a Gigared?\n\nNo se cambia el estado todavía. Quedará visible en el contador de pendientes.'))return;
+  try{
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{pendiente_devolucion:true});
+    await sbPost('historial_estados_ot',{ot_id:otId,observacion:'MARCADA PENDIENTE DEVOLUCIÓN GIGARED por '+(CU.nombre||CU.email),usuario_id:CU.id}).catch(()=>{});
+    await verGrupoValidacion(grupoId);
+    renderValidacion();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function desmarcarDevolucion(otId, grupoId){
+  if(!confirm('¿Desmarcar devolución? La OT seguirá como rechazada pero ya no aparecerá en el contador de pendientes.'))return;
+  try{
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{pendiente_devolucion:false});
+    await sbPost('historial_estados_ot',{ot_id:otId,observacion:'DESMARCADA pendiente devolución por '+(CU.nombre||CU.email),usuario_id:CU.id}).catch(()=>{});
+    await verGrupoValidacion(grupoId);
+    renderValidacion();
   }catch(e){alert('Error: '+e.message);}
 }
 
@@ -11948,6 +12094,72 @@ document.addEventListener('click',function(e){
     document.querySelectorAll('[id^="mas-acc-menu-"]').forEach(m=>m.style.display='none');
 });
 
+async function marcarGrupoParaDevolver(grupoId){
+  const ots=await sbGet('ordenes_trabajo',
+    `?grupo_id=eq.${grupoId}&select=id,numero_ot,pendiente_devolucion,estados_ot(nombre)&eliminado=eq.false`)||[];
+
+  const ELEGIBLES=['RECHAZADA_TECNICO','NO_REALIZADA'];
+  const aMar=ots.filter(o=>ELEGIBLES.includes(o.estados_ot?.nombre||'')&&!o.pendiente_devolucion);
+  const yaMar=ots.filter(o=>ELEGIBLES.includes(o.estados_ot?.nombre||'')&&o.pendiente_devolucion);
+  const noAplica=ots.filter(o=>!ELEGIBLES.includes(o.estados_ot?.nombre||''));
+
+  if(!aMar.length&&!yaMar.length){
+    alert('Este grupo no tiene OTs rechazadas o no realizadas para marcar.');return;
+  }
+
+  const resumen=`Resumen de la marcación:\n• ${aMar.length} OT${aMar.length!==1?'s':''} se marcarán para devolución`
+    +(yaMar.length?`\n• ${yaMar.length} OT${yaMar.length!==1?'s':''} ya estaban marcadas`:'')
+    +(noAplica.length?`\n• ${noAplica.length} OT${noAplica.length!==1?'s':''} no aplican (finalizadas u otro estado)`:'')
+    +'\n\n¿Confirmar?';
+  if(!confirm(resumen))return;
+
+  if(!aMar.length){alert('No hay OTs nuevas para marcar. Ya estaban todas marcadas.');return;}
+
+  try{
+    for(const ot of aMar){
+      await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{pendiente_devolucion:true});
+      await sbPost('historial_estados_ot',{ot_id:ot.id,observacion:'MARCADA PENDIENTE DEVOLUCIÓN GIGARED (grupal) por '+(CU.nombre||CU.email),usuario_id:CU.id}).catch(()=>{});
+    }
+    await verGrupoValidacion(grupoId);
+    renderValidacion();
+    alert(`✅ ${aMar.length} OT${aMar.length!==1?'s':''} marcadas para devolución.`
+      +(yaMar.length?`\n${yaMar.length} ya estaban marcadas previamente.`:''));
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function confirmarDevolucionGrupo(grupoId){
+  const ots=await sbGet('ordenes_trabajo',
+    `?grupo_id=eq.${grupoId}&select=id,numero_ot,pendiente_devolucion,estados_ot(nombre)&eliminado=eq.false`)||[];
+
+  const aDevolver=ots.filter(o=>o.pendiente_devolucion&&o.estados_ot?.nombre!=='DEVUELTA_GIGARED');
+  const noTocadas=ots.filter(o=>!o.pendiente_devolucion||o.estados_ot?.nombre==='DEVUELTA_GIGARED');
+
+  if(!aDevolver.length){alert('No hay OTs marcadas para devolver en este grupo.');return;}
+
+  const resumen=`¿Confirmar devolución a Gigared?\n\n• ${aDevolver.length} OT${aDevolver.length!==1?'s':''} pasarán a DEVUELTA_GIGARED`
+    +(noTocadas.length?`\n• ${noTocadas.length} OT${noTocadas.length!==1?'s':''} no se tocan`:'')
+    +'\n\nEsta acción no se puede deshacer.';
+  if(!confirm(resumen))return;
+
+  const eDev=ESTADOS.find(e=>e.nombre==='DEVUELTA_GIGARED');
+  if(!eDev){alert('Estado DEVUELTA_GIGARED no encontrado.');return;}
+
+  try{
+    for(const ot of aDevolver){
+      await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{estado_id:eDev.id,pendiente_devolucion:false});
+      await sbPost('historial_estados_ot',{
+        ot_id:ot.id,estado_nuevo_id:eDev.id,
+        observacion:'DEVUELTA A GIGARED POR ADMIN (confirmar grupal): '+(CU.nombre||CU.email),
+        usuario_id:CU.id
+      });
+    }
+    await verGrupoValidacion(grupoId);
+    renderValidacion();
+    alert(`✅ ${aDevolver.length} OT${aDevolver.length!==1?'s':''} devueltas a Gigared correctamente.`
+      +(noTocadas.length?`\n${noTocadas.length} OT${noTocadas.length!==1?'s':''} no fueron tocadas.`:''));
+  }catch(e){alert('Error: '+e.message);}
+}
+
 async function devolverGrupoGigared(grupoId){
   if(!confirm('¿Devolver TODAS las OTs del grupo a Gigared?'))return;
   const eDev=ESTADOS.find(e=>e.nombre==='DEVUELTA_GIGARED');
@@ -11955,7 +12167,7 @@ async function devolverGrupoGigared(grupoId){
   try{
     const ots=await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id,estado_id&eliminado=eq.false`)||[];
     for(const ot of ots){
-      await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{estado_id:eDev.id});
+      await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{estado_id:eDev.id,pendiente_devolucion:false});
       await sbPost('historial_estados_ot',{ot_id:ot.id,estado_anterior_id:ot.estado_id,estado_nuevo_id:eDev.id,observacion:'DEVUELTA A GIGARED POR ADMIN (grupal): '+(CU.nombre||CU.email),usuario_id:CU.id});
     }
     await verGrupoValidacion(grupoId);
