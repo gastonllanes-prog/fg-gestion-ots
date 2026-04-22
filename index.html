@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v192</title>
+<title>FG Gestión OTs v194</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V192</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V194</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v192</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v194</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -6782,37 +6782,139 @@ function rendFechaAnio(){
 }
 
 // Calcula métricas de una cuadrilla a partir de sus grupos
-function _calcMetricasCuadrilla(grupos){
-  const COMPLETOS=new Set(['FINALIZADA_TECNICO','FINALIZADA']);
+// Clasifica un grupo según el estado de sus OTs activas
+function _estadoGrupoRend(ots){
+  const activas=ots.filter(o=>o.estados_ot?.nombre!=='ELIMINADA_SISTEMA');
+  if(!activas.length)return'SIN_OTS';
+  const ests=activas.map(o=>o.estados_ot?.nombre||'');
+  const COMP=new Set(['FINALIZADA_TECNICO','FINALIZADA']);
   const PEND=new Set(['PENDIENTE','ASIGNADA','EN_PROCESO']);
-  let asignadas=0,completadas=0,pendientes=0,rechazos=0,devueltas=0,modificadas=0;
+  if(ests.some(e=>PEND.has(e)))return'PENDIENTE';
+  if(ests.every(e=>COMP.has(e)))return'COMPLETADO';
+  if(ests.some(e=>e==='RECHAZADA_TECNICO'||e==='NO_REALIZADA'))return'CON_RECHAZO';
+  if(ests.every(e=>e==='DEVUELTA_GIGARED'))return'DEVUELTO';
+  return'MIXTO';
+}
+
+// Calcula métricas por GRUPO (no por OT individual)
+function _calcMetricasCuadrilla(grupos){
+  let asignadas=0,completadas=0,pendientes=0,rechazos=0,devueltas=0,modificadas=0,mixtos=0;
   const durs=[];
   grupos.forEach(g=>{
-    (g.ordenes_trabajo||[]).forEach(o=>{
-      const est=o.estados_ot?.nombre||'';
-      if(est==='ELIMINADA_SISTEMA')return;
-      asignadas++;
-      if(COMPLETOS.has(est))completadas++;
-      else if(PEND.has(est))pendientes++;
-      else if(est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA')rechazos++;
-      else if(est==='DEVUELTA_GIGARED')devueltas++;
-      if(o.modificada_post_cierre)modificadas++;
-      // Duración real: solo si ambos timestamps existen y son válidos
-      if(o.hora_inicio_tec&&o.hora_fin_tec){
-        const ini=new Date(o.hora_inicio_tec);
-        const fin=new Date(o.hora_fin_tec);
-        const dur=Math.round((fin-ini)/60000);
-        if(dur>=0&&dur<=600)durs.push(dur); // excluir negativos y > 10 horas
-      }
-    });
+    const ots=g.ordenes_trabajo||[];
+    const activas=ots.filter(o=>o.estados_ot?.nombre!=='ELIMINADA_SISTEMA');
+    if(!activas.length)return;
+    asignadas++;
+    const estG=_estadoGrupoRend(activas);
+    if(estG==='COMPLETADO')completadas++;
+    else if(estG==='PENDIENTE')pendientes++;
+    else if(estG==='CON_RECHAZO')rechazos++;
+    else if(estG==='DEVUELTO')devueltas++;
+    else if(estG==='MIXTO')mixtos++; // parcial — no suma al numerador de cumplimiento
+    if(activas.some(o=>o.modificada_post_cierre))modificadas++;
+    const inits=activas.map(o=>o.hora_inicio_tec).filter(Boolean).map(t=>new Date(t));
+    const fins=activas.map(o=>o.hora_fin_tec).filter(Boolean).map(t=>new Date(t));
+    if(inits.length&&fins.length){
+      const ini=new Date(Math.min(...inits));
+      const fin=new Date(Math.max(...fins));
+      const dur=Math.round((fin-ini)/60000);
+      if(dur>=0&&dur<=600)durs.push(dur);
+    }
   });
+  // % cumplimiento = completados / asignados (MIXTO en denominador, no en numerador)
   const pctCumplimiento=asignadas>0?Math.round((completadas/asignadas)*100):null;
   const duracionProm=durs.length>0?Math.round(durs.reduce((a,b)=>a+b,0)/durs.length):null;
-  return{
-    asignadas,completadas,pendientes,rechazos,devueltas,modificadas,
-    pctCumplimiento,duracionProm,
-    _score:null // reservado para fase 2: combinación de cumplimiento, velocidad y calidad
-  };
+  return{asignadas,completadas,pendientes,rechazos,devueltas,mixtos,modificadas,pctCumplimiento,duracionProm,_score:null};
+}
+
+// KPI card con destino opcional
+function kpiCard(label,valor,color,onclick,destino){
+  const cursor=onclick?'cursor:pointer;':'';
+  const hover=onclick?'onmouseenter="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.12)\'" onmouseleave="this.style.boxShadow=\'\'"':'';
+  const link=destino?`<div style="font-size:10px;color:#94a3b8;margin-top:2px;text-decoration:underline">${destino}</div>`:'';
+  return`<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:.875rem 1rem;text-align:center;${cursor}transition:box-shadow .2s" ${onclick?'onclick="'+onclick+'"':''} ${hover}>
+    <div style="font-size:22px;font-weight:900;color:${color}">${valor??'—'}</div>
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:3px">${label}</div>
+    ${link}
+  </div>`;
+}
+
+// Gauge SVG para % cumplimiento
+function _gaugeHTML(pct){
+  if(pct===null)return`<div style="text-align:center;color:#94a3b8;font-size:13px">Sin datos</div>`;
+  const color=pct>=80?'#16a34a':pct>=50?'#d97706':'#dc2626';
+  const R=54,CX=70,CY=70,stroke=10;
+  // Arco de 180° (semicírculo inferior)
+  const angle=(pct/100)*Math.PI;
+  const x=CX-R*Math.cos(angle);
+  const y=CY-R*Math.sin(angle);
+  const large=pct>50?1:0;
+  return`<svg viewBox="0 0 140 80" style="width:100%;max-width:180px;display:block;margin:0 auto">
+    <!-- Track gris -->
+    <path d="M ${CX-R} ${CY} A ${R} ${R} 0 0 1 ${CX+R} ${CY}" fill="none" stroke="#e2e8f0" stroke-width="${stroke}" stroke-linecap="round"/>
+    <!-- Arco de progreso -->
+    <path d="M ${CX-R} ${CY} A ${R} ${R} 0 ${large} 1 ${x.toFixed(2)} ${y.toFixed(2)}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"/>
+    <!-- Valor central -->
+    <text x="${CX}" y="${CY+4}" text-anchor="middle" font-size="20" font-weight="900" fill="${color}">${pct}%</text>
+    <text x="${CX}" y="${CY+18}" text-anchor="middle" font-size="9" fill="#94a3b8">Cumplimiento</text>
+  </svg>`;
+}
+
+// Stacked bar horizontal por cuadrilla
+function _stackedBarCuads(cuadsConMetricas){
+  return cuadsConMetricas.map(c=>{
+    const m=c.m;
+    if(!m.asignadas)return'';
+    const pComp=(m.completadas/m.asignadas*100).toFixed(1);
+    const pPend=(m.pendientes/m.asignadas*100).toFixed(1);
+    const pRech=(m.rechazos/m.asignadas*100).toFixed(1);
+    const pMix=(m.mixtos/m.asignadas*100).toFixed(1);
+    const nom=c.nombre.length>16?c.nombre.slice(0,14)+'…':c.nombre;
+    return`<div style="display:grid;grid-template-columns:130px 1fr 42px;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="font-size:12px;font-weight:600;color:#1e3a5f;text-align:right">${nom}</div>
+      <div style="display:flex;border-radius:99px;overflow:hidden;height:18px;background:#f1f5f9">
+        ${parseFloat(pComp)>0?`<div style="width:${pComp}%;background:#16a34a" title="${m.completadas} completados"></div>`:''}
+        ${parseFloat(pPend)>0?`<div style="width:${pPend}%;background:#dc2626" title="${m.pendientes} pendientes"></div>`:''}
+        ${parseFloat(pRech)>0?`<div style="width:${pRech}%;background:#f59e0b" title="${m.rechazos} rechazos"></div>`:''}
+        ${parseFloat(pMix)>0?`<div style="width:${pMix}%;background:#b45309" title="${m.mixtos} parciales"></div>`:''}
+      </div>
+      <div style="font-size:11px;font-weight:700;color:${m.pctCumplimiento>=80?'#16a34a':m.pctCumplimiento>=50?'#d97706':'#dc2626'}">${m.pctCumplimiento??'—'}%</div>
+    </div>`;
+  }).join('');
+}
+
+// Línea de evolución de pendientes por día
+function _evolucionPendientesHTML(grupos){
+  const porDia={};
+  grupos.forEach(g=>{
+    const dia=g.fecha_trabajo;if(!dia)return;
+    if(!porDia[dia])porDia[dia]={dia,comp:0,pend:0};
+    const estG=_estadoGrupoRend((g.ordenes_trabajo||[]).filter(o=>o.estados_ot?.nombre!=='ELIMINADA_SISTEMA'));
+    if(estG==='COMPLETADO'||estG==='MIXTO')porDia[dia].comp++;
+    else if(estG==='PENDIENTE')porDia[dia].pend++;
+  });
+  const dias=Object.values(porDia).sort((a,b)=>a.dia.localeCompare(b.dia));
+  if(dias.length<2)return'<div style="color:#94a3b8;font-size:12px;font-style:italic">Datos de un solo día — evolución no disponible.</div>';
+  const W=500,H=110,PAD=28;
+  const maxV=Math.max(...dias.map(d=>Math.max(d.comp,d.pend)),1);
+  const ptComp=dias.map((d,i)=>{const x=PAD+i*(W-PAD*2)/(dias.length-1);const y=H-PAD-(d.comp/maxV)*(H-PAD*2);return`${x.toFixed(1)},${y.toFixed(1)}`;}).join(' ');
+  const ptPend=dias.map((d,i)=>{const x=PAD+i*(W-PAD*2)/(dias.length-1);const y=H-PAD-(d.pend/maxV)*(H-PAD*2);return`${x.toFixed(1)},${y.toFixed(1)}`;}).join(' ');
+  const step=Math.max(1,Math.floor(dias.length/6));
+  const xLabels=dias.filter((_,i)=>i%step===0||i===dias.length-1).map(d=>{
+    const i=dias.indexOf(d);const x=PAD+i*(W-PAD*2)/(dias.length-1);
+    const lbl=new Date(d.dia+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+    return`<text x="${x.toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9" fill="#94a3b8">${lbl}</text>`;
+  }).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:600px;display:block">
+    <polyline points="${ptComp}" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+    <polyline points="${ptPend}" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="5,3"/>
+    ${dias.map((d,i)=>{const x=PAD+i*(W-PAD*2)/(dias.length-1);const y=H-PAD-(d.comp/maxV)*(H-PAD*2);return`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="#16a34a"/>`;}).join('')}
+    ${xLabels}
+  </svg>
+  <div style="display:flex;gap:16px;margin-top:4px;font-size:11px">
+    <span><span style="color:#16a34a;font-weight:700">—</span> Completados</span>
+    <span><span style="color:#dc2626;font-weight:700">- -</span> Pendientes</span>
+  </div>`;
 }
 
 async function renderRendimiento(){
@@ -6830,14 +6932,7 @@ async function renderRendimiento(){
       +'&order=fecha_trabajo.asc&limit=2000';
     if(cuadFil)q+='&cuadrilla_id=eq.'+cuadFil;
     const grupos=await sbGet('grupos_ot',q)||[];
-
-    if(!grupos.length){
-      el.innerHTML='<div class="card" style="color:#64748b;text-align:center;padding:2rem">Sin datos para el período seleccionado.</div>';
-      return;
-    }
-    if(grupos.length===2000){
-      el.innerHTML='<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:8px 14px;font-size:12px;color:#92400e;margin-bottom:.75rem">⚠️ Se muestran los primeros 2000 grupos. Reducí el rango de fechas para mayor precisión.</div>'+el.innerHTML;
-    }
+    if(!grupos.length){el.innerHTML='<div class="card" style="color:#64748b;text-align:center;padding:2rem">Sin datos para el período seleccionado.</div>';return;}
 
     // Agrupar por cuadrilla
     const porCuad={};
@@ -6847,93 +6942,101 @@ async function renderRendimiento(){
       porCuad[cid].grupos.push(g);
     });
     const cuads=Object.values(porCuad).sort((a,b)=>a.nombre.localeCompare(b.nombre));
-
-    // Calcular métricas globales (suma de todas las cuadrillas)
-    const globalM=_calcMetricasCuadrilla(grupos);
-
-    let html='';
-
-    // ── KPIs GLOBALES ─────────────────────────────────────────────────
-    const fmtRango=desde===hasta
-      ?new Date(desde+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})
-      :new Date(desde+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' al '+new Date(hasta+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    const pctColor=globalM.pctCumplimiento===null?'#64748b':globalM.pctCumplimiento>=80?'#16a34a':globalM.pctCumplimiento>=60?'#d97706':'#dc2626';
-
-    html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;margin-bottom:1.25rem">
-      ${kpiCard('📋 Asignadas',globalM.asignadas,'#2563eb')}
-      ${kpiCard('✅ Completadas',globalM.completadas,'#16a34a')}
-      ${kpiCard('⏳ Pendientes',globalM.pendientes,globalM.pendientes>0?'#dc2626':'#94a3b8')}
-      ${kpiCard('% Cumplimiento',globalM.pctCumplimiento!==null?globalM.pctCumplimiento+'%':'—',pctColor)}
-      ${kpiCard('❌ Rechazos',globalM.rechazos,globalM.rechazos>0?'#d97706':'#94a3b8')}
-      ${kpiCard('⏱ Dur. prom.',globalM.duracionProm!==null?globalM.duracionProm+' min':'—','#7c3aed')}
-    </div>`;
-
-    // ── RANKING CUADRILLAS ────────────────────────────────────────────
-    html+=`<div class="card" style="margin-bottom:1.25rem">
-      <div class="card-title">🏆 Ranking de cuadrillas — ${fmtRango}</div>
-      <div style="margin-top:.75rem">`;
-
-    // Calcular métricas por cuadrilla y ordenar por % cumplimiento desc
     const cuadsConMetricas=cuads.map(c=>({...c,m:_calcMetricasCuadrilla(c.grupos)}));
     cuadsConMetricas.sort((a,b)=>(b.m.pctCumplimiento||0)-(a.m.pctCumplimiento||0));
 
-    const maxAsig=Math.max(...cuadsConMetricas.map(c=>c.m.asignadas),1);
+    const globalM=_calcMetricasCuadrilla(grupos);
+    const pctColor=globalM.pctCumplimiento===null?'#64748b':globalM.pctCumplimiento>=80?'#16a34a':globalM.pctCumplimiento>=50?'#d97706':'#dc2626';
+    const fmtRango=desde===hasta
+      ?new Date(desde+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})
+      :new Date(desde+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' al '+new Date(hasta+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'});
 
-    html+=`<div style="overflow-x:auto"><table class="ot-table"><thead><tr>
-      <th>Cuadrilla</th>
-      <th style="text-align:right">Asig.</th>
-      <th style="text-align:right;color:#16a34a">Complet.</th>
-      <th style="text-align:right;color:#dc2626">Pend.</th>
-      <th style="text-align:right;color:#d97706">Rechazos</th>
-      <th style="text-align:right;color:#7c3aed">Modif.</th>
-      <th style="text-align:right;color:#64748b">Dur.prom.</th>
-      <th style="min-width:140px">% Cumplimiento</th>
-    </tr></thead><tbody>`;
+    let html='';
+
+    // Aviso de límite
+    if(grupos.length>=2000)html+='<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:8px 14px;font-size:12px;color:#92400e;margin-bottom:.75rem">⚠️ Se muestran los primeros 2000 grupos. Reducí el rango de fechas para mayor precisión.</div>';
+
+    // ── FILA 1: GAUGE + KPIs ──────────────────────────────────────────
+    html+=`<div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:start;margin-bottom:1.25rem">
+      <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:1rem 1.25rem;text-align:center;min-width:170px">
+        ${_gaugeHTML(globalM.pctCumplimiento)}
+        <div style="font-size:11px;color:#64748b;margin-top:4px">Grupos · ${fmtRango}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.6rem">
+        ${kpiCard('📋 Asignadas',globalM.asignadas,'#2563eb')}
+        ${kpiCard('✅ Completadas',globalM.completadas,'#16a34a',"irA('validacion')",'ver validación')}
+        ${kpiCard('⏳ Pendientes',globalM.pendientes,globalM.pendientes>0?'#dc2626':'#94a3b8',"irA('asignar')",'ver asignación')}
+        ${kpiCard('⚠️ Parciales',globalM.mixtos,globalM.mixtos>0?'#b45309':'#94a3b8')}
+        ${kpiCard('❌ Rechazos',globalM.rechazos,globalM.rechazos>0?'#f59e0b':'#94a3b8',"irAConFiltroEstado('RECHAZADA_TECNICO')",'ver OTs')}
+        ${kpiCard('⏱ Dur. prom.',globalM.duracionProm!==null?globalM.duracionProm+' min':'—','#7c3aed')}
+      </div>
+    </div>`;
+
+    // ── FILA 2: STACKED BARS ─────────────────────────────────────────
+    html+=`<div class="card" style="margin-bottom:1.25rem">
+      <div class="card-title">📊 Distribución por cuadrilla</div>
+      <div style="display:flex;gap:12px;margin-bottom:.75rem;font-size:11px;flex-wrap:wrap">
+        <span><span style="display:inline-block;width:12px;height:12px;background:#16a34a;border-radius:3px;vertical-align:middle"></span> Completados</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#dc2626;border-radius:3px;vertical-align:middle"></span> Pendientes</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;border-radius:3px;vertical-align:middle"></span> Rechazos</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#b45309;border-radius:3px;vertical-align:middle"></span> Parciales</span>
+      </div>
+      ${_stackedBarCuads(cuadsConMetricas)}
+    </div>`;
+
+    // ── FILA 3: EVOLUCIÓN DE PENDIENTES ──────────────────────────────
+    html+=`<div class="card" style="margin-bottom:1.25rem">
+      <div class="card-title">📈 Evolución diaria — grupos completados vs pendientes</div>
+      <div style="margin-top:.5rem">${_evolucionPendientesHTML(grupos)}</div>
+    </div>`;
+
+    // ── FILA 4: RANKING TABLA ────────────────────────────────────────
+    html+=`<div class="card" style="margin-bottom:1.25rem">
+      <div class="card-title">🏆 Ranking de cuadrillas — ${fmtRango}</div>
+      <div style="overflow-x:auto;margin-top:.75rem"><table class="ot-table"><thead><tr>
+        <th>Cuadrilla</th>
+        <th style="text-align:right">Grupos</th>
+        <th style="text-align:right;color:#16a34a">Complet.</th>
+        <th style="text-align:right;color:#dc2626">Pend.</th>
+        <th style="text-align:right;color:#b45309">Parciales</th>
+        <th style="text-align:right;color:#f59e0b">Rechazos</th>
+        <th style="text-align:right;color:#7c3aed">Modif.</th>
+        <th style="text-align:right;color:#64748b">Dur.prom.</th>
+        <th style="min-width:140px">% Cumplimiento</th>
+      </tr></thead><tbody>`;
 
     cuadsConMetricas.forEach(c=>{
       const m=c.m;
       const pct=m.pctCumplimiento;
-      const barColor=pct===null?'#cbd5e1':pct>=80?'#16a34a':pct>=60?'#d97706':'#dc2626';
-      const pctW=pct!==null?pct:0;
+      const barColor=pct===null?'#cbd5e1':pct>=80?'#16a34a':pct>=50?'#d97706':'#dc2626';
       const nomSafe=c.nombre.replace(/['"]/g,'');
       html+=`<tr style="cursor:pointer" onclick="rendVerDetalle('${c.id}','${nomSafe}')">
         <td style="font-weight:700;font-size:13px">🔧 ${c.nombre}</td>
         <td style="text-align:right;font-size:13px">${m.asignadas}</td>
         <td style="text-align:right;font-size:13px;font-weight:700;color:#16a34a">${m.completadas}</td>
         <td style="text-align:right;font-size:13px;font-weight:700;color:${m.pendientes>0?'#dc2626':'#94a3b8'}">${m.pendientes}</td>
-        <td style="text-align:right;font-size:13px;color:${m.rechazos>0?'#d97706':'#94a3b8'}">${m.rechazos}</td>
+        <td style="text-align:right;font-size:13px;color:${m.mixtos>0?'#b45309':'#94a3b8'}">${m.mixtos}</td>
+        <td style="text-align:right;font-size:13px;color:${m.rechazos>0?'#f59e0b':'#94a3b8'}">${m.rechazos}</td>
         <td style="text-align:right;font-size:13px;color:${m.modificadas>0?'#7c3aed':'#94a3b8'}">${m.modificadas}</td>
         <td style="text-align:right;font-size:12px;color:#64748b">${m.duracionProm!==null?m.duracionProm+' min':'—'}</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:6px">
-            <div style="flex:1;background:#f1f5f9;border-radius:99px;height:14px;overflow:hidden">
-              <div style="height:100%;width:${pctW}%;background:${barColor};border-radius:99px;transition:width .4s"></div>
-            </div>
-            <span style="font-size:12px;font-weight:700;color:${barColor};min-width:36px">${pct!==null?pct+'%':'—'}</span>
+        <td><div style="display:flex;align-items:center;gap:6px">
+          <div style="flex:1;background:#f1f5f9;border-radius:99px;height:14px;overflow:hidden">
+            <div style="height:100%;width:${pct??0}%;background:${barColor};border-radius:99px"></div>
           </div>
-        </td>
+          <span style="font-size:12px;font-weight:700;color:${barColor};min-width:36px">${pct!==null?pct+'%':'—'}</span>
+        </div></td>
       </tr>`;
     });
 
-    html+=`</tbody></table></div></div></div>`;
-
-    // ── DETALLE (se inserta dinámicamente al hacer clic) ──────────────
+    html+=`</tbody></table></div></div>`;
     html+=`<div id="rend-detalle"></div>`;
 
     el.innerHTML=html;
-
-    // Guardar datos para el detalle sin re-query
     window._REND_DATA={cuadsConMetricas,grupos,desde,hasta};
 
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">Error: ${e.message}</p></div>`;}
 }
 
-function kpiCard(label,valor,color){
-  return`<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:.875rem 1rem;text-align:center">
-    <div style="font-size:22px;font-weight:900;color:${color}">${valor??'—'}</div>
-    <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:3px">${label}</div>
-  </div>`;
-}
 
 function rendVerDetalle(cuadId,cuadNombre){
   const det=document.getElementById('rend-detalle');
@@ -6943,18 +7046,17 @@ function rendVerDetalle(cuadId,cuadNombre){
   if(!cuad){det.innerHTML='';return;}
   const m=cuad.m;
 
-  // Evolución: OTs completadas por día
+  // Evolución: grupos completados por día (por estado de grupo, no OT)
   const porDia={};
   cuad.grupos.forEach(g=>{
-    const dia=g.fecha_trabajo;
-    if(!dia)return;
-    if(!porDia[dia])porDia[dia]={dia,completadas:0,total:0};
-    (g.ordenes_trabajo||[]).forEach(o=>{
-      const est=o.estados_ot?.nombre||'';
-      if(est==='ELIMINADA_SISTEMA')return;
-      porDia[dia].total++;
-      if(est==='FINALIZADA_TECNICO'||est==='FINALIZADA')porDia[dia].completadas++;
-    });
+    const dia=g.fecha_trabajo;if(!dia)return;
+    if(!porDia[dia])porDia[dia]={dia,completadas:0,pendientes:0,total:0};
+    const activas=(g.ordenes_trabajo||[]).filter(o=>o.estados_ot?.nombre!=='ELIMINADA_SISTEMA');
+    if(!activas.length)return;
+    const estG=_estadoGrupoRend(activas);
+    porDia[dia].total++;
+    if(estG==='COMPLETADO'||estG==='MIXTO')porDia[dia].completadas++;
+    else if(estG==='PENDIENTE')porDia[dia].pendientes++;
   });
   const dias=Object.values(porDia).sort((a,b)=>a.dia.localeCompare(b.dia));
 
