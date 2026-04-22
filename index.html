@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v187</title>
+<title>FG Gestión OTs v190</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V187</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V190</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v187</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v190</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -683,6 +683,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div class="ntab active" onclick="stockCuadTab('stock',this)">Stock actual</div>
     <div class="ntab" onclick="stockCuadTab('movimientos',this)">Movimientos</div>
     <div class="ntab" onclick="stockCuadTab('reporte',this)">Reporte por cliente</div>
+    <div class="ntab" onclick="stockCuadTab('cruzamiento',this)">📋 Cruzamiento</div>
   </div>
   <!-- Filtros de fecha (visibles en movimientos y reporte) -->
   <div id="cuad-fecha-filtros" style="display:none;margin-bottom:1rem;gap:8px;align-items:center;flex-wrap:wrap">
@@ -696,6 +697,8 @@ tr:hover td{background:rgba(37,99,235,.02)}
     </div>
     <button class="btn btn-sm" onclick="cuadFechaHoy()">Hoy</button>
     <button class="btn btn-sm" onclick="cuadFechaSemana()">Esta semana</button>
+    <button class="btn btn-sm" onclick="cuadFechaMes()">Este mes</button>
+    <button class="btn btn-sm" onclick="cuadFechaAnio()">Este año</button>
   </div>
 
   <!-- BARRA DE CARRITO — visible cuando hay items pendientes -->
@@ -6665,11 +6668,13 @@ function stockCuadTab(tab, el){
   document.querySelectorAll('#stock-cuad-nav .ntab').forEach(t=>t.classList.remove('active'));
   if(el)el.classList.add('active');
   const filtros=document.getElementById('cuad-fecha-filtros');
-  filtros.style.display=(tab==='movimientos'||tab==='reporte')?'flex':'none';
+  filtros.style.display=(tab==='movimientos'||tab==='reporte'||tab==='cruzamiento')?'flex':'none';
   // Botones de asignación solo en tab Stock actual
   const cuadId=document.getElementById('cuad-selector').value;
   document.getElementById('cuad-asignar-btn').style.display=(tab==='stock'&&cuadId)?'':'none';
   document.getElementById('cuad-autocomplete-btn').style.display=(tab==='stock'&&cuadId)?'':'none';
+  // En cruzamiento el filtro de fecha aplica solo al sub-tab historial — ocultar por defecto
+  if(tab==='cruzamiento') filtros.style.display='none';
   renderStockCuadTab();
 }
 
@@ -6688,10 +6693,26 @@ function cuadFechaSemana(){
   renderStockCuadTab();
 }
 
+function cuadFechaMes(){
+  const hoy=new Date();
+  const prim=new Date(hoy.getFullYear(),hoy.getMonth(),1);
+  document.getElementById('cuad-fecha-desde').value=prim.toISOString().slice(0,10);
+  document.getElementById('cuad-fecha-hasta').value=hoy.toISOString().slice(0,10);
+  renderStockCuadTab();
+}
+
+function cuadFechaAnio(){
+  const hoy=new Date();
+  document.getElementById('cuad-fecha-desde').value=hoy.getFullYear()+'-01-01';
+  document.getElementById('cuad-fecha-hasta').value=hoy.toISOString().slice(0,10);
+  renderStockCuadTab();
+}
+
 function renderStockCuadTab(){
   if(STOCK_CUAD_TAB==='stock') renderStockCuadrillaSeleccionada();
   else if(STOCK_CUAD_TAB==='movimientos') renderMovimientosCuadrilla();
   else if(STOCK_CUAD_TAB==='reporte') renderReporteClientesCuadrilla();
+  else if(STOCK_CUAD_TAB==='cruzamiento') renderCruzamientoStock();
 }
 
 async function renderMovimientosCuadrilla(){
@@ -6715,8 +6736,8 @@ async function renderMovimientosCuadrilla(){
       porDia[dia].push(m);
     });
 
-    const tipoLabel={CONSUMO_OT:'🔩 Consumo OT',REPARTO_CUADRILLA:'📦 Entrada depósito',ENTRADA_DEPOSITO:'📥 Entrada Gigared'};
-    const tipoColor={CONSUMO_OT:'#dc2626',REPARTO_CUADRILLA:'#16a34a',ENTRADA_DEPOSITO:'#2563eb'};
+    const tipoLabel={CONSUMO_OT:'🔩 Consumo OT',REPARTO_CUADRILLA:'📦 Entrada depósito',ENTRADA_DEPOSITO:'📥 Entrada Gigared',AJUSTE_VALIDACION:'⚙️ Ajuste admin',AJUSTE_TECNICO:'🔧 Ajuste técnico',DEVOLUCION:'↩ Devolución',FALTANTE:'⚠️ Faltante',AJUSTE_INVENTARIO:'📋 Inventario'};
+    const tipoColor={CONSUMO_OT:'#dc2626',REPARTO_CUADRILLA:'#16a34a',ENTRADA_DEPOSITO:'#2563eb',AJUSTE_VALIDACION:'#d97706',AJUSTE_TECNICO:'#d97706',DEVOLUCION:'#64748b',FALTANTE:'#dc2626',AJUSTE_INVENTARIO:'#7c3aed'};
 
     let html='';
     // Totales del período
@@ -6731,7 +6752,7 @@ async function renderMovimientosCuadrilla(){
         totales[nom].entrada+=Math.abs(m.cantidad);
       else if(t==='FALTANTE')
         totales[nom].faltante+=Math.abs(m.cantidad);
-      // otros tipos: solo aparecen en el detalle, no suman en resumen
+      // AJUSTE_INVENTARIO y otros: solo en detalle, no suman en resumen de consumo/entrada
     });
 
     html+=`<div class="card" style="margin-bottom:1rem">
@@ -6782,6 +6803,337 @@ async function renderMovimientosCuadrilla(){
 
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="card" style="color:#dc2626">${e.message}</div>`;}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MÓDULO CRUZAMIENTO DE STOCK
+// ═══════════════════════════════════════════════════════════════════
+
+let _CRUZ_TAB='nuevo'; // 'nuevo' | 'historial'
+let _CRUZ_DECL={}; // {material_id: cantidad_declarada}
+
+function renderCruzamientoStock(){
+  const cuadId=document.getElementById('cuad-selector').value;
+  const el=document.getElementById('stock-cuad-tabla');
+  if(!cuadId){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div style="color:#94a3b8">Seleccioná una cuadrilla para cruzar stock</div></div>';
+    return;
+  }
+  // Sub-tabs internos
+  el.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:1rem">
+    <button id="cruz-tab-nuevo" class="btn btn-sm ${_CRUZ_TAB==='nuevo'?'btn-primary':''}" onclick="cruzSubTab('nuevo')">Nuevo cruzamiento</button>
+    <button id="cruz-tab-hist" class="btn btn-sm ${_CRUZ_TAB==='historial'?'btn-primary':''}" onclick="cruzSubTab('historial')">📊 Historial</button>
+  </div>
+  <div id="cruz-content"></div>`;
+  if(_CRUZ_TAB==='nuevo') renderNuevoCruzamiento();
+  else renderHistorialCruzamiento();
+}
+
+function cruzSubTab(tab){
+  _CRUZ_TAB=tab;
+  const filtros=document.getElementById('cuad-fecha-filtros');
+  if(filtros) filtros.style.display=(tab==='historial')?'flex':'none';
+  renderCruzamientoStock();
+}
+
+async function renderNuevoCruzamiento(){
+  const cuadId=document.getElementById('cuad-selector').value;
+  const el=document.getElementById('cruz-content');
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    const [mats, sc]=await Promise.all([
+      sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[],
+      sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[]
+    ]);
+    const scMap={};sc.forEach(s=>{scMap[s.material_id]=s.cantidad||0;});
+    // Inicializar declarados vacíos si no existían
+    mats.forEach(m=>{if(!(_CRUZ_DECL[m.id]!==undefined))_CRUZ_DECL[m.id]=null;});
+
+    let html=`<div class="card" style="margin-bottom:1rem;border-color:#e9d5ff;background:#faf5ff">
+      <div class="card-title" style="color:#7c3aed">📋 Cruzamiento de stock</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:.75rem">Ingresá el stock real que trajo la cuadrilla. Los campos vacíos se ignoran (sin cambio).</div>
+      <div class="ot-table-wrap"><table class="ot-table">
+        <thead><tr>
+          <th>Material</th><th style="text-align:right">Sistema</th>
+          <th style="text-align:center">Declarado</th><th style="text-align:right">Diferencia</th>
+        </tr></thead><tbody>`;
+
+    mats.forEach(m=>{
+      const sis=scMap[m.id]||0;
+      const dec=_CRUZ_DECL[m.id];
+      const dif=(dec!==null&&dec!==undefined)?dec-sis:null;
+      const difColor=dif===null?'#94a3b8':dif>0?'#16a34a':dif<0?'#dc2626':'#94a3b8';
+      const difTxt=dif===null?'—':dif===0?'Sin diferencia':(dif>0?'+'+dif:String(dif))+' '+m.unidad;
+      html+=`<tr>
+        <td style="font-size:12px;font-weight:600">${m.nombre}<span style="font-size:10px;color:#94a3b8;margin-left:4px">${m.unidad}</span></td>
+        <td style="text-align:right;font-weight:700;color:${sis>0?'#1e3a5f':'#94a3b8'}">${sis}</td>
+        <td style="text-align:center">
+          <input type="number" inputmode="numeric" min="0" step="1"
+            id="cruz-inp-${m.id}" value="${dec!==null&&dec!==undefined?dec:''}"
+            placeholder="—"
+            oninput="cruzSetDeclarado(${m.id},${sis},this.value)"
+            style="width:70px;padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>
+        </td>
+        <td style="text-align:right;font-weight:700;color:${difColor};white-space:nowrap">${difTxt}</td>
+      </tr>`;
+    });
+
+    html+=`</tbody></table></div></div>
+    <div class="card" style="margin-bottom:1rem">
+      <label style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:6px">Motivo del cruzamiento *</label>
+      <input type="text" id="cruz-motivo" placeholder="Ej: Conteo al volver al depósito, corrección post-turno..."
+        value="${document.getElementById('cruz-motivo')?.value||''}"
+        oninput="cruzActualizarBoton()"
+        style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit"/>
+    </div>
+    <div id="cruz-resumen-prev" style="margin-bottom:.75rem"></div>
+    <button id="cruz-btn-confirm" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:700" onclick="confirmarCruzamiento()" disabled>
+      Confirmar cruzamiento
+    </button>`;
+
+    el.innerHTML=html;
+    cruzActualizarBoton();
+  }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
+}
+
+function cruzSetDeclarado(matId, stockSistema, val){
+  const n=val===''?null:Math.max(0,parseInt(val,10)||0);
+  _CRUZ_DECL[matId]=n;
+  // Actualizar diferencia en tiempo real en la misma fila
+  const dif=(n!==null)?n-stockSistema:null;
+  const difColor=dif===null?'#94a3b8':dif>0?'#16a34a':dif<0?'#dc2626':'#94a3b8';
+  // Buscar la celda de diferencia en la misma fila del input
+  const inp=document.getElementById('cruz-inp-'+matId);
+  if(inp){
+    const td=inp.closest('tr')?.cells[3];
+    if(td){
+      const mat=document.querySelector('#cruz-inp-'+matId)?.closest('tr')?.cells[0]?.textContent?.trim().split('\n')[0]||'';
+      const unidad=inp.closest('tr')?.cells[0]?.querySelector('span')?.textContent||'';
+      td.style.color=difColor;
+      td.style.fontWeight='700';
+      td.textContent=dif===null?'—':dif===0?'Sin diferencia':(dif>0?'+'+dif:String(dif))+' '+unidad;
+    }
+  }
+  cruzActualizarBoton();
+}
+
+function cruzActualizarBoton(){
+  const motivo=(document.getElementById('cruz-motivo')?.value||'').trim();
+  const diffs=Object.entries(_CRUZ_DECL).filter(([,v])=>v!==null&&v!==undefined);
+  // Calcular diferencias reales (excluir los que son iguales al sistema)
+  // Necesitamos saber el sistema — está en el input data, usamos lo que tenemos
+  const hayDifs=diffs.some(([id,dec])=>{
+    const inp=document.getElementById('cruz-inp-'+id);
+    // La fila tiene en cells[1] el stock del sistema
+    const sis=parseInt(inp?.closest('tr')?.cells[1]?.textContent||'0')||0;
+    return dec!==sis;
+  });
+  const btn=document.getElementById('cruz-btn-confirm');
+  if(!btn)return;
+  btn.disabled=!(hayDifs&&motivo);
+  // Resumen preview
+  const prev=document.getElementById('cruz-resumen-prev');
+  if(!prev)return;
+  if(hayDifs&&motivo){
+    const cambios=diffs.filter(([id,dec])=>{
+      const inp=document.getElementById('cruz-inp-'+id);
+      const sis=parseInt(inp?.closest('tr')?.cells[1]?.textContent||'0')||0;
+      return dec!==sis;
+    });
+    prev.innerHTML=`<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;font-size:13px;color:#15803d">
+      ✅ Se van a ajustar <strong>${cambios.length} material${cambios.length!==1?'es':''}</strong>.
+      Se actualizará el stock y quedará registrado en el historial.
+    </div>`;
+  }else{
+    prev.innerHTML='';
+  }
+}
+
+async function confirmarCruzamiento(){
+  const cuadId=document.getElementById('cuad-selector').value;
+  const motivo=(document.getElementById('cruz-motivo')?.value||'').trim();
+  if(!cuadId||!motivo)return;
+
+  // Calcular diferencias reales
+  const cambios=[];
+  for(const [id,dec] of Object.entries(_CRUZ_DECL)){
+    if(dec===null||dec===undefined)continue;
+    const inp=document.getElementById('cruz-inp-'+id);
+    const sis=parseInt(inp?.closest('tr')?.cells[1]?.textContent||'0')||0;
+    if(dec===sis)continue;
+    const nomEl=inp?.closest('tr')?.cells[0];
+    const nom=(nomEl?.childNodes[0]?.textContent||'Material').trim();
+    const unidad=(nomEl?.querySelector('span')?.textContent||'').trim();
+    cambios.push({matId:parseInt(id),dec,sis,dif:dec-sis,nom,unidad});
+  }
+
+  if(!cambios.length){alert('No hay diferencias para confirmar.');return;}
+
+  const resumenTxt=cambios.map(c=>`• ${c.nom}: ${c.sis} → ${c.dec} (${c.dif>0?'+'+c.dif:c.dif} ${c.unidad})`).join('\n');
+  if(!confirm(`Vas a ajustar ${cambios.length} material${cambios.length!==1?'es':''}:\n\n${resumenTxt}\n\n¿Confirmar?`))return;
+
+  const btn=document.getElementById('cruz-btn-confirm');
+  if(btn){btn.disabled=true;btn.textContent='Guardando...';}
+
+  const fmtFecha=new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  let ok=0,sinHist=0,errores=[];
+
+  for(const c of cambios){
+    let stockOk=false;
+    try{
+      const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${c.matId}`)||[];
+      if(sc.length){
+        await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${c.matId}`,{cantidad:c.dec});
+        stockOk=true;
+      }else{
+        // No existe registro — crear
+        await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:c.matId,cantidad:c.dec});
+        stockOk=true;
+      }
+    }catch(e){errores.push(c.nom+' (stock: '+e.message+')');continue;}
+
+    if(stockOk){
+      try{
+        const obs=`Inventario físico ${fmtFecha} — Usuario: ${CU.nombre||CU.email}. Sistema: ${c.sis} → Declarado: ${c.dec}. Motivo: ${motivo}`;
+        await sbPost('movimientos_stock',{
+          tipo_movimiento:'AJUSTE_INVENTARIO',
+          material_id:c.matId,
+          cuadrilla_id:parseInt(cuadId),
+          cantidad:c.dif, // positivo si subió, negativo si bajó
+          obs
+        });
+        ok++;
+      }catch(e){sinHist++;ok++;}// stock OK pero sin historial
+    }
+  }
+
+  // Limpiar declarados
+  Object.keys(_CRUZ_DECL).forEach(k=>{_CRUZ_DECL[k]=null;});
+
+  // Mensaje resultado
+  let msg=`✅ ${ok} material${ok!==1?'es':''} ajustado${ok!==1?'s':''} correctamente.`;
+  if(sinHist)msg+=`\n⚠️ ${sinHist} material${sinHist!==1?'es':''} ajustado${sinHist!==1?'s':''} pero sin historial registrado — avisá al administrador.`;
+  if(errores.length)msg+=`\n❌ No se pudo ajustar: ${errores.join(', ')}`;
+  alert(msg);
+
+  // Volver al sub-tab historial para ver el resultado
+  _CRUZ_TAB='historial';
+  renderCruzamientoStock();
+}
+
+async function renderHistorialCruzamiento(){
+  const cuadId=document.getElementById('cuad-selector').value;
+  const el=document.getElementById('cruz-content');
+  const desde=document.getElementById('cuad-fecha-desde')?.value||'';
+  const hasta=document.getElementById('cuad-fecha-hasta')?.value||'';
+
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+
+  // Mostrar filtros de fecha
+  const filtros=document.getElementById('cuad-fecha-filtros');
+  if(filtros)filtros.style.display='flex';
+  // Setear rango por defecto si está vacío (mes actual)
+  if(!desde||!hasta){
+    const hoy=new Date();
+    const prim=new Date(hoy.getFullYear(),hoy.getMonth(),1);
+    document.getElementById('cuad-fecha-desde').value=prim.toISOString().slice(0,10);
+    document.getElementById('cuad-fecha-hasta').value=hoy.toISOString().slice(0,10);
+  }
+  const desdeVal=document.getElementById('cuad-fecha-desde').value;
+  const hastaVal=document.getElementById('cuad-fecha-hasta').value;
+
+  try{
+    const movs=await sbGet('movimientos_stock',
+      `?cuadrilla_id=eq.${cuadId}&tipo_movimiento=eq.AJUSTE_INVENTARIO`+
+      `&created_at=gte.${desdeVal}T00:00:00&created_at=lte.${hastaVal}T23:59:59`+
+      `&select=id,cantidad,obs,created_at,catalogo_materiales(nombre,unidad)`+
+      `&order=created_at.desc&limit=500`
+    )||[];
+
+    if(!movs.length){
+      el.innerHTML='<div class="card" style="color:#64748b;text-align:center;padding:2rem">Sin cruzamientos en el período seleccionado.</div>';
+      return;
+    }
+
+    // ── MÉTRICAS DEL PERÍODO ─────────────────────────────────────────
+    // Identificar cruzamientos únicos por fecha+usuario (mismo obs = mismo cruzamiento)
+    const cruzSet=new Set(movs.map(m=>{
+      const match=m.obs?.match(/Inventario físico (.+?) — Usuario/);
+      return match?match[1]:(m.created_at.slice(0,16));
+    }));
+    const cantCruzamientos=cruzSet.size;
+    const cantMateriales=new Set(movs.map(m=>m.catalogo_materiales?.nombre)).size;
+    const totalPos=movs.filter(m=>m.cantidad>0).reduce((s,m)=>s+m.cantidad,0);
+    const totalNeg=movs.filter(m=>m.cantidad<0).reduce((s,m)=>s+m.cantidad,0);
+    const neto=movs.reduce((s,m)=>s+m.cantidad,0);
+
+    const fmtRango=`${new Date(desdeVal+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})} al ${new Date(hastaVal+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})}`;
+
+    let html=`<div class="card" style="margin-bottom:1rem;border-color:#e9d5ff">
+      <div class="card-title" style="color:#7c3aed">📊 Resumen del período (${fmtRango})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-top:.5rem">
+        <div style="background:#f5f3ff;border-radius:10px;padding:.5rem .875rem;text-align:center">
+          <div style="font-size:20px;font-weight:800;color:#7c3aed">${cantCruzamientos}</div>
+          <div style="font-size:11px;color:#7c3aed;font-weight:600">Cruzamientos</div>
+        </div>
+        <div style="background:#f5f3ff;border-radius:10px;padding:.5rem .875rem;text-align:center">
+          <div style="font-size:20px;font-weight:800;color:#7c3aed">${cantMateriales}</div>
+          <div style="font-size:11px;color:#7c3aed;font-weight:600">Materiales ajustados</div>
+        </div>
+        <div style="background:#f0fdf4;border-radius:10px;padding:.5rem .875rem;text-align:center">
+          <div style="font-size:20px;font-weight:800;color:#16a34a">+${totalPos}</div>
+          <div style="font-size:11px;color:#16a34a;font-weight:600">Total a favor</div>
+        </div>
+        <div style="background:#fef2f2;border-radius:10px;padding:.5rem .875rem;text-align:center">
+          <div style="font-size:20px;font-weight:800;color:#dc2626">${totalNeg}</div>
+          <div style="font-size:11px;color:#dc2626;font-weight:600">Total en contra</div>
+        </div>
+        <div style="background:${neto>=0?'#f0fdf4':'#fef2f2'};border-radius:10px;padding:.5rem .875rem;text-align:center">
+          <div style="font-size:20px;font-weight:800;color:${neto>=0?'#16a34a':'#dc2626'}">${neto>=0?'+'+neto:neto}</div>
+          <div style="font-size:11px;color:${neto>=0?'#16a34a':'#dc2626'};font-weight:600">Neto</div>
+        </div>
+      </div>
+    </div>`;
+
+    // ── DETALLE POR MOVIMIENTO ────────────────────────────────────────
+    html+=`<div class="card">
+      <div class="card-title">Detalle de ajustes</div>
+      <div class="ot-table-wrap"><table class="ot-table">
+        <thead><tr>
+          <th>Fecha y hora</th><th>Material</th>
+          <th style="text-align:right">Sistema</th>
+          <th style="text-align:right">Declarado</th>
+          <th style="text-align:right">Diferencia</th>
+          <th>Motivo</th>
+        </tr></thead><tbody>`;
+
+    movs.forEach(m=>{
+      const dt=new Date(m.created_at);
+      const fmtDT=dt.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+
+        ' '+dt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+      const dif=m.cantidad;
+      const difColor=dif>0?'#16a34a':dif<0?'#dc2626':'#94a3b8';
+      const difTxt=(dif>0?'+'+dif:String(dif))+' '+(m.catalogo_materiales?.unidad||'');
+      // Parsear obs — formato controlado: "...Sistema: X → Declarado: Y. Motivo: Z"
+      const sisMatch=m.obs?.match(/Sistema:\s*(\d+)/);
+      const decMatch=m.obs?.match(/Declarado:\s*(\d+)/);
+      const motMatch=m.obs?.match(/Motivo:\s*(.+)$/);
+      const sisVal=sisMatch?sisMatch[1]:'—';
+      const decVal=decMatch?decMatch[1]:'—';
+      const motVal=motMatch?motMatch[1].trim():'—';
+      html+=`<tr>
+        <td style="font-size:11px;color:#64748b;white-space:nowrap">${fmtDT}</td>
+        <td style="font-size:12px;font-weight:600">${m.catalogo_materiales?.nombre||'?'}</td>
+        <td style="text-align:right;color:#64748b;font-size:12px">${sisVal}</td>
+        <td style="text-align:right;color:#1e3a5f;font-weight:700;font-size:12px">${decVal}</td>
+        <td style="text-align:right;font-weight:700;color:${difColor};white-space:nowrap">${difTxt}</td>
+        <td style="font-size:11px;color:#64748b;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${motVal.replace(/"/g,'')}">${motVal}</td>
+      </tr>`;
+    });
+
+    html+=`</tbody></table></div></div>`;
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
 
 async function renderReporteClientesCuadrilla(){
@@ -7404,7 +7756,7 @@ async function renderStock(tab){
               <option value="AJUSTE_TECNICO">Ajuste técnico</option>
               <option value="DEVOLUCION">Devolución</option>
               <option value="FALTANTE">⚠️ Faltante</option>
-              <option value="DEVOLUCION">Devolución</option>
+              <option value="AJUSTE_INVENTARIO">📋 Inventario (cruzamiento)</option>
             </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
@@ -7454,8 +7806,8 @@ async function aplicarFiltrosMov(){
     if(cuadId) query+='&cuadrilla_id=eq.'+cuadId;
 
     const d=await sbGet('movimientos_stock',query)||[];
-    const tc={ENTRADA_DEPOSITO:'b-green',REPARTO_CUADRILLA:'b-blue',CONSUMO_OT:'b-amber',AJUSTE_VALIDACION:'b-orange',AJUSTE_TECNICO:'b-orange',DEVOLUCION:'b-gray',FALTANTE:'b-red'};
-    const label={ENTRADA_DEPOSITO:'Entrada depósito',REPARTO_CUADRILLA:'Reparto cuadrilla',CONSUMO_OT:'Consumo OT',AJUSTE_VALIDACION:'Ajuste admin',AJUSTE_TECNICO:'Ajuste técnico',DEVOLUCION:'Devolución',FALTANTE:'⚠️ Faltante'};
+    const tc={ENTRADA_DEPOSITO:'b-green',REPARTO_CUADRILLA:'b-blue',CONSUMO_OT:'b-amber',AJUSTE_VALIDACION:'b-orange',AJUSTE_TECNICO:'b-orange',DEVOLUCION:'b-gray',FALTANTE:'b-red',AJUSTE_INVENTARIO:'b-blue'};
+    const label={ENTRADA_DEPOSITO:'Entrada depósito',REPARTO_CUADRILLA:'Reparto cuadrilla',CONSUMO_OT:'Consumo OT',AJUSTE_VALIDACION:'Ajuste admin',AJUSTE_TECNICO:'Ajuste técnico',DEVOLUCION:'Devolución',FALTANTE:'⚠️ Faltante',AJUSTE_INVENTARIO:'📋 Inventario'};
 
     if(!d.length){
       res.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div>Sin movimientos para los filtros seleccionados</div></div>';
