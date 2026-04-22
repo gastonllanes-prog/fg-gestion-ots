@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.17</title>
+<title>FG Cuadrillas v4.19</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.17 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.19 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -396,7 +396,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.17';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.19';
 
   // Cargar estados con fallback
   try{
@@ -424,7 +424,7 @@ async function cargarDatos(){
       sbGet('cuadrilla_tecnicos','?cuadrilla_id=eq.'+CUAD.id+'&activo=eq.true&select=tecnicos(nombre)'),
       sbGet('grupos_ot',
         '?fecha_trabajo=eq.'+hoy()+'&cuadrilla_id=eq.'+CUAD.id+'&eliminado=eq.false'
-        +'&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,hora_inicio_tec,hora_fin_tec,lat_inicio_tec,lng_inicio_tec,lat_fin_tec,lng_fin_tec,validado_admin_at,estado_id,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,localidad,nodo,telefono1,telefono2,lat_domicilio,lng_domicilio,fecha_gps_domicilio))'
+        +'&select=id,horario_visita,ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_gigared,hora_inicio_tec,hora_fin_tec,lat_inicio_tec,lng_inicio_tec,lat_fin_tec,lng_fin_tec,validado_admin_at,estado_id,eliminado,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,localidad,nodo,telefono1,telefono2,lat_domicilio,lng_domicilio,fecha_gps_domicilio))'
         +'&order=horario_visita.asc.nullslast'
       )
     ]);
@@ -795,6 +795,7 @@ async function abrirWizard(){
     var cuadId=CUAD.id;
     var ots=(GRUPO_ACTIVO.ordenes_trabajo||[]).filter(function(o){
       var e=o.estados_ot?o.estados_ot.nombre||'':'';
+      if(o.eliminado)return false; // excluir OTs eliminadas
       return e==='EN_PROCESO'||e==='ASIGNADA'||e==='PENDIENTE';
     }).sort(function(a,b){return ordenOT(a.tipo_item||a.tipo_tarea)-ordenOT(b.tipo_item||b.tipo_tarea);});
 
@@ -1899,14 +1900,18 @@ function modCambiarQty(tipo,id,delta){
     var v=Math.max(0,(MOD_OT.edMats[id]||0)+delta);
     MOD_OT.edMats[id]=v;
     var inp=document.getElementById('mod-mat-'+id);
-    if(inp)inp.value=v||'';
+    if(inp){inp.value=v||'';}
+    // Actualizar solo el botón − para no re-renderizar todo
+    var btnMenos=inp?inp.previousElementSibling:null;
+    if(btnMenos)btnMenos.disabled=(v<=0);
   }else{
     var v2=Math.max(0,(MOD_OT.edServs[id]||0)+delta);
     MOD_OT.edServs[id]=v2;
     var inp2=document.getElementById('mod-serv-'+id);
-    if(inp2)inp2.value=v2||'';
+    if(inp2){inp2.value=v2||'';}
+    var btnMenos2=inp2?inp2.previousElementSibling:null;
+    if(btnMenos2)btnMenos2.disabled=(v2<=0);
   }
-  renderModificacion();
 }
 
 function modSetQty(tipo,id,val){
@@ -1955,8 +1960,11 @@ async function guardarModificacion(){
           await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+matId,{cantidad:nueva});
           await sbPost('movimientos_stock',{tipo_movimiento:'AJUSTE_TECNICO',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:-dif,obs:'Corrección post-cierre OT '+otId});
           if(resultadoM<0){
-            try{await sbPost('movimientos_stock',{tipo_movimiento:'FALTANTE',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:Math.abs(resultadoM),obs:'Faltante corrección post-cierre OT '+otId+' — ajuste '+dif+', tenía '+stockActM});}catch(ef){console.warn('[FALTANTE]',ef.message);}
-            hayFaltMod=true;
+            var faltModNoGuard=false;
+            try{await sbPost('movimientos_stock',{tipo_movimiento:'FALTANTE',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:Math.abs(resultadoM),obs:'Faltante corrección post-cierre OT '+otId+' — ajuste '+dif+', tenía '+stockActM});}
+            catch(ef){console.warn('[FALTANTE]',ef.message);faltModNoGuard=true;}
+            if(faltModNoGuard)hayFaltMod='noGuard';
+            else if(hayFaltMod!=='noGuard')hayFaltMod=true;
           }
         }
       }catch(es){console.warn('[mod stock]',es.message);}
@@ -2003,7 +2011,8 @@ async function guardarModificacion(){
     await cargarGrupos();
     cerrarModificacion();
     var msgMod='✅ Cambios guardados correctamente.';
-    if(hayFaltMod)msgMod+='\n\n⚠️ Aviso: el material ajustado superó el stock disponible. Quedó registrado como faltante.';
+    if(hayFaltMod==='noGuard')msgMod+='\n\n⚠️ El material ajustado superó el stock disponible, pero NO se pudo registrar el faltante en el sistema. Informá al administrador.';
+    else if(hayFaltMod)msgMod+='\n\n⚠️ El material ajustado superó el stock disponible. Quedó registrado como faltante.';
     alert(msgMod);
 
   }catch(e){

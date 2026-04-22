@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v186</title>
+<title>FG Gestión OTs v187</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V186</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V187</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v186</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v187</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1657,7 +1657,7 @@ function irAConFiltro(tipo,isItem=false){
       document.getElementById('ot-fil-tipo').value=tipo;
       document.getElementById('ot-fil-item').value='';
     }
-    document.getElementById('ot-fil-estado').value='PENDIENTE';
+    // No forzar estado — irA() ya limpió todos los filtros, mostramos todos los estados
     buscarOTs();
   },100);
 }
@@ -10944,6 +10944,8 @@ async function otAPendienteAdmin(otId, grupoId){
       lng_fin_tec:null,
       tag:null,
       equipo_instalado:null,
+      serial_retirado:null,
+      modificada_post_cierre:false,
       validado_admin_at:null,
       validado_admin_por:null
     });
@@ -11053,7 +11055,7 @@ async function aprobarGrupo(grupoId){
 async function reasignarGrupo(grupoId, cuadNombreEnc){
   const cuadNombreOrig=decodeURIComponent(cuadNombreEnc||'');
   // Verificar estados — solo PENDIENTE o ASIGNADA
-  const ots=await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id,estados_ot(nombre)&eliminado=eq.false`)||[];
+  const ots=await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id,estado_id,estados_ot(id,nombre)&eliminado=eq.false`)||[];
   const PERM=['PENDIENTE','ASIGNADA'];
   const estadosBloq=[...new Set(ots.map(o=>o.estados_ot?.nombre||'').filter(e=>!PERM.includes(e)))];
   if(estadosBloq.length){
@@ -11096,7 +11098,7 @@ async function reasignarGrupo(grupoId, cuadNombreEnc){
     if(ots.length){
       await sbPost('historial_estados_ot',{
         ot_id:ots[0].id,
-        estado_nuevo_id:ots[0].estados_ot?.id||null,
+        estado_nuevo_id:ots[0].estado_id||null,
         observacion:`REASIGNADO: de "${cuadNombreOrig}" (id:${g.cuadrilla_id}) → "${nuevaCuad.nombre}" (id:${nuevaCuad.id}). Motivo: ${motivo.trim()}`,
         usuario_id:CU.id
       });
