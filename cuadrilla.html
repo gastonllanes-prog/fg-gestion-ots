@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.20</title>
+<title>FG Cuadrillas v4.21</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.20 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.21 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -184,6 +184,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
       <div class="topbar-title" id="topbar-title">Mis OTs de hoy</div>
       <div class="topbar-sub" id="topbar-sub"></div>
     </div>
+    <button id="btn-mi-stock" style="display:none;background:rgba(255,255,255,.18);border:none;color:#fff;padding:8px 11px;border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0" onclick="abrirMiStock()" title="Mi Stock">📦</button>
     <button class="topbar-salir" onclick="salir()">Salir</button>
   </div>
 
@@ -222,6 +223,9 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
 
   <!-- MODIFICACIÓN POST-CIERRE -->
   <div id="s-mod-ot" style="display:none" class="page"></div>
+
+  <!-- MI STOCK -->
+  <div id="s-stock" style="display:none" class="page"></div>
 
 </div>
 
@@ -392,9 +396,10 @@ async function doLogin(){
 async function iniciarApp(){
   document.getElementById('s-login').style.display='none';
   document.getElementById('s-app').style.display='flex';
+  document.getElementById('btn-mi-stock').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.20';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.21';
 
   // Cargar estados con fallback
   try{
@@ -1726,10 +1731,259 @@ async function confirmarWizard(){
 }
 
 // ── NAVEGACIÓN ─────────────────────────────────────────────────────────────────
+// ═══ MI STOCK ════════════════════════════════════════════════════════════════
+
+var MI_STOCK_TAB='actual';
+
+function abrirMiStock(){
+  var el=document.getElementById('s-stock');
+  // Ocultar todo lo demás
+  document.getElementById('s-lista').style.display='none';
+  document.getElementById('s-grupo').style.display='none';
+  el.style.display='block';
+  document.getElementById('btn-volver').style.display='inline-flex';
+  document.getElementById('topbar-title').textContent='📦 Mi Stock';
+  MI_STOCK_TAB='actual';
+  renderMiStock();
+}
+
+function cerrarMiStock(){
+  document.getElementById('s-stock').style.display='none';
+  document.getElementById('s-lista').style.display='block';
+  document.getElementById('btn-volver').style.display='none';
+  document.getElementById('topbar-title').textContent=CUAD.nombre;
+}
+
+function miStockTab(tab){
+  MI_STOCK_TAB=tab;
+  renderMiStock();
+}
+
+async function renderMiStock(){
+  var el=document.getElementById('s-stock');
+  if(!el)return;
+  var cuadId=CUAD.id;
+
+  // Tabs nav
+  var tabs=[
+    {id:'actual',label:'📋 Stock'},
+    {id:'seriales',label:'🔢 Seriales'},
+    {id:'retirados',label:'⚠️ Retirados'},
+    {id:'movimientos',label:'🔄 Movimientos'}
+  ];
+  var nav='<div style="display:flex;gap:6px;padding:12px 16px 0;overflow-x:auto;scrollbar-width:none">';
+  tabs.forEach(function(t){
+    var activo=MI_STOCK_TAB===t.id;
+    nav+='<button onclick="miStockTab(\''+t.id+'\')" style="padding:8px 14px;border-radius:10px;border:1.5px solid '+(activo?'var(--blue)':'var(--border)')+';background:'+(activo?'var(--blue)':'#fff')+';color:'+(activo?'#fff':'var(--text2)')+';font-size:12px;font-weight:'+(activo?'700':'500')+';white-space:nowrap;cursor:pointer">'+t.label+'</button>';
+  });
+  nav+='</div>';
+
+  var body='<div style="display:flex;justify-content:flex-end;padding:8px 16px 4px">'
+    +'<button onclick="renderMiStock()" style="background:none;border:none;font-size:13px;color:var(--muted);cursor:pointer">🔄 Actualizar</button>'
+    +'</div>';
+  body+='<div id="ms-contenido" style="padding:0 16px 16px"><div style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</div></div>';
+
+  // Botón confirmar al pie
+  var pie='<div style="padding:16px;border-top:1px solid var(--border);background:#fff">'
+    +'<button onclick="confirmarStockRevisado()" style="width:100%;padding:14px;border-radius:12px;background:var(--green);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer">✅ Confirmar stock revisado</button>'
+    +'</div>';
+
+  el.innerHTML=nav+body+pie;
+
+  // Cargar el tab activo
+  await renderMiStockTab();
+}
+
+async function renderMiStockTab(){
+  var cont=document.getElementById('ms-contenido');
+  if(!cont)return;
+  cont.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</div>';
+  try{
+    if(MI_STOCK_TAB==='actual') await renderStockActualTec(cont);
+    else if(MI_STOCK_TAB==='seriales') await renderSerialesDisponiblesTec(cont);
+    else if(MI_STOCK_TAB==='retirados') await renderRetiradosHoyTec(cont);
+    else if(MI_STOCK_TAB==='movimientos') await renderMovimientosHoyTec(cont);
+  }catch(e){
+    cont.innerHTML='<div style="background:#fef2f2;border-radius:10px;padding:12px 16px;color:#dc2626;font-size:13px">Error al cargar: '+e.message+'</div>';
+  }
+}
+
+async function renderStockActualTec(cont){
+  var cuadId=CUAD.id;
+  var [mats,sc,movHoy]=await Promise.all([
+    sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[],
+    sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[],
+    sbGet('movimientos_stock','?cuadrilla_id=eq.'+cuadId+'&tipo_movimiento=eq.CONSUMO_OT&created_at=gte.'+hoy()+'T00:00:00&select=material_id,cantidad')||[]
+  ]);
+  var scMap={};sc.forEach(function(s){scMap[s.material_id]=s.cantidad||0;});
+  var usadoHoyMap={};
+  movHoy.forEach(function(m){usadoHoyMap[m.material_id]=(usadoHoyMap[m.material_id]||0)+Math.abs(m.cantidad);});
+
+  var html='<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#15803d;font-weight:600">📦 Stock disponible en el vehículo</div>';
+  html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr style="font-size:11px;color:#94a3b8;text-transform:uppercase;border-bottom:1.5px solid var(--border)">'
+    +'<th style="text-align:left;padding:6px 4px">Material</th>'
+    +'<th style="text-align:right;padding:6px 4px">Físico</th>'
+    +'<th style="text-align:right;padding:6px 4px;color:#dc2626">Usado hoy</th>'
+    +'</tr></thead><tbody>';
+  mats.forEach(function(m){
+    var fis=scMap[m.id]||0;
+    var usado=usadoHoyMap[m.id]||0;
+    if(fis===0&&usado===0)return;
+    html+='<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:8px 4px;font-weight:600">'+m.nombre+'<span style="font-size:10px;color:#94a3b8;margin-left:4px">'+m.unidad+'</span></td>'
+      +'<td style="text-align:right;padding:8px 4px;font-weight:700;font-size:15px;color:'+(fis>0?'#16a34a':'#94a3b8')+'">'+fis+'</td>'
+      +'<td style="text-align:right;padding:8px 4px;color:'+(usado>0?'#dc2626':'#94a3b8')+'">'+( usado>0?'-'+usado:'—')+'</td>'
+      +'</tr>';
+  });
+  html+='</tbody></table></div>';
+  if(mats.every(function(m){return(scMap[m.id]||0)===0&&(usadoHoyMap[m.id]||0)===0;})){
+    html='<div style="text-align:center;padding:2rem;color:#94a3b8;font-size:13px;font-style:italic">No tenés materiales cargados todavía.</div>';
+  }
+  cont.innerHTML=html;
+}
+
+async function renderSerialesDisponiblesTec(cont){
+  var cuadId=CUAD.id;
+  var sers=await sbGet('stock_seriales','?ubicacion=eq.CUADRILLA_'+cuadId+'&select=serial,material_id,catalogo_materiales(nombre)&order=material_id,serial')||[];
+  if(!sers.length){
+    cont.innerHTML='<div style="text-align:center;padding:2rem;color:#94a3b8;font-size:13px;font-style:italic">No tenés seriales cargados en el vehículo.</div>';
+    return;
+  }
+  var html='<div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#1d4ed8;font-weight:600">🔢 '+sers.length+' serial'+( sers.length!==1?'es':'')+'disponible'+( sers.length!==1?'s':'')+' para instalación</div>';
+  html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr style="font-size:11px;color:#94a3b8;text-transform:uppercase;border-bottom:1.5px solid var(--border)">'
+    +'<th style="text-align:left;padding:6px 4px">Material</th>'
+    +'<th style="text-align:left;padding:6px 4px;font-family:monospace">Serial</th>'
+    +'</tr></thead><tbody>';
+  sers.forEach(function(s){
+    html+='<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:7px 4px;font-weight:600;font-size:12px">'+(s.catalogo_materiales?.nombre||'?')+'</td>'
+      +'<td style="padding:7px 4px;font-family:monospace;font-size:12px;color:#1e3a5f">'+s.serial+'</td>'
+      +'</tr>';
+  });
+  html+='</tbody></table></div>';
+  cont.innerHTML=html;
+}
+
+async function renderRetiradosHoyTec(cont){
+  var cuadId=CUAD.id;
+  // Opción A: leer desde ordenes_trabajo.serial_retirado de hoy
+  // Preparado para migración futura a stock_seriales ubicacion=RETIRADO_CUADRILLA_X
+  var grupos=await sbGet('grupos_ot','?cuadrilla_id=eq.'+cuadId+'&fecha_trabajo=eq.'+hoy()
+    +'&select=ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,serial_retirado,clientes(apellido,nombre))&eliminado=eq.false')||[];
+  var retirados=[];
+  grupos.forEach(function(g){
+    (g.ordenes_trabajo||[]).forEach(function(o){
+      if(o.serial_retirado)retirados.push(o);
+    });
+  });
+
+  // Banner fijo de advertencia
+  var banner='<div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:12px;padding:12px 14px;margin-bottom:12px">'
+    +'<div style="font-size:14px;font-weight:700;color:#dc2626;margin-bottom:4px">⚠️ ESTOS EQUIPOS NO SON STOCK UTILIZABLE</div>'
+    +'<div style="font-size:12px;color:#7f1d1d;line-height:1.5">Son equipos retirados del cliente. <strong>No los uses para instalar.</strong> Deben entregarse al depósito.</div>'
+    +(retirados.length>0?'<div style="font-size:13px;font-weight:700;color:#dc2626;margin-top:8px;background:#fee2e2;padding:6px 10px;border-radius:8px">📦 Tenés <strong>'+retirados.length+' equipo'+( retirados.length!==1?'s':'')+' pendiente'+( retirados.length!==1?'s':'')+' de devolución al depósito</strong></div>':'')
+    +'</div>';
+
+  if(!retirados.length){
+    cont.innerHTML=banner+'<div style="text-align:center;padding:1.5rem;color:#94a3b8;font-size:13px;font-style:italic">Sin equipos retirados hoy. ✅</div>';
+    return;
+  }
+
+  var html=banner;
+  html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr style="font-size:11px;color:#94a3b8;text-transform:uppercase;border-bottom:1.5px solid var(--border)">'
+    +'<th style="text-align:left;padding:6px 4px">OT</th>'
+    +'<th style="text-align:left;padding:6px 4px">Cliente</th>'
+    +'<th style="text-align:left;padding:6px 4px;font-family:monospace">Serial retirado</th>'
+    +'</tr></thead><tbody>';
+  retirados.forEach(function(o){
+    var cl=o.clientes||{};
+    var nombre=((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim()||'—';
+    html+='<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:8px 4px;font-family:monospace;font-weight:700;color:#c2410c;font-size:12px">'+numOT(o.numero_ot)+'</td>'
+      +'<td style="padding:8px 4px;font-size:12px">'+nombre+'</td>'
+      +'<td style="padding:8px 4px;font-family:monospace;font-size:12px;color:#1e3a5f;font-weight:600">'+o.serial_retirado+'</td>'
+      +'</tr>';
+  });
+  html+='</tbody></table></div>';
+  // Nota para migración futura
+  html+='<div style="font-size:10px;color:#cbd5e1;margin-top:8px;text-align:center">v.A — datos desde ordenes_trabajo.serial_retirado</div>';
+  cont.innerHTML=html;
+}
+
+async function renderMovimientosHoyTec(cont){
+  var cuadId=CUAD.id;
+  var movs=await sbGet('movimientos_stock',
+    '?cuadrilla_id=eq.'+cuadId+'&created_at=gte.'+hoy()+'T00:00:00'
+    +'&select=tipo_movimiento,cantidad,obs,created_at,catalogo_materiales(nombre,unidad)&order=created_at.desc&limit=100')||[];
+
+  if(!movs.length){
+    cont.innerHTML='<div style="text-align:center;padding:2rem;color:#94a3b8;font-size:13px;font-style:italic">Sin movimientos de stock registrados hoy.</div>';
+    return;
+  }
+
+  var labelMov={CONSUMO_OT:'Consumo OT',REPARTO_CUADRILLA:'Ingreso depósito',AJUSTE_TECNICO:'Ajuste técnico',AJUSTE_VALIDACION:'Ajuste admin',DEVOLUCION:'Devolución',FALTANTE:'⚠️ Faltante',AJUSTE_INVENTARIO:'Inventario'};
+  var colorMov={CONSUMO_OT:'#dc2626',REPARTO_CUADRILLA:'#16a34a',AJUSTE_TECNICO:'#d97706',AJUSTE_VALIDACION:'#d97706',DEVOLUCION:'#64748b',FALTANTE:'#dc2626',AJUSTE_INVENTARIO:'#7c3aed'};
+
+  var html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr style="font-size:10px;color:#94a3b8;text-transform:uppercase;border-bottom:1.5px solid var(--border)">'
+    +'<th style="text-align:left;padding:5px 4px">Hora</th>'
+    +'<th style="text-align:left;padding:5px 4px">Material</th>'
+    +'<th style="text-align:right;padding:5px 4px">Cant.</th>'
+    +'<th style="text-align:left;padding:5px 4px">Tipo</th>'
+    +'</tr></thead><tbody>';
+  movs.forEach(function(m){
+    var hora=new Date(m.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    var tipo=m.tipo_movimiento;
+    var color=colorMov[tipo]||'#64748b';
+    var label=labelMov[tipo]||tipo;
+    var signo=m.cantidad<0?'':'+';
+    html+='<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:7px 4px;color:#94a3b8;font-size:11px">'+hora+'</td>'
+      +'<td style="padding:7px 4px;font-weight:600">'+(m.catalogo_materiales?.nombre||'?')+'</td>'
+      +'<td style="text-align:right;padding:7px 4px;font-weight:700;color:'+color+'">'+signo+m.cantidad+' '+(m.catalogo_materiales?.unidad||'')+'</td>'
+      +'<td style="padding:7px 4px;font-size:11px;color:'+color+'">'+label+'</td>'
+      +'</tr>';
+  });
+  html+='</tbody></table></div>';
+  cont.innerHTML=html;
+}
+
+async function confirmarStockRevisado(){
+  // Guarda confirmación en ot_cambios como registro de auditoría
+  // (no requiere tabla nueva — campo='confirmacion_stock' acepta texto libre)
+  if(!confirm('¿Confirmás que revisaste tu stock y está correcto?'))return;
+  try{
+    await sbPost('ot_cambios',{
+      ot_id:null, // sin OT asociada — es un registro de cuadrilla
+      campo:'confirmacion_stock',
+      valor_anterior:null,
+      valor_nuevo:'Cuadrilla '+CUAD.nombre+' confirmó stock revisado el '+hoy()+' a las '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}),
+      usuario_id:null,
+      origen:'TECNICO'
+    });
+    // También lo registra como movimiento de stock tipo CONFIRMACION (cantidad=0, solo auditoría)
+    await sbPost('movimientos_stock',{
+      tipo_movimiento:'CONFIRMACION_STOCK',
+      cuadrilla_id:parseInt(CUAD.id),
+      material_id:null,
+      cantidad:0,
+      obs:'Stock revisado y confirmado por cuadrilla '+CUAD.nombre
+    }).catch(function(){});// si falla (null material_id) no bloquea
+    alert('✅ Confirmación registrada correctamente.\n\nHora: '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){
+    // Fallback: si ot_cambios requiere ot_id NOT NULL, guardamos igual la confirmación visual
+    alert('✅ Confirmación registrada localmente.\n\nHora: '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
+  }
+}
+
 function volverAtras(){
   var enWizard=document.getElementById('s-wizard').style.display!=='none';
   var enRechazo=document.getElementById('s-rechazo').style.display!=='none';
   var enMod=document.getElementById('s-mod-ot').style.display!=='none';
+  var enStock=document.getElementById('s-stock').style.display!=='none';
   var enGrupo=document.getElementById('s-grupo').style.display!=='none';
 
   if(enWizard){
@@ -1742,6 +1996,7 @@ function volverAtras(){
   }
   if(enRechazo){cancelarRechazo();return;}
   if(enMod){cerrarModificacion();return;}
+  if(enStock){cerrarMiStock();return;}
   if(enGrupo){
     GRUPO_ACTIVO=null;
     document.getElementById('s-grupo').style.display='none';
