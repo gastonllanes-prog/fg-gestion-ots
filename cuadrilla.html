@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.19</title>
+<title>FG Cuadrillas v4.20</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.19 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.20 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -276,24 +276,22 @@ var TIPO_LABELS={BASICA:'📶 Instalación',ONU:'📶 ONU',CABLEMODEM:'📶 Cabl
   RECONEXION:'🔁 Reconexión',RECONEXION_EQUIPO:'🔁 Reconexión + eq.',
   REPARACION:'🔧 Reparación',DESCONEXION:'❌ Desconexión',CAMBIO_DOMICILIO:'🏠 Cambio domicilio'};
 
-var WHATSAPP_TEMPLATES={
-  INSTALACION:function(n,d){return'Hola '+n+', te escribimos de la contratista de Gigared para coordinar la instalación de tu servicio.'+(d?' Tu dirección es: '+d+'.' :'')+' ¿Es correcta? ¿Qué horario te queda mejor?';},
-  REPARACION:function(n,d){return'Hola '+n+', te escribimos de la contratista de Gigared por tu solicitud técnica.'+(d?' Tu dirección es: '+d+'.' :'')+' ¿En qué horario podemos pasar?';},
-  CAMBIO_DOMICILIO:function(n,d){return'Hola '+n+', te escribimos de la contratista de Gigared para coordinar tu cambio de domicilio.'+(d?' Tu dirección es: '+d+'.' :'')+' ¿Qué disponibilidad tenés?';},
-  ADICIONAL:function(n,d){return'Hola '+n+', te escribimos de la contratista de Gigared para coordinar la gestión solicitada.'+(d?' Tu dirección es: '+d+'.' :'')+' ¿Qué horario te queda cómodo?';},
-  GENERICO:function(n,d){return'Hola '+n+', te escribimos de la contratista de Gigared.'+(d?' Tu dirección es: '+d+'.' :'')+' ¿Podemos coordinar?';}
+var WA_TPL_CUAD={
+  INSTALACION:function(n,d){return'Buen día '+n+', somos la contratista de Gigared. Tenemos su orden de servicio para hoy. ¿Se encuentra en su domicilio en este momento? Si puede, compartinos su ubicación para llegar más fácil.';},
+  REPARACION:function(n,d){return'Buen día '+n+', somos la contratista de Gigared. Tenemos su orden de servicio para hoy. ¿Se encuentra en su domicilio en este momento? Si puede, compartinos su ubicación para llegar más fácil.';},
+  CAMBIO_DOMICILIO:function(n,d){return'Buen día '+n+', somos la contratista de Gigared. Tenemos su orden de servicio para hoy. ¿Se encuentra en su domicilio en este momento? Si puede, compartinos su ubicación para llegar más fácil.';},
+  ADICIONAL:function(n,d){return'Buen día '+n+', somos la contratista de Gigared. Tenemos su orden de servicio para hoy. ¿Se encuentra en su domicilio en este momento? Si puede, compartinos su ubicación para llegar más fácil.';},
+  GENERICO:function(n,d){return'Buen día '+n+', somos la contratista de Gigared. Tenemos su orden de servicio para hoy. ¿Se encuentra en su domicilio en este momento? Si puede, compartinos su ubicación para llegar más fácil.';}
 };
 
 function buildWAMsg(ot,cl){
   var tipo=(ot&&(ot.tipo_item||ot.tipo_tarea))||'';
   if(tipo==='DESCONEXION')return'';
   var n=cl?(((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim()||'cliente'):'cliente';
-  var d='';
-  if(cl){if(cl.calle){d=cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'');}else if(cl.domicilio){d=cl.domicilio;}}
   var INST=['BASICA','ONU','CABLEMODEM','CM_EXISTENTE','CAMBIO_TECNOLOGIA','RECONEXION','RECONEXION_EQUIPO'];
   var ADIC=['BOCA_ADICIONAL','AGREGA_TV','TV_BOX','DECODIFICADOR','DECODIFICADOR_ADJ','SMART_CARD','GIGACAM'];
-  var tpl=tipo==='REPARACION'?WHATSAPP_TEMPLATES.REPARACION:tipo==='CAMBIO_DOMICILIO'?WHATSAPP_TEMPLATES.CAMBIO_DOMICILIO:INST.indexOf(tipo)>=0?WHATSAPP_TEMPLATES.INSTALACION:ADIC.indexOf(tipo)>=0?WHATSAPP_TEMPLATES.ADICIONAL:WHATSAPP_TEMPLATES.GENERICO;
-  return tpl(n,d);
+  var tpl=tipo==='REPARACION'?WA_TPL_CUAD.REPARACION:tipo==='CAMBIO_DOMICILIO'?WA_TPL_CUAD.CAMBIO_DOMICILIO:INST.indexOf(tipo)>=0?WA_TPL_CUAD.INSTALACION:ADIC.indexOf(tipo)>=0?WA_TPL_CUAD.ADICIONAL:WA_TPL_CUAD.GENERICO;
+  return tpl(n);
 }
 
 function normTel(raw){
@@ -396,7 +394,7 @@ async function iniciarApp(){
   document.getElementById('s-app').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.19';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.20';
 
   // Cargar estados con fallback
   try{

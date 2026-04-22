@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v190</title>
+<title>FG Gestión OTs v191</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V190</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V191</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v190</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v191</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -9900,29 +9900,34 @@ function consolidarTelefonos(tel1, tel2, textoLibre){
 
 const WHATSAPP_TEMPLATES = {
   INSTALACION: (nombre, dir) =>
-    'Hola ' + nombre + ', te escribimos de la contratista de Gigared para coordinar la instalación de tu servicio.'
-    + (dir ? ' Tu dirección es: ' + dir + '.' : '')
-    + ' ¿Es correcta? ¿Qué horario te queda mejor?',
+    'Hola ' + nombre + ', somos la contratista de Gigared. '
+    + 'Nos comunicamos por la orden de servicio para tu domicilio'
+    + (dir ? ': ' + dir : '') + '. '
+    + '¿Es correcta la dirección? ¿Qué horario te queda cómodo para la visita?',
 
   REPARACION: (nombre, dir) =>
-    'Hola ' + nombre + ', te escribimos de la contratista de Gigared por tu solicitud técnica.'
-    + (dir ? ' Tu dirección es: ' + dir + '.' : '')
-    + ' ¿Es correcta? ¿En qué horario podemos pasar o contactarte?',
+    'Hola ' + nombre + ', somos la contratista de Gigared. '
+    + 'Nos comunicamos por la orden de servicio para tu domicilio'
+    + (dir ? ': ' + dir : '') + '. '
+    + '¿Es correcta la dirección? ¿Qué horario te queda cómodo para la visita?',
 
   CAMBIO_DOMICILIO: (nombre, dir) =>
-    'Hola ' + nombre + ', te escribimos de la contratista de Gigared para coordinar tu cambio de domicilio.'
-    + (dir ? ' Tu dirección es: ' + dir + '.' : '')
-    + ' ¿Es correcta? ¿Qué disponibilidad tenés?',
+    'Hola ' + nombre + ', somos la contratista de Gigared. '
+    + 'Nos comunicamos por la orden de servicio para tu domicilio'
+    + (dir ? ': ' + dir : '') + '. '
+    + '¿Es correcta la dirección? ¿Qué horario te queda cómodo para la visita?',
 
   ADICIONAL: (nombre, dir) =>
-    'Hola ' + nombre + ', te escribimos de la contratista de Gigared para coordinar la gestión solicitada.'
-    + (dir ? ' Tu dirección es: ' + dir + '.' : '')
-    + ' ¿Es correcta? ¿Qué horario te queda cómodo?',
+    'Hola ' + nombre + ', somos la contratista de Gigared. '
+    + 'Nos comunicamos por la orden de servicio para tu domicilio'
+    + (dir ? ': ' + dir : '') + '. '
+    + '¿Es correcta la dirección? ¿Qué horario te queda cómodo para la visita?',
 
   GENERICO: (nombre, dir) =>
-    'Hola ' + nombre + ', te escribimos de la contratista de Gigared.'
-    + (dir ? ' Tu dirección es: ' + dir + '.' : '')
-    + ' ¿Podemos coordinar?',
+    'Hola ' + nombre + ', somos la contratista de Gigared. '
+    + 'Nos comunicamos por la orden de servicio para tu domicilio'
+    + (dir ? ': ' + dir : '') + '. '
+    + '¿Es correcta la dirección? ¿Qué horario te queda cómodo para la visita?',
 };
 
 /**
