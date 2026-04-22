@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v191</title>
+<title>FG Gestión OTs v192</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V191</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V192</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v191</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v192</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -664,6 +664,29 @@ tr:hover td{background:rgba(37,99,235,.02)}
       </div>
     </div>
   </div>
+</div>
+
+<!-- ═══ RENDIMIENTO ═══ -->
+<div id="s-rendimiento" style="display:none">
+  <div class="ph"><div class="ph-icon" style="background:#f0fdf4;color:#16a34a">📈</div><div><div class="ph-title">Rendimiento</div><div class="ph-sub">Performance y métricas de cuadrillas</div></div></div>
+  <div id="rend-filtros" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
+    <select id="rend-cuad" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;min-width:180px" onchange="renderRendimiento()">
+      <option value="">Todas las cuadrillas</option>
+    </select>
+    <div style="display:flex;align-items:center;gap:6px">
+      <label style="font-size:12px;color:#64748b;font-weight:600">Desde</label>
+      <input type="date" id="rend-desde" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px" onchange="renderRendimiento()"/>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <label style="font-size:12px;color:#64748b;font-weight:600">Hasta</label>
+      <input type="date" id="rend-hasta" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px" onchange="renderRendimiento()"/>
+    </div>
+    <button class="btn btn-sm" onclick="rendFechaHoy()">Hoy</button>
+    <button class="btn btn-sm" onclick="rendFechaSemana()">Esta semana</button>
+    <button class="btn btn-sm" onclick="rendFechaMes()">Este mes</button>
+    <button class="btn btn-sm" onclick="rendFechaAnio()">Este año</button>
+  </div>
+  <div id="rend-contenido"></div>
 </div>
 
 <div id="s-stock-cuad" style="display:none">
@@ -1608,6 +1631,7 @@ function construirMenu(){
   const items=[
     {sec:'Principal'},{id:'dashboard',icon:'📊',label:'Dashboard'},{id:'ots',icon:'📋',label:'Órdenes de trabajo'},
     {id:'asignar',icon:'📍',label:'Asignar OTs'},{id:'asignadas',icon:'✓',label:'Cerrar OTs'},{id:'validacion',icon:'✅',label:'Validación'},{id:'liquidacion',icon:'📊',label:'Rendición operativa'},
+    {id:'rendimiento',icon:'📈',label:'Rendimiento'},
     {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},{id:'logistic',icon:'📤',label:'Logistic'},
     {id:'tecnicos',icon:'👷',label:'Técnicos'},
     {sec:'Stock'},{id:'stock-cuad',icon:'🔧',label:'Stock Cuadrillas'},{id:'stock',icon:'📦',label:'Stock Depósito'},
@@ -1637,6 +1661,18 @@ function irA(sec){
     if(selT)selT.value='';
     if(selC)selC.value='';
     renderOTs();
+  },rendimiento:()=>{
+    // Poblar selector de cuadrillas si está vacío
+    const sel=document.getElementById('rend-cuad');
+    if(sel&&sel.options.length<=1){
+      CUADRILLAS.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;sel.appendChild(o);});
+    }
+    // Setear rango por defecto (mes actual)
+    const d=document.getElementById('rend-desde');
+    const h=document.getElementById('rend-hasta');
+    if(d&&!d.value){const hoy=new Date();d.value=new Date(hoy.getFullYear(),hoy.getMonth(),1).toISOString().slice(0,10);}
+    if(h&&!h.value){h.value=new Date().toISOString().slice(0,10);}
+    renderRendimiento();
   },asignar:renderAsignarOTs,asignadas:inicializarAsignadas,validacion:inicializarValidacion,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:()=>{renderClientes();},cuadrillas:()=>{renderCuadrillas();},logistic:renderLogistic,tecnicos:()=>{renderTecnicos();},'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
 }
@@ -6715,6 +6751,336 @@ function renderStockCuadTab(){
   else if(STOCK_CUAD_TAB==='cruzamiento') renderCruzamientoStock();
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// PANEL RENDIMIENTO
+// ═══════════════════════════════════════════════════════════════════
+
+function rendFechaHoy(){
+  const hoy=new Date().toISOString().slice(0,10);
+  document.getElementById('rend-desde').value=hoy;
+  document.getElementById('rend-hasta').value=hoy;
+  renderRendimiento();
+}
+function rendFechaSemana(){
+  const hoy=new Date();
+  const lunes=new Date(hoy);lunes.setDate(hoy.getDate()-hoy.getDay()+1);
+  document.getElementById('rend-desde').value=lunes.toISOString().slice(0,10);
+  document.getElementById('rend-hasta').value=hoy.toISOString().slice(0,10);
+  renderRendimiento();
+}
+function rendFechaMes(){
+  const hoy=new Date();
+  document.getElementById('rend-desde').value=new Date(hoy.getFullYear(),hoy.getMonth(),1).toISOString().slice(0,10);
+  document.getElementById('rend-hasta').value=hoy.toISOString().slice(0,10);
+  renderRendimiento();
+}
+function rendFechaAnio(){
+  const hoy=new Date();
+  document.getElementById('rend-desde').value=hoy.getFullYear()+'-01-01';
+  document.getElementById('rend-hasta').value=hoy.toISOString().slice(0,10);
+  renderRendimiento();
+}
+
+// Calcula métricas de una cuadrilla a partir de sus grupos
+function _calcMetricasCuadrilla(grupos){
+  const COMPLETOS=new Set(['FINALIZADA_TECNICO','FINALIZADA']);
+  const PEND=new Set(['PENDIENTE','ASIGNADA','EN_PROCESO']);
+  let asignadas=0,completadas=0,pendientes=0,rechazos=0,devueltas=0,modificadas=0;
+  const durs=[];
+  grupos.forEach(g=>{
+    (g.ordenes_trabajo||[]).forEach(o=>{
+      const est=o.estados_ot?.nombre||'';
+      if(est==='ELIMINADA_SISTEMA')return;
+      asignadas++;
+      if(COMPLETOS.has(est))completadas++;
+      else if(PEND.has(est))pendientes++;
+      else if(est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA')rechazos++;
+      else if(est==='DEVUELTA_GIGARED')devueltas++;
+      if(o.modificada_post_cierre)modificadas++;
+      // Duración real: solo si ambos timestamps existen y son válidos
+      if(o.hora_inicio_tec&&o.hora_fin_tec){
+        const ini=new Date(o.hora_inicio_tec);
+        const fin=new Date(o.hora_fin_tec);
+        const dur=Math.round((fin-ini)/60000);
+        if(dur>=0&&dur<=600)durs.push(dur); // excluir negativos y > 10 horas
+      }
+    });
+  });
+  const pctCumplimiento=asignadas>0?Math.round((completadas/asignadas)*100):null;
+  const duracionProm=durs.length>0?Math.round(durs.reduce((a,b)=>a+b,0)/durs.length):null;
+  return{
+    asignadas,completadas,pendientes,rechazos,devueltas,modificadas,
+    pctCumplimiento,duracionProm,
+    _score:null // reservado para fase 2: combinación de cumplimiento, velocidad y calidad
+  };
+}
+
+async function renderRendimiento(){
+  const el=document.getElementById('rend-contenido');
+  if(!el)return;
+  const desde=document.getElementById('rend-desde')?.value;
+  const hasta=document.getElementById('rend-hasta')?.value;
+  if(!desde||!hasta){el.innerHTML='<div class="card" style="color:#64748b;text-align:center;padding:2rem">Seleccioná un rango de fechas para ver el rendimiento.</div>';return;}
+  const cuadFil=document.getElementById('rend-cuad')?.value||'';
+  el.innerHTML='<div class="loading"><span class="spinner"></span>Cargando datos de rendimiento...</div>';
+  try{
+    let q='?fecha_trabajo=gte.'+desde+'&fecha_trabajo=lte.'+hasta
+      +'&eliminado=eq.false&cuadrilla_id=not.is.null'
+      +'&select=id,fecha_trabajo,cuadrilla_id,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,hora_inicio_tec,hora_fin_tec,modificada_post_cierre,estados_ot(nombre))&eliminado=eq.false'
+      +'&order=fecha_trabajo.asc&limit=2000';
+    if(cuadFil)q+='&cuadrilla_id=eq.'+cuadFil;
+    const grupos=await sbGet('grupos_ot',q)||[];
+
+    if(!grupos.length){
+      el.innerHTML='<div class="card" style="color:#64748b;text-align:center;padding:2rem">Sin datos para el período seleccionado.</div>';
+      return;
+    }
+    if(grupos.length===2000){
+      el.innerHTML='<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:8px 14px;font-size:12px;color:#92400e;margin-bottom:.75rem">⚠️ Se muestran los primeros 2000 grupos. Reducí el rango de fechas para mayor precisión.</div>'+el.innerHTML;
+    }
+
+    // Agrupar por cuadrilla
+    const porCuad={};
+    grupos.forEach(g=>{
+      const cid=g.cuadrilla_id;
+      if(!porCuad[cid])porCuad[cid]={id:cid,nombre:g.cuadrillas?.nombre||'Cuadrilla '+cid,grupos:[]};
+      porCuad[cid].grupos.push(g);
+    });
+    const cuads=Object.values(porCuad).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+
+    // Calcular métricas globales (suma de todas las cuadrillas)
+    const globalM=_calcMetricasCuadrilla(grupos);
+
+    let html='';
+
+    // ── KPIs GLOBALES ─────────────────────────────────────────────────
+    const fmtRango=desde===hasta
+      ?new Date(desde+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})
+      :new Date(desde+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' al '+new Date(hasta+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    const pctColor=globalM.pctCumplimiento===null?'#64748b':globalM.pctCumplimiento>=80?'#16a34a':globalM.pctCumplimiento>=60?'#d97706':'#dc2626';
+
+    html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;margin-bottom:1.25rem">
+      ${kpiCard('📋 Asignadas',globalM.asignadas,'#2563eb')}
+      ${kpiCard('✅ Completadas',globalM.completadas,'#16a34a')}
+      ${kpiCard('⏳ Pendientes',globalM.pendientes,globalM.pendientes>0?'#dc2626':'#94a3b8')}
+      ${kpiCard('% Cumplimiento',globalM.pctCumplimiento!==null?globalM.pctCumplimiento+'%':'—',pctColor)}
+      ${kpiCard('❌ Rechazos',globalM.rechazos,globalM.rechazos>0?'#d97706':'#94a3b8')}
+      ${kpiCard('⏱ Dur. prom.',globalM.duracionProm!==null?globalM.duracionProm+' min':'—','#7c3aed')}
+    </div>`;
+
+    // ── RANKING CUADRILLAS ────────────────────────────────────────────
+    html+=`<div class="card" style="margin-bottom:1.25rem">
+      <div class="card-title">🏆 Ranking de cuadrillas — ${fmtRango}</div>
+      <div style="margin-top:.75rem">`;
+
+    // Calcular métricas por cuadrilla y ordenar por % cumplimiento desc
+    const cuadsConMetricas=cuads.map(c=>({...c,m:_calcMetricasCuadrilla(c.grupos)}));
+    cuadsConMetricas.sort((a,b)=>(b.m.pctCumplimiento||0)-(a.m.pctCumplimiento||0));
+
+    const maxAsig=Math.max(...cuadsConMetricas.map(c=>c.m.asignadas),1);
+
+    html+=`<div style="overflow-x:auto"><table class="ot-table"><thead><tr>
+      <th>Cuadrilla</th>
+      <th style="text-align:right">Asig.</th>
+      <th style="text-align:right;color:#16a34a">Complet.</th>
+      <th style="text-align:right;color:#dc2626">Pend.</th>
+      <th style="text-align:right;color:#d97706">Rechazos</th>
+      <th style="text-align:right;color:#7c3aed">Modif.</th>
+      <th style="text-align:right;color:#64748b">Dur.prom.</th>
+      <th style="min-width:140px">% Cumplimiento</th>
+    </tr></thead><tbody>`;
+
+    cuadsConMetricas.forEach(c=>{
+      const m=c.m;
+      const pct=m.pctCumplimiento;
+      const barColor=pct===null?'#cbd5e1':pct>=80?'#16a34a':pct>=60?'#d97706':'#dc2626';
+      const pctW=pct!==null?pct:0;
+      const nomSafe=c.nombre.replace(/['"]/g,'');
+      html+=`<tr style="cursor:pointer" onclick="rendVerDetalle('${c.id}','${nomSafe}')">
+        <td style="font-weight:700;font-size:13px">🔧 ${c.nombre}</td>
+        <td style="text-align:right;font-size:13px">${m.asignadas}</td>
+        <td style="text-align:right;font-size:13px;font-weight:700;color:#16a34a">${m.completadas}</td>
+        <td style="text-align:right;font-size:13px;font-weight:700;color:${m.pendientes>0?'#dc2626':'#94a3b8'}">${m.pendientes}</td>
+        <td style="text-align:right;font-size:13px;color:${m.rechazos>0?'#d97706':'#94a3b8'}">${m.rechazos}</td>
+        <td style="text-align:right;font-size:13px;color:${m.modificadas>0?'#7c3aed':'#94a3b8'}">${m.modificadas}</td>
+        <td style="text-align:right;font-size:12px;color:#64748b">${m.duracionProm!==null?m.duracionProm+' min':'—'}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="flex:1;background:#f1f5f9;border-radius:99px;height:14px;overflow:hidden">
+              <div style="height:100%;width:${pctW}%;background:${barColor};border-radius:99px;transition:width .4s"></div>
+            </div>
+            <span style="font-size:12px;font-weight:700;color:${barColor};min-width:36px">${pct!==null?pct+'%':'—'}</span>
+          </div>
+        </td>
+      </tr>`;
+    });
+
+    html+=`</tbody></table></div></div></div>`;
+
+    // ── DETALLE (se inserta dinámicamente al hacer clic) ──────────────
+    html+=`<div id="rend-detalle"></div>`;
+
+    el.innerHTML=html;
+
+    // Guardar datos para el detalle sin re-query
+    window._REND_DATA={cuadsConMetricas,grupos,desde,hasta};
+
+  }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">Error: ${e.message}</p></div>`;}
+}
+
+function kpiCard(label,valor,color){
+  return`<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:.875rem 1rem;text-align:center">
+    <div style="font-size:22px;font-weight:900;color:${color}">${valor??'—'}</div>
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:3px">${label}</div>
+  </div>`;
+}
+
+function rendVerDetalle(cuadId,cuadNombre){
+  const det=document.getElementById('rend-detalle');
+  if(!det||!window._REND_DATA)return;
+  const {cuadsConMetricas,grupos,desde,hasta}=window._REND_DATA;
+  const cuad=cuadsConMetricas.find(c=>String(c.id)===String(cuadId));
+  if(!cuad){det.innerHTML='';return;}
+  const m=cuad.m;
+
+  // Evolución: OTs completadas por día
+  const porDia={};
+  cuad.grupos.forEach(g=>{
+    const dia=g.fecha_trabajo;
+    if(!dia)return;
+    if(!porDia[dia])porDia[dia]={dia,completadas:0,total:0};
+    (g.ordenes_trabajo||[]).forEach(o=>{
+      const est=o.estados_ot?.nombre||'';
+      if(est==='ELIMINADA_SISTEMA')return;
+      porDia[dia].total++;
+      if(est==='FINALIZADA_TECNICO'||est==='FINALIZADA')porDia[dia].completadas++;
+    });
+  });
+  const dias=Object.values(porDia).sort((a,b)=>a.dia.localeCompare(b.dia));
+
+  // Distribución por tipo
+  const porTipo={};
+  cuad.grupos.forEach(g=>{
+    (g.ordenes_trabajo||[]).forEach(o=>{
+      const est=o.estados_ot?.nombre||'';
+      if(est==='ELIMINADA_SISTEMA')return;
+      const tipo=o.tipo_item||o.tipo_tarea||'?';
+      if(!porTipo[tipo])porTipo[tipo]={tipo,total:0,comp:0,rechazo:0};
+      porTipo[tipo].total++;
+      if(est==='FINALIZADA_TECNICO'||est==='FINALIZADA')porTipo[tipo].comp++;
+      if(est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA')porTipo[tipo].rechazo++;
+    });
+  });
+  const tipos=Object.values(porTipo).sort((a,b)=>b.total-a.total);
+
+  // OTs de calidad — sospechosas + correcciones
+  const otsCal=[];
+  cuad.grupos.forEach(g=>{
+    (g.ordenes_trabajo||[]).forEach(o=>{
+      const est=o.estados_ot?.nombre||'';
+      const flags=[];
+      if(o.modificada_post_cierre)flags.push('✏️ Corregida post-cierre');
+      if(o.hora_inicio_tec&&o.hora_fin_tec){
+        const dur=Math.round((new Date(o.hora_fin_tec)-new Date(o.hora_inicio_tec))/60000);
+        if(dur>=0&&dur<5)flags.push('⚡ Duración '+dur+' min (sospechosa)');
+      }
+      if(flags.length)otsCal.push({ot:o,flags,fecha:g.fecha_trabajo});
+    });
+  });
+
+  // Gráfico SVG de líneas — evolución temporal
+  const svgHtml=dias.length>1?(()=>{
+    const W=500,H=120,PAD=30;
+    const maxV=Math.max(...dias.map(d=>d.total),1);
+    const pts=(arr,key)=>arr.map((d,i)=>{
+      const x=PAD+i*(W-PAD*2)/(arr.length-1||1);
+      const y=H-PAD-(d[key]/maxV)*(H-PAD*2);
+      return`${x},${y}`;
+    }).join(' ');
+    const fmtDia=d=>new Date(d+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+    const stepX=Math.max(1,Math.floor(dias.length/6));
+    const xLabels=dias.filter((_,i)=>i%stepX===0||i===dias.length-1).map((d,_,arr)=>{
+      const idx=dias.indexOf(d);
+      const x=PAD+idx*(W-PAD*2)/(dias.length-1||1);
+      return`<text x="${x}" y="${H-5}" text-anchor="middle" font-size="9" fill="#94a3b8">${fmtDia(d.dia)}</text>`;
+    }).join('');
+    return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:600px;display:block">
+      <polyline points="${pts(dias,'total')}" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+      <polyline points="${pts(dias,'completadas')}" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+      ${dias.map((d,i)=>{
+        const x=PAD+i*(W-PAD*2)/(dias.length-1||1);
+        const y=H-PAD-(d.completadas/maxV)*(H-PAD*2);
+        return`<circle cx="${x}" cy="${y}" r="3" fill="#16a34a"/>`;
+      }).join('')}
+      ${xLabels}
+    </svg>
+    <div style="display:flex;gap:12px;margin-top:4px;font-size:11px">
+      <span><span style="color:#16a34a;font-weight:700">—</span> Completadas</span>
+      <span><span style="color:#e2e8f0;font-weight:700">—</span> Total asignadas</span>
+    </div>`;
+  })():'<div style="color:#94a3b8;font-size:12px;font-style:italic">Datos de un solo día — gráfico de evolución no disponible.</div>';
+
+  const pctColor=m.pctCumplimiento===null?'#64748b':m.pctCumplimiento>=80?'#16a34a':m.pctCumplimiento>=60?'#d97706':'#dc2626';
+
+  let html=`<div class="card" style="border-left:4px solid #16a34a">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
+      <div><div class="card-title" style="font-size:16px">🔧 ${cuadNombre}</div>
+      <div style="font-size:12px;color:#64748b">Detalle del período seleccionado</div></div>
+      <button class="btn btn-sm" onclick="document.getElementById('rend-detalle').innerHTML=''">✕ Cerrar</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.5rem;margin-bottom:1.25rem">
+      ${kpiCard('Asignadas',m.asignadas,'#2563eb')}
+      ${kpiCard('Completadas',m.completadas,'#16a34a')}
+      ${kpiCard('Pendientes',m.pendientes,m.pendientes>0?'#dc2626':'#94a3b8')}
+      ${kpiCard('% Cumplimiento',m.pctCumplimiento!==null?m.pctCumplimiento+'%':'—',pctColor)}
+      ${kpiCard('Rechazos',m.rechazos,m.rechazos>0?'#d97706':'#94a3b8')}
+      ${kpiCard('Correcciones',m.modificadas,m.modificadas>0?'#7c3aed':'#94a3b8')}
+      ${kpiCard('Dur. prom.',m.duracionProm!==null?m.duracionProm+' min':'—','#7c3aed')}
+    </div>
+
+    <div style="margin-bottom:1.25rem">
+      <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:.5rem">📈 Evolución — OTs completadas por día</div>
+      ${svgHtml}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;flex-wrap:wrap">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:.5rem">📦 Por tipo de OT</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <thead><tr style="font-size:11px;color:#94a3b8;text-transform:uppercase">
+            <th style="text-align:left;padding:3px 6px">Tipo</th>
+            <th style="text-align:right;padding:3px 6px">Total</th>
+            <th style="text-align:right;padding:3px 6px;color:#16a34a">Complet.</th>
+            <th style="text-align:right;padding:3px 6px;color:#d97706">Rechazo</th>
+          </tr></thead><tbody>
+          ${tipos.map(t=>`<tr style="border-top:1px solid var(--border2)">
+            <td style="padding:4px 6px;font-weight:600">${(TIPO_LABELS[t.tipo]||t.tipo).replace(/^[^\s]+ /,'')}</td>
+            <td style="text-align:right;padding:4px 6px">${t.total}</td>
+            <td style="text-align:right;padding:4px 6px;color:#16a34a;font-weight:700">${t.comp}</td>
+            <td style="text-align:right;padding:4px 6px;color:${t.rechazo>0?'#d97706':'#94a3b8'}">${t.rechazo}</td>
+          </tr>`).join('')}
+          </tbody></table>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:.5rem">🔍 Alertas de calidad</div>
+        ${otsCal.length?`<div style="display:flex;flex-direction:column;gap:6px">`
+          +otsCal.slice(0,10).map(c=>`<div style="background:#fef9f0;border:1px solid #fed7aa;border-radius:8px;padding:6px 10px;font-size:11px">
+            <div style="font-weight:700;color:#c2410c">OT ${numOT(c.ot.numero_ot)} · ${new Date(c.fecha+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}</div>
+            ${c.flags.map(f=>`<div>${f}</div>`).join('')}
+          </div>`).join('')
+          +(otsCal.length>10?`<div style="font-size:11px;color:#94a3b8">+ ${otsCal.length-10} más...</div>`:'')
+          +'</div>'
+          :'<div style="font-size:12px;color:#16a34a;font-style:italic">✅ Sin alertas de calidad en el período.</div>'}
+      </div>
+    </div>
+  </div>`;
+
+  det.innerHTML=html;
+  det.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ══════════════════════════════════════════════════════════════════════
 async function renderMovimientosCuadrilla(){
   const cuadId=document.getElementById('cuad-selector').value;
   const el=document.getElementById('stock-cuad-tabla');
