@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.24</title>
+<title>FG Cuadrillas v4.26</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.24 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.26 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -273,7 +273,7 @@ function ordenOT(tipo){return OT_JERARQUIA[tipo]||50;}
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 var numOT=function(n){return n?n.replace('005-','').replace(/^0+/,''):'';}
-var hoy=function(){return new Date().toISOString().slice(0,10);}
+var hoy=function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 var fmtHora=function(iso){return iso?new Date(iso).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}):'—';}
 
 var TIPO_LABELS={BASICA:'📶 Instalación',ONU:'📶 ONU',CABLEMODEM:'📶 Cablemodem',
@@ -404,7 +404,7 @@ async function iniciarApp(){
   document.getElementById('btn-retiro').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.24';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.26';
 
   // Cargar estados con fallback
   try{
@@ -1785,9 +1785,10 @@ var RETIRO_TIPOS=[];
 async function abrirRetiroEquipos(){
   document.getElementById('s-lista').style.display='none';
   document.getElementById('s-grupo').style.display='none';
+  document.getElementById('s-stock').style.display='none'; // limpiar Mi Stock
   document.getElementById('s-retiro').style.display='block';
   document.getElementById('btn-volver').style.display='inline-flex';
-  document.getElementById('topbar-title').textContent='🔌 Registrar equipo';
+  document.getElementById('topbar-title').textContent='Retiros / Devoluciones';
   if(!RETIRO_TIPOS.length){
     try{RETIRO_TIPOS=await sbGet('tipos_equipo','?activo=eq.true&order=nombre')||[];}catch(e){RETIRO_TIPOS=[];}
   }
@@ -1796,6 +1797,7 @@ async function abrirRetiroEquipos(){
 
 function cerrarRetiroEquipos(){
   document.getElementById('s-retiro').style.display='none';
+  document.getElementById('s-stock').style.display='none';
   document.getElementById('s-lista').style.display='block';
   document.getElementById('btn-volver').style.display='none';
   document.getElementById('topbar-title').textContent=CUAD.nombre;
@@ -1860,35 +1862,44 @@ function renderRetiroForm(){
 async function retiroTipoChange(){
   var tipoId=parseInt(document.getElementById('retiro-tipo')?.value)||0;
   var origen=window._retiroOrigen||'RECUPERO_CLIENTE';
-  // Solo para DEVOLUCION: cargar seriales disponibles de la cuadrilla
+  var selDiv=document.getElementById('retiro-campo-serial-sel');
+  var listaEl=document.getElementById('retiro-serial-lista');
   if(origen!=='DEVOLUCION_CUADRILLA'||!tipoId){
-    document.getElementById('retiro-campo-serial-sel').style.display='none';
+    if(selDiv)selDiv.style.display='none';
     window._retiroSerialSel=null;
     return;
   }
-  // Buscar el material_id que corresponde a este tipo_equipo_id en stock_seriales
-  var cuadId=CUAD.id;
-  var listaEl=document.getElementById('retiro-serial-lista');
-  var selDiv=document.getElementById('retiro-campo-serial-sel');
+  if(selDiv)selDiv.style.display='flex';
   listaEl.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:13px">Buscando seriales...</div>';
-  selDiv.style.display='flex';
+  var cuadId=CUAD.id;
   try{
-    // Buscar en stock_seriales los seriales de la cuadrilla con ese tipo de equipo
-    // El tipo_equipo_id se relaciona con el nombre — buscamos en catalogo_materiales por serial_tipo
-    // Más directo: buscar en stock_seriales por ubicacion de cuadrilla y hacer join al catálogo
-    var sers=await sbGet('stock_seriales',
-      '?ubicacion=eq.CUADRILLA_'+cuadId
-      +'&select=serial,material_id,catalogo_materiales(nombre,serial_tipo)'
-      +'&order=serial&limit=100')||[];
+    // Buscar seriales en stock_seriales de esta cuadrilla
+    // Filtramos por material_id que tenga serial_tipo compatible con el tipo_equipo_id
+    // Como stock_seriales no tiene tipo_equipo_id, buscamos por nombre del tipo de equipo
+    // en catalogo_materiales para encontrar los material_ids relevantes
+    var tipoNombre=(RETIRO_TIPOS.find(function(t){return t.id===tipoId;})||{}).nombre||'';
+    // Primero encontrar material_ids que correspondan a este tipo de equipo
+    var mats=await sbGet('catalogo_materiales',
+      '?nombre=ilike.*'+encodeURIComponent(tipoNombre)+'*&activo=eq.true&select=id,nombre')||[];
+    if(!mats.length){
+      // Si no encontramos por nombre, mostrar todos los seriales de la cuadrilla como fallback
+      mats=[];
+    }
+    var matIds=mats.map(function(m){return m.id;});
+    // Traer seriales de la cuadrilla, filtrados por material_id si hay coincidencias
+    var query='?ubicacion=eq.CUADRILLA_'+cuadId+'&select=serial,material_id,catalogo_materiales(nombre)&order=serial&limit=100';
+    if(matIds.length) query+='&material_id=in.('+matIds.join(',')+')';
+    var sers=await sbGet('stock_seriales',query)||[];
     window._retiroSerialSel=null;
     if(!sers.length){
-      listaEl.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:13px;font-style:italic">No hay seriales de este tipo disponibles en el vehículo.</div>';
+      listaEl.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:13px;font-style:italic">No hay seriales de ese tipo disponibles en el vehículo.</div>';
       return;
     }
     var html='';
     sers.forEach(function(s){
-      html+='<div onclick="retiroSelSerial(\''+s.serial+'\')" style="padding:10px 14px;font-family:monospace;font-size:13px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\'#fff\'">'
-        +'<span id="retiro-ser-'+s.serial.replace(/[^a-zA-Z0-9]/g,'_')+'">⬜</span> '
+      var safeId=s.serial.replace(/[^a-zA-Z0-9]/g,'_');
+      html+='<div onclick="retiroSelSerial(\''+s.serial+'\')" style="padding:10px 14px;font-family:monospace;font-size:13px;border-bottom:1px solid var(--border);cursor:pointer;background:#fff" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\'#fff\'">'
+        +'<span id="retiro-ser-'+safeId+'">⬜</span> '
         +s.serial
         +(s.catalogo_materiales?.nombre?'<span style="font-size:10px;color:#94a3b8;margin-left:6px">'+s.catalogo_materiales.nombre+'</span>':'')
       +'</div>';
@@ -2054,18 +2065,19 @@ var MI_STOCK_TAB='actual';
 
 function abrirMiStock(){
   var el=document.getElementById('s-stock');
-  // Ocultar todo lo demás
   document.getElementById('s-lista').style.display='none';
   document.getElementById('s-grupo').style.display='none';
+  document.getElementById('s-retiro').style.display='none'; // limpiar retiro
   el.style.display='block';
   document.getElementById('btn-volver').style.display='inline-flex';
-  document.getElementById('topbar-title').textContent='📦 Mi Stock';
+  document.getElementById('topbar-title').textContent='Mi Stock';
   MI_STOCK_TAB='actual';
   renderMiStock();
 }
 
 function cerrarMiStock(){
   document.getElementById('s-stock').style.display='none';
+  document.getElementById('s-retiro').style.display='none';
   document.getElementById('s-lista').style.display='block';
   document.getElementById('btn-volver').style.display='none';
   document.getElementById('topbar-title').textContent=CUAD.nombre;

@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v202</title>
+<title>FG Gestión OTs v204</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V202</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V204</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v202</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v204</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1481,6 +1481,13 @@ const sbGet=(t,p='')=>sbFetch(t,'GET',null,p);
 const sbPost=(t,b)=>sbFetch(t,'POST',b);
 const sbPatch=(t,p,b)=>sbFetch(t,'PATCH',b,p);
 
+// Devuelve la fecha LOCAL de Argentina en formato YYYY-MM-DD
+// Usa toLocaleDateString con locale 'sv' que garantiza formato ISO sin depender de UTC
+const fechaHoyLocal=()=>{
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
 // Labels de tipos de OT — usado en panel Rendimiento y otros
 const TIPO_LABELS={
   BASICA:'📶 Instalación',ONU:'📶 ONU',CABLEMODEM:'📶 Cablemodem',
@@ -1744,7 +1751,7 @@ function irAConFiltro(tipo,isItem=false){
 
 // ═══ COORDINADAS CON CLIENTES ═══
 async function abrirCoordeinarFecha(otId, fechaActual, nombreCli){
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=fechaHoyLocal();
   const html='<div style="padding:.25rem 0">'
     +'<div style="font-size:13px;color:#64748b;margin-bottom:.75rem">Cliente: <strong>'+nombreCli+'</strong></div>'
     +'<div class="fg"><label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:5px">Fecha coordinada con el cliente</label>'
@@ -1772,8 +1779,9 @@ async function renderDashboardCoordinadas(){
   const el=document.getElementById('dash-coordinadas');
   if(!el) return;
   try{
-    const hoy=new Date().toISOString().slice(0,10);
-    const en7=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+    const hoy=fechaHoyLocal();
+    const en7d=new Date();en7d.setDate(en7d.getDate()+7);
+    const en7=`${en7d.getFullYear()}-${String(en7d.getMonth()+1).padStart(2,'0')}-${String(en7d.getDate()).padStart(2,'0')}`;
     // Traer OTs coordinadas en los próximos 7 días que NO estén asignadas a cuadrilla aún
     const ots=await sbGet('ordenes_trabajo',
       '?fecha_coordinada=gte.'+hoy+'&fecha_coordinada=lte.'+en7
@@ -1843,12 +1851,13 @@ async function renderDashboardCoordinadas(){
 async function renderDashboard(){
   try{
     // Cargar stats del dashboard: OTs activas + finalizadas últimos 90 días
-    const hace90=new Date(Date.now()-90*864e5).toISOString().slice(0,10);
+    const hace90d=new Date();hace90d.setDate(hace90d.getDate()-90);
+    const hace90=`${hace90d.getFullYear()}-${String(hace90d.getMonth()+1).padStart(2,'0')}-${String(hace90d.getDate()).padStart(2,'0')}`;
     const eFinId=ESTADOS.find(e=>e.nombre==='FINALIZADA')?.id;
     const eDevId=ESTADOS.find(e=>e.nombre==='DEVUELTA_GIGARED')?.id;
     const [allActivas, allFinalizadas]=await Promise.all([
-      sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,grupo_id,cliente_id,estados_ot(nombre)&eliminado=eq.false'+(eFinId?'&estado_id=neq.'+eFinId:'')+'&limit=2000'),
-      eFinId?sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,grupo_id,cliente_id,estados_ot(nombre)&eliminado=eq.false&estado_id=eq.'+eFinId+'&fecha_fin=gte.'+hace90+'T00:00:00&limit=2000'):Promise.resolve([])
+      sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,hora_fin_tec,grupo_id,cliente_id,estados_ot(nombre)&eliminado=eq.false'+(eFinId?'&estado_id=neq.'+eFinId:'')+'&limit=2000'),
+      eFinId?sbGet('ordenes_trabajo','?select=id,tipo_tarea,tipo_item,fecha_fin,hora_fin_tec,grupo_id,cliente_id,estados_ot(nombre)&eliminado=eq.false&estado_id=eq.'+eFinId+'&fecha_fin=gte.'+hace90+'T00:00:00&limit=2000'):Promise.resolve([])
     ]);
 
     // Query de pendientes de devolución separada — no bloquea el Dashboard si el campo no existe aún en BD
@@ -1857,7 +1866,7 @@ async function renderDashboard(){
       pendDevArr=await sbGet('ordenes_trabajo','?pendiente_devolucion=eq.true'+(eDevId?'&estado_id=neq.'+eDevId:'')+'&select=id&eliminado=eq.false&limit=500')||[];
     }catch(ePD){console.warn('[pend_dev] campo aún no existe en BD:',ePD.message);}
     const all=[...(allActivas||[]),...(allFinalizadas||[])];
-    const hoy=new Date().toISOString().slice(0,10);
+    const hoy=fechaHoyLocal(); // fecha local Argentina, no UTC
     let p=0,a=0,f=0,r=0;
     // Clientes únicos por estado (grupo_id = visita única)
     const pGrupos=new Set(), aGrupos=new Set(), fGrupos=new Set(), rGrupos=new Set();
@@ -1883,6 +1892,7 @@ async function renderDashboard(){
       }
       else if(n==='ASIGNADA'||n==='EN_PROCESO'){a++;aGrupos.add(gid);}
       else if(n==='FINALIZADA'&&(o.fecha_fin||'').startsWith(hoy)){f++;fGrupos.add(gid);}
+      else if(n==='FINALIZADA_TECNICO'&&(o.hora_fin_tec||'').slice(0,10)===hoy){f++;fGrupos.add(gid);}
       else if(n==='DEVUELTA_GIGARED'){r++;rGrupos.add(gid);}
     });
 
@@ -3386,7 +3396,7 @@ async function guardarCambioEstado(){
 // ═══ LOGISTIC — PANTALLA DE EXPORTACIÓN ═══
 async function renderLogistic(){
   // Setear fecha de hoy por defecto
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=fechaHoyLocal();
   const fi=document.getElementById('log-fecha');
   if(fi&&!fi.value) fi.value=hoy;
   renderLogisticCuadrillas();
@@ -4242,7 +4252,7 @@ async function confirmarAsignacion(){
 }
 // ─── NAVEGACIÓN DASHBOARD -> OTs ───
 function irAFinalizadasHoy(){
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=fechaHoyLocal();
   OT_FILTRO_FECHA=hoy;
   irA('ots');
   setTimeout(()=>{
@@ -4261,7 +4271,7 @@ function irAConFiltroEstado(estado){
 
 // Llamada desde el menú — irA ya maneja mostrar/ocultar secciones
 function inicializarAsignadas(){
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=fechaHoyLocal();
   const fechaEl=document.getElementById('asig-list-fecha');
   // Siempre setear la fecha a hoy al entrar a la pantalla
   if(fechaEl) fechaEl.value=hoy;
@@ -6260,7 +6270,7 @@ async function confirmarWizardCierre(){
 
       // Cambiar estado de la OT
       const otAntes=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=estado_id&eliminado=eq.false`).then(d=>d?.[0]);
-      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eNuevo?.id,fecha_fin:new Date().toISOString().slice(0,10),observaciones:p.obs||null});
+      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eNuevo?.id,fecha_fin:fechaHoyLocal(),observaciones:p.obs||null});
       try{await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:otAntes?.estado_id,estado_nuevo_id:eNuevo?.id,usuario_id:CU.id,observacion:p.obs||null});}catch(e){}
     }
 
@@ -6769,7 +6779,7 @@ function stockCuadTab(tab, el){
 }
 
 function cuadFechaHoy(){
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=fechaHoyLocal();
   document.getElementById('cuad-fecha-desde').value=hoy;
   document.getElementById('cuad-fecha-hasta').value=hoy;
   renderStockCuadTab();
@@ -6810,7 +6820,7 @@ function renderStockCuadTab(){
 // ═══════════════════════════════════════════════════════════════════
 
 function rendFechaHoy(){
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=fechaHoyLocal();
   document.getElementById('rend-desde').value=hoy;
   document.getElementById('rend-hasta').value=hoy;
   renderRendimiento();
@@ -9835,7 +9845,7 @@ function verPDFInline(url){
 }
 
 function abrirReporteGigared(){
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=fechaHoyLocal();
   document.getElementById('rep-g-desde').value=hoy;
   document.getElementById('rep-g-hasta').value=hoy;
   document.getElementById('rep-g-err').textContent='';
@@ -12120,7 +12130,7 @@ async function aprobarOT(otId, grupoId){
     const now=new Date().toISOString();
     await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{
       estado_id:eFin.id,
-      fecha_fin:now.slice(0,10),
+      fecha_fin:fechaHoyLocal(),
       validado_admin_at:now,
       validado_admin_por:CU.nombre||CU.email||'admin'
     });
@@ -12299,7 +12309,7 @@ async function aprobarGrupo(grupoId){
     for(const ot of (ots||[])){
       const est=ot.estados_ot?.nombre||'';
       if(est==='FINALIZADA_TECNICO'){
-        await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{estado_id:eFin.id,fecha_fin:now.slice(0,10),validado_admin_at:now,validado_admin_por:adminNombre});
+        await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{estado_id:eFin.id,fecha_fin:fechaHoyLocal(),validado_admin_at:now,validado_admin_por:adminNombre});
         await sbPost('historial_estados_ot',{ot_id:ot.id,estado_nuevo_id:eFin.id,observacion:'APROBADO POR ADMIN (grupal): '+adminNombre,usuario_id:CU.id});
       }else if(est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA'){
         await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{validado_admin_at:now,validado_admin_por:adminNombre});
@@ -12360,7 +12370,7 @@ async function aprobarSoloFinalizadas(grupoId){
     for(const ot of aAprobar){
       await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{
         estado_id:eFin.id,
-        fecha_fin:now.slice(0,10),
+        fecha_fin:fechaHoyLocal(),
         validado_admin_at:now,
         validado_admin_por:adminNombre
       });
