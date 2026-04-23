@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.28</title>
+<title>FG Cuadrillas v4.29</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.28 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.29 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -404,7 +404,7 @@ async function iniciarApp(){
   document.getElementById('btn-retiro').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.28';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.29';
 
   // Cargar estados con fallback
   try{
@@ -927,7 +927,6 @@ function renderWizPaso(){
 
   var ot=p.ot;
   var tipo2=ot?ot.tipo_item||ot.tipo_tarea||'':'';
-  var esBasica=tipo2==='BASICA';
   var html='';
 
   // OT header
@@ -950,10 +949,6 @@ function renderWizPaso(){
     +'</div></div>';
 
   if(p.accion==='REALIZADA'){
-    // Aviso BASICA
-    if(esBasica){
-      html+='<div style="background:var(--amber-l);border:1px solid #fcd34d;border-radius:10px;padding:10px 12px;font-size:12px;color:#92400e;margin-bottom:12px">⚠️ BASICA requiere precinto telecrafter — agregá la cantidad y su número de serie antes de continuar.</div>';
-    }
     // Materiales
     html+=renderWizMateriales(p);
     // MO
@@ -1518,20 +1513,21 @@ function pasoAdelante(){
 
   if(p.accion==='REALIZADA'){
     var tipo=p.ot?p.ot.tipo_item||p.ot.tipo_tarea||'':'';
-    var esBasica=tipo==='BASICA';
 
-    // BASICA: requiere precinto (CORRELATIVO) con qty > 0 y al menos un serial — bloqueo duro
-    if(esBasica){
-      var matsCor=PWIZ.catalogoMats.filter(function(m){return m.serial_tipo==='CORRELATIVO';});
-      // Sincronizar qty desde corrSels por si el técnico cargó serial sin usar +
-      matsCor.forEach(function(m){
-        var corrLen=(p.corrSels[m.id]||[]).length;
-        if(corrLen>(p.mats[m.id]||0)){p.mats[m.id]=corrLen;}
-      });
-      var tienePrecintoQty=matsCor.some(function(m){return(p.mats[m.id]||0)>0;});
-      if(!tienePrecintoQty){wizErr('⚠️ Esta OT requiere precinto telecrafter. Agregá la cantidad en la sección Materiales.');return;}
-      var tienePrecintoSerial=matsCor.some(function(m){return(p.mats[m.id]||0)>0&&(p.corrSels[m.id]||[]).length>0;});
-      if(!tienePrecintoSerial){wizErr('⚠️ Falta el número de serie del precinto. Seleccioná o ingresá el serial en la sección Seriales.');return;}
+    // PRECINTO / CORRELATIVO: obligatorio solo si el técnico cargó qty > 0 de ese material.
+    // No se bloquea por tipo de OT — solo por uso real del material.
+    var matsCor=PWIZ.catalogoMats.filter(function(m){return m.serial_tipo==='CORRELATIVO';});
+    // Sincronizar qty desde corrSels por si el técnico cargó serial sin usar +
+    matsCor.forEach(function(m){
+      var corrLen=(p.corrSels[m.id]||[]).length;
+      if(corrLen>(p.mats[m.id]||0)){p.mats[m.id]=corrLen;}
+    });
+    var matsCorUsadas=matsCor.filter(function(m){return(p.mats[m.id]||0)>0;});
+    if(matsCorUsadas.length>0){
+      var corSinSerial=matsCorUsadas.filter(function(m){return(p.corrSels[m.id]||[]).length===0;});
+      if(corSinSerial.length>0){
+        wizErr('⚠️ Cargaste '+corSinSerial[0].nombre+' pero falta el número de serie. Seleccioná o ingresá el serial en la sección Seriales.');return;
+      }
     }
 
     // INDIVIDUAL con qty > 0 sin serial — bloqueo duro
