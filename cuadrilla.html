@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.26</title>
+<title>FG Cuadrillas v4.27</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.26 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.27 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -404,7 +404,7 @@ async function iniciarApp(){
   document.getElementById('btn-retiro').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.26';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.27';
 
   // Cargar estados con fallback
   try{
@@ -1783,9 +1783,10 @@ function normalizarSerial(raw,tipo){
 var RETIRO_TIPOS=[];
 
 async function abrirRetiroEquipos(){
-  document.getElementById('s-lista').style.display='none';
-  document.getElementById('s-grupo').style.display='none';
-  document.getElementById('s-stock').style.display='none'; // limpiar Mi Stock
+  // Ocultar TODAS las pantallas activas
+  ['s-lista','s-grupo','s-stock','s-wizard','s-rechazo','s-mod-ot'].forEach(function(id){
+    var e=document.getElementById(id);if(e)e.style.display='none';
+  });
   document.getElementById('s-retiro').style.display='block';
   document.getElementById('btn-volver').style.display='inline-flex';
   document.getElementById('topbar-title').textContent='Retiros / Devoluciones';
@@ -1873,26 +1874,17 @@ async function retiroTipoChange(){
   listaEl.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:13px">Buscando seriales...</div>';
   var cuadId=CUAD.id;
   try{
-    // Buscar seriales en stock_seriales de esta cuadrilla
-    // Filtramos por material_id que tenga serial_tipo compatible con el tipo_equipo_id
-    // Como stock_seriales no tiene tipo_equipo_id, buscamos por nombre del tipo de equipo
-    // en catalogo_materiales para encontrar los material_ids relevantes
-    var tipoNombre=(RETIRO_TIPOS.find(function(t){return t.id===tipoId;})||{}).nombre||'';
-    // Primero encontrar material_ids que correspondan a este tipo de equipo
-    var mats=await sbGet('catalogo_materiales',
-      '?nombre=ilike.*'+encodeURIComponent(tipoNombre)+'*&activo=eq.true&select=id,nombre')||[];
-    if(!mats.length){
-      // Si no encontramos por nombre, mostrar todos los seriales de la cuadrilla como fallback
-      mats=[];
-    }
-    var matIds=mats.map(function(m){return m.id;});
-    // Traer seriales de la cuadrilla, filtrados por material_id si hay coincidencias
-    var query='?ubicacion=eq.CUADRILLA_'+cuadId+'&select=serial,material_id,catalogo_materiales(nombre)&order=serial&limit=100';
-    if(matIds.length) query+='&material_id=in.('+matIds.join(',')+')';
-    var sers=await sbGet('stock_seriales',query)||[];
+    // Traer solo seriales INDIVIDUAL de la cuadrilla (equipos con número único)
+    // No filtramos por nombre del tipo de equipo para evitar coincidencias incorrectas
+    var sers=await sbGet('stock_seriales',
+      '?ubicacion=eq.CUADRILLA_'+cuadId
+      +'&select=serial,material_id,catalogo_materiales(nombre,serial_tipo)'
+      +'&order=serial&limit=100')||[];
+    // Filtrar en JS solo los que son INDIVIDUAL
+    sers=sers.filter(function(s){return s.catalogo_materiales?.serial_tipo==='INDIVIDUAL';});
     window._retiroSerialSel=null;
     if(!sers.length){
-      listaEl.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:13px;font-style:italic">No hay seriales de ese tipo disponibles en el vehículo.</div>';
+      listaEl.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:13px;font-style:italic">No hay equipos serializados disponibles en el vehículo.</div>';
       return;
     }
     var html='';
@@ -2065,9 +2057,10 @@ var MI_STOCK_TAB='actual';
 
 function abrirMiStock(){
   var el=document.getElementById('s-stock');
-  document.getElementById('s-lista').style.display='none';
-  document.getElementById('s-grupo').style.display='none';
-  document.getElementById('s-retiro').style.display='none'; // limpiar retiro
+  // Ocultar TODAS las pantallas activas — incluyendo wizard si estuviera abierto
+  ['s-lista','s-grupo','s-retiro','s-wizard','s-rechazo','s-mod-ot'].forEach(function(id){
+    var e=document.getElementById(id);if(e)e.style.display='none';
+  });
   el.style.display='block';
   document.getElementById('btn-volver').style.display='inline-flex';
   document.getElementById('topbar-title').textContent='Mi Stock';

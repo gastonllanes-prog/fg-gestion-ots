@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v204</title>
+<title>FG Gestión OTs v205</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V204</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V205</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v204</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v205</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1892,7 +1892,7 @@ async function renderDashboard(){
       }
       else if(n==='ASIGNADA'||n==='EN_PROCESO'){a++;aGrupos.add(gid);}
       else if(n==='FINALIZADA'&&(o.fecha_fin||'').startsWith(hoy)){f++;fGrupos.add(gid);}
-      else if(n==='FINALIZADA_TECNICO'&&(o.hora_fin_tec||'').slice(0,10)===hoy){f++;fGrupos.add(gid);}
+      else if(n==='FINALIZADA_TECNICO'&&o.hora_fin_tec&&new Date(o.hora_fin_tec).toLocaleDateString('sv')===hoy){f++;fGrupos.add(gid);}
       else if(n==='DEVUELTA_GIGARED'){r++;rGrupos.add(gid);}
     });
 
@@ -9873,14 +9873,13 @@ async function _cargarDatosLiquidacion(){
 
   const otIds=ots.map(o=>o.id);
   // Cargar en paralelo: materiales, servicios, movimientos con seriales
-  const [mats, servs, movsSerial]=await Promise.all([
+  const [mats, servs]=await Promise.all([
     sbGet('ot_materiales_usados',`?ot_id=in.(${otIds.join(',')})&activo=eq.true&select=ot_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo)`)||[],
-    sbGet('ot_servicios_realizados',`?ot_id=in.(${otIds.join(',')})&activo=eq.true&select=ot_id,cantidad,catalogo_servicios(nombre)`)||[],
-    sbGet('movimientos_stock',`?tipo_movimiento=eq.CONSUMO_OT&obs=like.*OT%20*serial*&obs=like.*${desde.slice(0,7)}*&select=obs,material_id,catalogo_materiales(nombre,serial_tipo)&limit=2000`)||[]
+    sbGet('ot_servicios_realizados',`?ot_id=in.(${otIds.join(',')})&activo=eq.true&select=ot_id,cantidad,catalogo_servicios(nombre)`)||[]
   ]);
 
   err.textContent='';
-  return {ots, mats, servs, movsSerial, desde, hasta};
+  return {ots, mats, servs, desde, hasta};
 }
 
 function _cssLiqReport(){
@@ -11653,7 +11652,7 @@ async function renderValidacion(){
     const eIds=ESTADOS.filter(e=>ESTADOS_VAL.includes(e.nombre)).map(e=>e.id);
     if(!eIds.length){el.innerHTML='<div class="card"><p style="color:#dc2626">Estados técnicos no encontrados. Recargá la página.</p></div>';return;}
 
-    let q='?select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false&order=fecha_trabajo.desc,horario_visita.asc';
+    let q='?select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,pendiente_devolucion,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false&order=fecha_trabajo.desc,horario_visita.asc';
     if(desde)q+='&fecha_trabajo=gte.'+desde;
     if(hasta)q+='&fecha_trabajo=lte.'+hasta;
     if(cuadId)q+='&cuadrilla_id=eq.'+cuadId;
