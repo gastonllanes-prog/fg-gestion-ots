@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.27</title>
+<title>FG Cuadrillas v4.28</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.27 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.28 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -404,7 +404,7 @@ async function iniciarApp(){
   document.getElementById('btn-retiro').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.27';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.28';
 
   // Cargar estados con fallback
   try{
@@ -1806,12 +1806,13 @@ function cerrarRetiroEquipos(){
 
 function renderRetiroForm(){
   var el=document.getElementById('s-retiro');
+  // Para RECUPERO: tipos_equipo (CM, ONU, HD, etc.)
+  // Para DEVOLUCION: se carga dinámicamente desde catalogo_materiales con serial_tipo=INDIVIDUAL
   var optTipos=RETIRO_TIPOS.map(function(t){
     return'<option value="'+t.id+'">'+t.nombre+'</option>';
   }).join('');
   el.innerHTML='<div style="padding:16px;display:flex;flex-direction:column;gap:14px">'
 
-    // Selector de tipo de operación
     +'<div style="display:flex;gap:8px">'
       +'<button id="retiro-orig-rec" class="btn btn-primary" style="flex:1;padding:12px;font-size:13px;font-weight:700" onclick="retiroSetOrigen(\'RECUPERO_CLIENTE\')">📤 Recuperado de cliente</button>'
       +'<button id="retiro-orig-dev" class="btn" style="flex:1;padding:12px;font-size:13px;font-weight:600;border:1.5px solid var(--border)" onclick="retiroSetOrigen(\'DEVOLUCION_CUADRILLA\')">↩ Devolución al depósito</button>'
@@ -1819,25 +1820,32 @@ function renderRetiroForm(){
 
     +'<div id="retiro-origen-info" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;font-size:12px;color:#1d4ed8">📤 <strong>Recuperado de cliente:</strong> equipo que el cliente entregó.</div>'
 
-    // Campo cliente (solo para RECUPERO_CLIENTE)
     +'<div id="retiro-campo-cliente" style="display:flex;flex-direction:column;gap:6px">'
       +'<label style="font-size:12px;font-weight:700;color:#64748b">N° Cliente</label>'
       +'<input id="retiro-cliente" type="text" inputmode="numeric" placeholder="Ej: 98478" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit"/>'
     +'</div>'
 
-    // Selector de material (para DEVOLUCION) o tipo de equipo (para RECUPERO)
-    +'<div id="retiro-campo-tipo" style="display:flex;flex-direction:column;gap:6px">'
-      +'<label id="retiro-tipo-label" style="font-size:12px;font-weight:700;color:#64748b">Tipo de equipo *</label>'
-      +'<select id="retiro-tipo" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit" onchange="retiroTipoChange()">'
+    // Para RECUPERO_CLIENTE: tipo de equipo (tipos_equipo)
+    +'<div id="retiro-campo-tipo-rec" style="display:flex;flex-direction:column;gap:6px">'
+      +'<label style="font-size:12px;font-weight:700;color:#64748b">Tipo de equipo *</label>'
+      +'<select id="retiro-tipo-rec" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit">'
         +'<option value="">Seleccioná...</option>'+optTipos
       +'</select>'
     +'</div>'
 
-    // Selector de serial (para DEVOLUCION — muestra seriales disponibles)
+    // Para DEVOLUCION_CUADRILLA: material específico (catalogo_materiales con serial_tipo=INDIVIDUAL)
+    +'<div id="retiro-campo-tipo-dev" style="display:none;flex-direction:column;gap:6px">'
+      +'<label style="font-size:12px;font-weight:700;color:#64748b">Material a devolver *</label>'
+      +'<select id="retiro-mat-dev" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit" onchange="retiroTipoChange()">'
+        +'<option value="">Cargando materiales...</option>'
+      +'</select>'
+    +'</div>'
+
+    // Lista de seriales disponibles (solo para DEVOLUCION)
     +'<div id="retiro-campo-serial-sel" style="display:none;flex-direction:column;gap:6px">'
       +'<label style="font-size:12px;font-weight:700;color:#64748b">Serial disponible *</label>'
       +'<div id="retiro-serial-lista" style="border:1.5px solid var(--border);border-radius:10px;max-height:180px;overflow-y:auto;background:#fff"></div>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">Si el serial no aparece en la lista, podés ingresarlo manualmente abajo.</div>'
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">Si el serial no aparece, podés ingresarlo manualmente abajo.</div>'
     +'</div>'
 
     // Campo manual de serial
@@ -1858,14 +1866,23 @@ function renderRetiroForm(){
 
   window._retiroOrigen='RECUPERO_CLIENTE';
   window._retiroSerialSel=null;
+  // Pre-cargar materiales serializados para devolución
+  sbGet('catalogo_materiales','?serial_tipo=eq.INDIVIDUAL&activo=eq.true&order=nombre&select=id,nombre').then(function(mats){
+    var sel=document.getElementById('retiro-mat-dev');
+    if(!sel||!mats)return;
+    sel.innerHTML='<option value="">Seleccioná material...</option>'
+      +mats.map(function(m){return'<option value="'+m.id+'">'+m.nombre+'</option>';}).join('');
+  }).catch(function(){});
 }
 
 async function retiroTipoChange(){
-  var tipoId=parseInt(document.getElementById('retiro-tipo')?.value)||0;
   var origen=window._retiroOrigen||'RECUPERO_CLIENTE';
+  if(origen!=='DEVOLUCION_CUADRILLA')return;
+  // Leer el material_id del select de materiales (no tipos_equipo)
+  var matId=parseInt(document.getElementById('retiro-mat-dev')?.value)||0;
   var selDiv=document.getElementById('retiro-campo-serial-sel');
   var listaEl=document.getElementById('retiro-serial-lista');
-  if(origen!=='DEVOLUCION_CUADRILLA'||!tipoId){
+  if(!matId){
     if(selDiv)selDiv.style.display='none';
     window._retiroSerialSel=null;
     return;
@@ -1874,17 +1891,16 @@ async function retiroTipoChange(){
   listaEl.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:13px">Buscando seriales...</div>';
   var cuadId=CUAD.id;
   try{
-    // Traer solo seriales INDIVIDUAL de la cuadrilla (equipos con número único)
-    // No filtramos por nombre del tipo de equipo para evitar coincidencias incorrectas
+    // Filtro exacto: ubicacion=CUADRILLA_X AND material_id=matId
+    // Esto garantiza que solo aparecen seriales del material exacto seleccionado
     var sers=await sbGet('stock_seriales',
       '?ubicacion=eq.CUADRILLA_'+cuadId
-      +'&select=serial,material_id,catalogo_materiales(nombre,serial_tipo)'
+      +'&material_id=eq.'+matId
+      +'&select=serial,material_id,catalogo_materiales(nombre)'
       +'&order=serial&limit=100')||[];
-    // Filtrar en JS solo los que son INDIVIDUAL
-    sers=sers.filter(function(s){return s.catalogo_materiales?.serial_tipo==='INDIVIDUAL';});
     window._retiroSerialSel=null;
     if(!sers.length){
-      listaEl.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:13px;font-style:italic">No hay equipos serializados disponibles en el vehículo.</div>';
+      listaEl.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:13px;font-style:italic">No hay seriales de ese material disponibles en el vehículo.</div>';
       return;
     }
     var html='';
@@ -1893,7 +1909,6 @@ async function retiroTipoChange(){
       html+='<div onclick="retiroSelSerial(\''+s.serial+'\')" style="padding:10px 14px;font-family:monospace;font-size:13px;border-bottom:1px solid var(--border);cursor:pointer;background:#fff" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\'#fff\'">'
         +'<span id="retiro-ser-'+safeId+'">⬜</span> '
         +s.serial
-        +(s.catalogo_materiales?.nombre?'<span style="font-size:10px;color:#94a3b8;margin-left:6px">'+s.catalogo_materiales.nombre+'</span>':'')
       +'</div>';
     });
     listaEl.innerHTML=html;
@@ -1925,6 +1940,8 @@ function retiroSetOrigen(origen){
   var btnDev=document.getElementById('retiro-orig-dev');
   var info=document.getElementById('retiro-origen-info');
   var campoCliente=document.getElementById('retiro-campo-cliente');
+  var campoTipoRec=document.getElementById('retiro-campo-tipo-rec');
+  var campoTipoDev=document.getElementById('retiro-campo-tipo-dev');
   var campoSerialSel=document.getElementById('retiro-campo-serial-sel');
   var serialLabel=document.getElementById('retiro-serial-label');
   if(origen==='RECUPERO_CLIENTE'){
@@ -1933,21 +1950,22 @@ function retiroSetOrigen(origen){
     info.style.background='#eff6ff';info.style.borderColor='#bfdbfe';info.style.color='#1d4ed8';
     info.innerHTML='📤 <strong>Recuperado de cliente:</strong> equipo que el cliente entregó.';
     campoCliente.style.display='flex';
+    if(campoTipoRec)campoTipoRec.style.display='flex';
+    if(campoTipoDev)campoTipoDev.style.display='none';
     if(campoSerialSel)campoSerialSel.style.display='none';
     if(serialLabel)serialLabel.textContent='MAC / Serial *';
-    // Limpiar lista y serial seleccionado
-    var listaEl=document.getElementById('retiro-serial-lista');
-    if(listaEl)listaEl.innerHTML='';
   }else{
     btnDev.className='btn btn-primary';
     btnRec.className='btn';btnRec.style.border='1.5px solid var(--border)';
     info.style.background='#fff7ed';info.style.borderColor='#fed7aa';info.style.color='#c2410c';
     info.innerHTML='↩ <strong>Devolución al depósito:</strong> equipo del stock de la cuadrilla que vuelve por falla o sobrante.';
     campoCliente.style.display='none';
+    if(campoTipoRec)campoTipoRec.style.display='none';
+    if(campoTipoDev)campoTipoDev.style.display='flex';
     if(serialLabel)serialLabel.textContent='MAC / Serial (manual, si no aparece arriba)';
-    // Si ya hay un tipo seleccionado, cargar los seriales
-    var tipoId=parseInt(document.getElementById('retiro-tipo')?.value)||0;
-    if(tipoId)retiroTipoChange();
+    // Si ya hay material seleccionado, cargar seriales
+    var matId=parseInt(document.getElementById('retiro-mat-dev')?.value)||0;
+    if(matId)retiroTipoChange();
   }
 }
 
@@ -1956,12 +1974,21 @@ async function confirmarRetiroEquipo(){
   var valEl=document.getElementById('retiro-serial-val');
   errEl.style.display='none';
 
-  var tipoId=parseInt(document.getElementById('retiro-tipo')?.value)||0;
-  var obs=(document.getElementById('retiro-obs')?.value||'').trim();
   var origen=window._retiroOrigen||'RECUPERO_CLIENTE';
   var clienteInput=(document.getElementById('retiro-cliente')?.value||'').trim();
+  var obs=(document.getElementById('retiro-obs')?.value||'').trim();
 
-  if(!tipoId){errEl.textContent='Seleccioná el tipo de equipo.';errEl.style.display='block';return;}
+  // Para RECUPERO: usa select de tipos_equipo
+  // Para DEVOLUCION: usa select de catalogo_materiales (material_id directo)
+  var tipoId=0;
+  var matIdDev=0;
+  if(origen==='RECUPERO_CLIENTE'){
+    tipoId=parseInt(document.getElementById('retiro-tipo-rec')?.value)||0;
+    if(!tipoId){errEl.textContent='Seleccioná el tipo de equipo.';errEl.style.display='block';return;}
+  }else{
+    matIdDev=parseInt(document.getElementById('retiro-mat-dev')?.value)||0;
+    if(!matIdDev){errEl.textContent='Seleccioná el material a devolver.';errEl.style.display='block';return;}
+  }
 
   // Para DEVOLUCION: preferir el serial seleccionado de la lista sobre el manual
   var rawSerial=((window._retiroSerialSel&&origen==='DEVOLUCION_CUADRILLA')
