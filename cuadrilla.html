@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.23</title>
+<title>FG Cuadrillas v4.24</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.23 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.24 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -404,7 +404,7 @@ async function iniciarApp(){
   document.getElementById('btn-retiro').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.23';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.24';
 
   // Cargar estados con fallback
   try{
@@ -1807,55 +1807,144 @@ function renderRetiroForm(){
     return'<option value="'+t.id+'">'+t.nombre+'</option>';
   }).join('');
   el.innerHTML='<div style="padding:16px;display:flex;flex-direction:column;gap:14px">'
+
+    // Selector de tipo de operación
     +'<div style="display:flex;gap:8px">'
       +'<button id="retiro-orig-rec" class="btn btn-primary" style="flex:1;padding:12px;font-size:13px;font-weight:700" onclick="retiroSetOrigen(\'RECUPERO_CLIENTE\')">📤 Recuperado de cliente</button>'
       +'<button id="retiro-orig-dev" class="btn" style="flex:1;padding:12px;font-size:13px;font-weight:600;border:1.5px solid var(--border)" onclick="retiroSetOrigen(\'DEVOLUCION_CUADRILLA\')">↩ Devolución al depósito</button>'
     +'</div>'
-    +'<div id="retiro-origen-info" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;font-size:12px;color:#1d4ed8">📤 <strong>Recuperado de cliente:</strong> equipo que el cliente entregó (cambio de tecnología, cambio de domicilio, etc.)</div>'
+
+    +'<div id="retiro-origen-info" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;font-size:12px;color:#1d4ed8">📤 <strong>Recuperado de cliente:</strong> equipo que el cliente entregó.</div>'
+
+    // Campo cliente (solo para RECUPERO_CLIENTE)
     +'<div id="retiro-campo-cliente" style="display:flex;flex-direction:column;gap:6px">'
-      +'<label style="font-size:12px;font-weight:700;color:#64748b">N° Cliente (del cliente que entregó)</label>'
+      +'<label style="font-size:12px;font-weight:700;color:#64748b">N° Cliente</label>'
       +'<input id="retiro-cliente" type="text" inputmode="numeric" placeholder="Ej: 98478" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit"/>'
     +'</div>'
-    +'<div style="display:flex;flex-direction:column;gap:6px">'
-      +'<label style="font-size:12px;font-weight:700;color:#64748b">Tipo de equipo *</label>'
-      +'<select id="retiro-tipo" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit">'
-        +'<option value="">Seleccioná el tipo...</option>'+optTipos
+
+    // Selector de material (para DEVOLUCION) o tipo de equipo (para RECUPERO)
+    +'<div id="retiro-campo-tipo" style="display:flex;flex-direction:column;gap:6px">'
+      +'<label id="retiro-tipo-label" style="font-size:12px;font-weight:700;color:#64748b">Tipo de equipo *</label>'
+      +'<select id="retiro-tipo" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit" onchange="retiroTipoChange()">'
+        +'<option value="">Seleccioná...</option>'+optTipos
       +'</select>'
     +'</div>'
+
+    // Selector de serial (para DEVOLUCION — muestra seriales disponibles)
+    +'<div id="retiro-campo-serial-sel" style="display:none;flex-direction:column;gap:6px">'
+      +'<label style="font-size:12px;font-weight:700;color:#64748b">Serial disponible *</label>'
+      +'<div id="retiro-serial-lista" style="border:1.5px solid var(--border);border-radius:10px;max-height:180px;overflow-y:auto;background:#fff"></div>'
+      +'<div style="font-size:11px;color:#94a3b8;margin-top:2px">Si el serial no aparece en la lista, podés ingresarlo manualmente abajo.</div>'
+    +'</div>'
+
+    // Campo manual de serial
     +'<div style="display:flex;flex-direction:column;gap:6px">'
-      +'<label style="font-size:12px;font-weight:700;color:#64748b">MAC / Serial *</label>'
-      +'<input id="retiro-serial" type="text" inputmode="text" placeholder="Ej: A41F723C8801 o 12:34:56:78:9A:BC" autocapitalize="characters" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:monospace;text-transform:uppercase"/>'
+      +'<label id="retiro-serial-label" style="font-size:12px;font-weight:700;color:#64748b">MAC / Serial *</label>'
+      +'<input id="retiro-serial" type="text" inputmode="text" placeholder="Ej: A41F723C8801" autocapitalize="characters" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:monospace;text-transform:uppercase"/>'
       +'<div id="retiro-serial-val" style="font-size:12px;min-height:16px;color:#dc2626"></div>'
     +'</div>'
+
     +'<div style="display:flex;flex-direction:column;gap:6px">'
       +'<label style="font-size:12px;font-weight:700;color:#64748b">Observación (opcional)</label>'
-      +'<input id="retiro-obs" type="text" placeholder="Motivo del retiro, estado del equipo..." style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"/>'
+      +'<input id="retiro-obs" type="text" placeholder="Motivo, estado del equipo..." style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"/>'
     +'</div>'
+
     +'<div id="retiro-error" style="display:none;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;font-size:13px;color:#dc2626"></div>'
     +'<button onclick="confirmarRetiroEquipo()" style="width:100%;padding:14px;border-radius:12px;background:var(--blue);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer">✅ Registrar equipo</button>'
   +'</div>';
-  // Estado inicial: RECUPERO_CLIENTE seleccionado
+
   window._retiroOrigen='RECUPERO_CLIENTE';
+  window._retiroSerialSel=null;
+}
+
+async function retiroTipoChange(){
+  var tipoId=parseInt(document.getElementById('retiro-tipo')?.value)||0;
+  var origen=window._retiroOrigen||'RECUPERO_CLIENTE';
+  // Solo para DEVOLUCION: cargar seriales disponibles de la cuadrilla
+  if(origen!=='DEVOLUCION_CUADRILLA'||!tipoId){
+    document.getElementById('retiro-campo-serial-sel').style.display='none';
+    window._retiroSerialSel=null;
+    return;
+  }
+  // Buscar el material_id que corresponde a este tipo_equipo_id en stock_seriales
+  var cuadId=CUAD.id;
+  var listaEl=document.getElementById('retiro-serial-lista');
+  var selDiv=document.getElementById('retiro-campo-serial-sel');
+  listaEl.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:13px">Buscando seriales...</div>';
+  selDiv.style.display='flex';
+  try{
+    // Buscar en stock_seriales los seriales de la cuadrilla con ese tipo de equipo
+    // El tipo_equipo_id se relaciona con el nombre — buscamos en catalogo_materiales por serial_tipo
+    // Más directo: buscar en stock_seriales por ubicacion de cuadrilla y hacer join al catálogo
+    var sers=await sbGet('stock_seriales',
+      '?ubicacion=eq.CUADRILLA_'+cuadId
+      +'&select=serial,material_id,catalogo_materiales(nombre,serial_tipo)'
+      +'&order=serial&limit=100')||[];
+    window._retiroSerialSel=null;
+    if(!sers.length){
+      listaEl.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:13px;font-style:italic">No hay seriales de este tipo disponibles en el vehículo.</div>';
+      return;
+    }
+    var html='';
+    sers.forEach(function(s){
+      html+='<div onclick="retiroSelSerial(\''+s.serial+'\')" style="padding:10px 14px;font-family:monospace;font-size:13px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'#f0fdf4\'" onmouseout="this.style.background=\'#fff\'">'
+        +'<span id="retiro-ser-'+s.serial.replace(/[^a-zA-Z0-9]/g,'_')+'">⬜</span> '
+        +s.serial
+        +(s.catalogo_materiales?.nombre?'<span style="font-size:10px;color:#94a3b8;margin-left:6px">'+s.catalogo_materiales.nombre+'</span>':'')
+      +'</div>';
+    });
+    listaEl.innerHTML=html;
+  }catch(e){
+    listaEl.innerHTML='<div style="padding:10px;color:#dc2626;font-size:12px">'+e.message+'</div>';
+  }
+}
+
+function retiroSelSerial(serial){
+  window._retiroSerialSel=serial;
+  // Marcar visualmente el seleccionado y limpiar otros
+  document.querySelectorAll('#retiro-serial-lista div').forEach(function(d){
+    d.style.background='#fff';
+    var sp=d.querySelector('span[id^="retiro-ser-"]');
+    if(sp)sp.textContent='⬜';
+  });
+  var clave='retiro-ser-'+serial.replace(/[^a-zA-Z0-9]/g,'_');
+  var sp=document.getElementById(clave);
+  if(sp){sp.textContent='✅';sp.closest('div').style.background='#f0fdf4';}
+  // Poner el serial en el campo manual también (como referencia)
+  var inp=document.getElementById('retiro-serial');
+  if(inp)inp.value=serial;
 }
 
 function retiroSetOrigen(origen){
   window._retiroOrigen=origen;
+  window._retiroSerialSel=null;
   var btnRec=document.getElementById('retiro-orig-rec');
   var btnDev=document.getElementById('retiro-orig-dev');
   var info=document.getElementById('retiro-origen-info');
   var campoCliente=document.getElementById('retiro-campo-cliente');
+  var campoSerialSel=document.getElementById('retiro-campo-serial-sel');
+  var serialLabel=document.getElementById('retiro-serial-label');
   if(origen==='RECUPERO_CLIENTE'){
-    btnRec.className='btn btn-primary';btnRec.style.flex='1';btnRec.style.padding='12px';btnRec.style.fontSize='13px';
-    btnDev.className='btn';btnDev.style.flex='1';btnDev.style.padding='12px';btnDev.style.fontSize='13px';btnDev.style.border='1.5px solid var(--border)';
+    btnRec.className='btn btn-primary';
+    btnDev.className='btn';btnDev.style.border='1.5px solid var(--border)';
     info.style.background='#eff6ff';info.style.borderColor='#bfdbfe';info.style.color='#1d4ed8';
     info.innerHTML='📤 <strong>Recuperado de cliente:</strong> equipo que el cliente entregó.';
     campoCliente.style.display='flex';
+    if(campoSerialSel)campoSerialSel.style.display='none';
+    if(serialLabel)serialLabel.textContent='MAC / Serial *';
+    // Limpiar lista y serial seleccionado
+    var listaEl=document.getElementById('retiro-serial-lista');
+    if(listaEl)listaEl.innerHTML='';
   }else{
-    btnDev.className='btn btn-primary';btnDev.style.flex='1';btnDev.style.padding='12px';btnDev.style.fontSize='13px';
-    btnRec.className='btn';btnRec.style.flex='1';btnRec.style.padding='12px';btnRec.style.fontSize='13px';btnRec.style.border='1.5px solid var(--border)';
+    btnDev.className='btn btn-primary';
+    btnRec.className='btn';btnRec.style.border='1.5px solid var(--border)';
     info.style.background='#fff7ed';info.style.borderColor='#fed7aa';info.style.color='#c2410c';
     info.innerHTML='↩ <strong>Devolución al depósito:</strong> equipo del stock de la cuadrilla que vuelve por falla o sobrante.';
     campoCliente.style.display='none';
+    if(serialLabel)serialLabel.textContent='MAC / Serial (manual, si no aparece arriba)';
+    // Si ya hay un tipo seleccionado, cargar los seriales
+    var tipoId=parseInt(document.getElementById('retiro-tipo')?.value)||0;
+    if(tipoId)retiroTipoChange();
   }
 }
 
@@ -1865,13 +1954,18 @@ async function confirmarRetiroEquipo(){
   errEl.style.display='none';
 
   var tipoId=parseInt(document.getElementById('retiro-tipo')?.value)||0;
-  var rawSerial=(document.getElementById('retiro-serial')?.value||'').trim();
   var obs=(document.getElementById('retiro-obs')?.value||'').trim();
   var origen=window._retiroOrigen||'RECUPERO_CLIENTE';
   var clienteInput=(document.getElementById('retiro-cliente')?.value||'').trim();
 
   if(!tipoId){errEl.textContent='Seleccioná el tipo de equipo.';errEl.style.display='block';return;}
-  if(!rawSerial){errEl.textContent='Ingresá el serial o MAC.';errEl.style.display='block';return;}
+
+  // Para DEVOLUCION: preferir el serial seleccionado de la lista sobre el manual
+  var rawSerial=((window._retiroSerialSel&&origen==='DEVOLUCION_CUADRILLA')
+    ?window._retiroSerialSel
+    :(document.getElementById('retiro-serial')?.value||'')).trim();
+
+  if(!rawSerial){errEl.textContent='Ingresá o seleccioná el serial.';errEl.style.display='block';return;}
 
   // Normalizar — intentar como MAC primero, luego como precinto, luego OTRO
   var norm=normalizarSerial(rawSerial,'MAC');
