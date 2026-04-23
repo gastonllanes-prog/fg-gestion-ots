@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.21</title>
+<title>FG Cuadrillas v4.23</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.21 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.23 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -185,6 +185,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
       <div class="topbar-sub" id="topbar-sub"></div>
     </div>
     <button id="btn-mi-stock" style="display:none;background:rgba(255,255,255,.18);border:none;color:#fff;padding:8px 11px;border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0" onclick="abrirMiStock()" title="Mi Stock">📦</button>
+    <button id="btn-retiro" style="display:none;background:rgba(255,255,255,.18);border:none;color:#fff;padding:8px 11px;border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0" onclick="abrirRetiroEquipos()" title="Registrar equipo retirado">🔌</button>
     <button class="topbar-salir" onclick="salir()">Salir</button>
   </div>
 
@@ -226,6 +227,9 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
 
   <!-- MI STOCK -->
   <div id="s-stock" style="display:none" class="page"></div>
+
+  <!-- RETIRO DE EQUIPOS -->
+  <div id="s-retiro" style="display:none" class="page"></div>
 
 </div>
 
@@ -397,9 +401,10 @@ async function iniciarApp(){
   document.getElementById('s-login').style.display='none';
   document.getElementById('s-app').style.display='flex';
   document.getElementById('btn-mi-stock').style.display='flex';
+  document.getElementById('btn-retiro').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.21';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.23';
 
   // Cargar estados con fallback
   try{
@@ -1631,6 +1636,17 @@ async function confirmarWizard(){
               var selsCorr=p.corrSels[mid]||[];
               for(var si=0;si<selsCorr.length;si++){
                 try{await sbPatch('stock_seriales','?material_id=eq.'+mid+'&serial=eq.'+selsCorr[si],{ubicacion:'CLIENTE',ot_id:otId});}catch(e){}
+                // Historial precinto (en try/catch)
+                try{
+                  var normP=normalizarSerial(selsCorr[si],'PRECINTO');
+                  var prec=normP.ok?normP.valor:String(selsCorr[si]);
+                  var cliIdP=GRUPO_ACTIVO&&GRUPO_ACTIVO.ordenes_trabajo&&GRUPO_ACTIVO.ordenes_trabajo[0]?GRUPO_ACTIVO.ordenes_trabajo[0].clientes?.id||null:null;
+                  await sbPost('equipo_historial',{
+                    serial:prec,material_id:parseInt(mid),evento:'INSTALADO_CLIENTE',origen:'STOCK',
+                    cuadrilla_id:parseInt(cuadId),cliente_id:cliIdP,ot_id:otId,
+                    usuario:CUAD.nombre,obs:'Precinto OT'
+                  });
+                }catch(ep){console.warn('[historial-prec]',ep.message);}
               }
             }
           }
@@ -1651,6 +1667,20 @@ async function confirmarWizard(){
                   hayFaltante=true;
                 }
               }
+              // Historial INSTALADO_CLIENTE (en try/catch para no bloquear el cierre)
+              try{
+                var normI=normalizarSerial(serI,'MAC');
+                var serialGuardar=normI.ok?normI.valor:serI.toUpperCase();
+                var eqBusc=await sbGet('equipos','?serial=eq.'+encodeURIComponent(serialGuardar)+'&select=id')||[];
+                var eqIdI=eqBusc.length?eqBusc[0].id:null;
+                var cliId=GRUPO_ACTIVO&&GRUPO_ACTIVO.ordenes_trabajo&&GRUPO_ACTIVO.ordenes_trabajo[0]?GRUPO_ACTIVO.ordenes_trabajo[0].clientes?.id||null:null;
+                await sbPost('equipo_historial',{
+                  serial:serialGuardar,equipo_id:eqIdI,
+                  material_id:parseInt(midI),evento:'INSTALADO_CLIENTE',origen:'STOCK',
+                  cuadrilla_id:parseInt(cuadId),cliente_id:cliId,ot_id:otId,
+                  usuario:CUAD.nombre,obs:'Cierre OT'
+                });
+              }catch(eh){console.warn('[historial-ind]',eh.message);}
             }catch(e){console.warn('stock-ind:',e.message);}
           }
           if(hayFaltante){
@@ -1731,6 +1761,199 @@ async function confirmarWizard(){
 }
 
 // ── NAVEGACIÓN ─────────────────────────────────────────────────────────────────
+// ═══ NORMALIZACIÓN DE SERIALES ══════════════════════════════════════════════
+function normalizarSerial(raw,tipo){
+  var s=(raw||'').trim();
+  if(tipo==='MAC'){
+    var clean=s.toUpperCase().replace(/[:\-\.\s]/g,'');
+    if(!/^[0-9A-F]{12}$/.test(clean))
+      return{ok:false,error:'MAC inválida. Debe tener 12 caracteres hexadecimales (0-9, A-F). Ej: A41F723C8801'};
+    return{ok:true,valor:clean};
+  }
+  if(tipo==='PRECINTO'){
+    if(!/^\d{4,20}$/.test(s))
+      return{ok:false,error:'Precinto inválido. Solo números, 4-20 dígitos.'};
+    return{ok:true,valor:s};
+  }
+  if(!s)return{ok:false,error:'Serial vacío'};
+  return{ok:true,valor:s.toUpperCase()};
+}
+
+// ═══ MÓDULO RETIRO DE EQUIPOS ════════════════════════════════════════════════
+var RETIRO_TIPOS=[];
+
+async function abrirRetiroEquipos(){
+  document.getElementById('s-lista').style.display='none';
+  document.getElementById('s-grupo').style.display='none';
+  document.getElementById('s-retiro').style.display='block';
+  document.getElementById('btn-volver').style.display='inline-flex';
+  document.getElementById('topbar-title').textContent='🔌 Registrar equipo';
+  if(!RETIRO_TIPOS.length){
+    try{RETIRO_TIPOS=await sbGet('tipos_equipo','?activo=eq.true&order=nombre')||[];}catch(e){RETIRO_TIPOS=[];}
+  }
+  renderRetiroForm();
+}
+
+function cerrarRetiroEquipos(){
+  document.getElementById('s-retiro').style.display='none';
+  document.getElementById('s-lista').style.display='block';
+  document.getElementById('btn-volver').style.display='none';
+  document.getElementById('topbar-title').textContent=CUAD.nombre;
+}
+
+function renderRetiroForm(){
+  var el=document.getElementById('s-retiro');
+  var optTipos=RETIRO_TIPOS.map(function(t){
+    return'<option value="'+t.id+'">'+t.nombre+'</option>';
+  }).join('');
+  el.innerHTML='<div style="padding:16px;display:flex;flex-direction:column;gap:14px">'
+    +'<div style="display:flex;gap:8px">'
+      +'<button id="retiro-orig-rec" class="btn btn-primary" style="flex:1;padding:12px;font-size:13px;font-weight:700" onclick="retiroSetOrigen(\'RECUPERO_CLIENTE\')">📤 Recuperado de cliente</button>'
+      +'<button id="retiro-orig-dev" class="btn" style="flex:1;padding:12px;font-size:13px;font-weight:600;border:1.5px solid var(--border)" onclick="retiroSetOrigen(\'DEVOLUCION_CUADRILLA\')">↩ Devolución al depósito</button>'
+    +'</div>'
+    +'<div id="retiro-origen-info" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;font-size:12px;color:#1d4ed8">📤 <strong>Recuperado de cliente:</strong> equipo que el cliente entregó (cambio de tecnología, cambio de domicilio, etc.)</div>'
+    +'<div id="retiro-campo-cliente" style="display:flex;flex-direction:column;gap:6px">'
+      +'<label style="font-size:12px;font-weight:700;color:#64748b">N° Cliente (del cliente que entregó)</label>'
+      +'<input id="retiro-cliente" type="text" inputmode="numeric" placeholder="Ej: 98478" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit"/>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:6px">'
+      +'<label style="font-size:12px;font-weight:700;color:#64748b">Tipo de equipo *</label>'
+      +'<select id="retiro-tipo" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit">'
+        +'<option value="">Seleccioná el tipo...</option>'+optTipos
+      +'</select>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:6px">'
+      +'<label style="font-size:12px;font-weight:700;color:#64748b">MAC / Serial *</label>'
+      +'<input id="retiro-serial" type="text" inputmode="text" placeholder="Ej: A41F723C8801 o 12:34:56:78:9A:BC" autocapitalize="characters" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:monospace;text-transform:uppercase"/>'
+      +'<div id="retiro-serial-val" style="font-size:12px;min-height:16px;color:#dc2626"></div>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:6px">'
+      +'<label style="font-size:12px;font-weight:700;color:#64748b">Observación (opcional)</label>'
+      +'<input id="retiro-obs" type="text" placeholder="Motivo del retiro, estado del equipo..." style="padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit"/>'
+    +'</div>'
+    +'<div id="retiro-error" style="display:none;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;font-size:13px;color:#dc2626"></div>'
+    +'<button onclick="confirmarRetiroEquipo()" style="width:100%;padding:14px;border-radius:12px;background:var(--blue);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer">✅ Registrar equipo</button>'
+  +'</div>';
+  // Estado inicial: RECUPERO_CLIENTE seleccionado
+  window._retiroOrigen='RECUPERO_CLIENTE';
+}
+
+function retiroSetOrigen(origen){
+  window._retiroOrigen=origen;
+  var btnRec=document.getElementById('retiro-orig-rec');
+  var btnDev=document.getElementById('retiro-orig-dev');
+  var info=document.getElementById('retiro-origen-info');
+  var campoCliente=document.getElementById('retiro-campo-cliente');
+  if(origen==='RECUPERO_CLIENTE'){
+    btnRec.className='btn btn-primary';btnRec.style.flex='1';btnRec.style.padding='12px';btnRec.style.fontSize='13px';
+    btnDev.className='btn';btnDev.style.flex='1';btnDev.style.padding='12px';btnDev.style.fontSize='13px';btnDev.style.border='1.5px solid var(--border)';
+    info.style.background='#eff6ff';info.style.borderColor='#bfdbfe';info.style.color='#1d4ed8';
+    info.innerHTML='📤 <strong>Recuperado de cliente:</strong> equipo que el cliente entregó.';
+    campoCliente.style.display='flex';
+  }else{
+    btnDev.className='btn btn-primary';btnDev.style.flex='1';btnDev.style.padding='12px';btnDev.style.fontSize='13px';
+    btnRec.className='btn';btnRec.style.flex='1';btnRec.style.padding='12px';btnRec.style.fontSize='13px';btnRec.style.border='1.5px solid var(--border)';
+    info.style.background='#fff7ed';info.style.borderColor='#fed7aa';info.style.color='#c2410c';
+    info.innerHTML='↩ <strong>Devolución al depósito:</strong> equipo del stock de la cuadrilla que vuelve por falla o sobrante.';
+    campoCliente.style.display='none';
+  }
+}
+
+async function confirmarRetiroEquipo(){
+  var errEl=document.getElementById('retiro-error');
+  var valEl=document.getElementById('retiro-serial-val');
+  errEl.style.display='none';
+
+  var tipoId=parseInt(document.getElementById('retiro-tipo')?.value)||0;
+  var rawSerial=(document.getElementById('retiro-serial')?.value||'').trim();
+  var obs=(document.getElementById('retiro-obs')?.value||'').trim();
+  var origen=window._retiroOrigen||'RECUPERO_CLIENTE';
+  var clienteInput=(document.getElementById('retiro-cliente')?.value||'').trim();
+
+  if(!tipoId){errEl.textContent='Seleccioná el tipo de equipo.';errEl.style.display='block';return;}
+  if(!rawSerial){errEl.textContent='Ingresá el serial o MAC.';errEl.style.display='block';return;}
+
+  // Normalizar — intentar como MAC primero, luego como precinto, luego OTRO
+  var norm=normalizarSerial(rawSerial,'MAC');
+  if(!norm.ok){
+    norm=normalizarSerial(rawSerial,'PRECINTO');
+    if(!norm.ok) norm=normalizarSerial(rawSerial,'OTRO');
+  }
+  if(!norm.ok){errEl.textContent=norm.error;errEl.style.display='block';return;}
+  var serialNorm=norm.valor;
+  valEl.textContent='';
+
+  // Control de duplicados
+  try{
+    var existe=await sbGet('equipos','?serial=eq.'+encodeURIComponent(serialNorm)+'&select=id,estado,cuadrilla_id,cuadrillas(nombre)')||[];
+    if(existe.length){
+      var eq=existe[0];
+      var est=eq.estado||'?';
+      if(est==='EN_DEPOSITO'){
+        errEl.textContent='Este serial ya está registrado en depósito. No es necesario registrarlo de nuevo.';
+        errEl.style.display='block';return;
+      }
+      if(est==='EN_CUADRILLA'){
+        var nomCuad=eq.cuadrillas?.nombre||'otra cuadrilla';
+        if(!confirm('⚠️ Este serial ya está registrado como EN CUADRILLA ('+nomCuad+').\n¿Querés registrar un nuevo retiro de todas formas?'))return;
+      }
+      if(est==='DEVUELTO_GIGARED'){
+        if(!confirm('⚠️ Este serial ya fue devuelto a Gigared.\n¿Fue recuperado de nuevo? Si confirmás se creará un nuevo registro.'))return;
+      }
+      // INSTALADO: se permite, puede haber sido retirado
+    }
+  }catch(e){console.warn('[retiro-dup]',e.message);}
+
+  // Buscar cliente si corresponde
+  var clienteId=null;
+  if(origen==='RECUPERO_CLIENTE'&&clienteInput){
+    try{
+      var clis=await sbGet('clientes','?codigo_gigared=ilike.*'+clienteInput+'*&select=id,codigo_gigared,apellido,nombre&limit=1')||[];
+      if(clis.length)clienteId=clis[0].id;
+    }catch(e){}
+  }
+
+  // INSERT en equipos
+  try{
+    // mac solo aplica para equipos que realmente tienen MAC (CM, ONU)
+    // Para SmartCard, TV Box, etc. el identificador es el serial, no una MAC
+    var tipoSelNombre=(RETIRO_TIPOS.find(function(t){return t.id===tipoId;})||{}).nombre||'';
+    var esMac=/cablemodem|cm\b|onu/i.test(tipoSelNombre);
+    var nuevoEq=await sbPost('equipos',{
+      tipo_equipo_id:tipoId,
+      serial:serialNorm,
+      mac:esMac?serialNorm:null,
+      estado:'EN_CUADRILLA',
+      cuadrilla_id:parseInt(CUAD.id),
+      cliente_id:clienteId||null,
+      observaciones:obs||(origen==='RECUPERO_CLIENTE'?'Recuperado de cliente':'Devolución cuadrilla'),
+      origen:origen
+    });
+    var eqId=(Array.isArray(nuevoEq)?nuevoEq[0]:nuevoEq)?.id||null;
+
+    // INSERT en equipo_historial
+    var evento=origen==='RECUPERO_CLIENTE'?'RETIRADO_CLIENTE':'DEVUELTO_CUADRILLA';
+    try{
+      await sbPost('equipo_historial',{
+        serial:serialNorm,
+        equipo_id:eqId,
+        evento:evento,
+        origen:origen,
+        cuadrilla_id:parseInt(CUAD.id),
+        cliente_id:clienteId||null,
+        usuario:CUAD.nombre,
+        obs:obs||null
+      });
+    }catch(eh){console.warn('[equipo_historial]',eh.message);}
+
+    alert('✅ Equipo registrado correctamente.\nSerial: '+serialNorm+'\nOrigen: '+(origen==='RECUPERO_CLIENTE'?'Recuperado de cliente':'Devolución al depósito'));
+    renderRetiroForm(); // limpiar el formulario
+  }catch(e){
+    errEl.textContent='Error al registrar: '+e.message;
+    errEl.style.display='block';
+  }
+}
+
 // ═══ MI STOCK ════════════════════════════════════════════════════════════════
 
 var MI_STOCK_TAB='actual';
@@ -1810,38 +2033,77 @@ async function renderMiStockTab(){
 
 async function renderStockActualTec(cont){
   var cuadId=CUAD.id;
-  var [mats,sc,movHoy]=await Promise.all([
+  var [mats,sc,movHoy,movRepartos]=await Promise.all([
     sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[],
     sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[],
-    sbGet('movimientos_stock','?cuadrilla_id=eq.'+cuadId+'&tipo_movimiento=eq.CONSUMO_OT&created_at=gte.'+hoy()+'T00:00:00&select=material_id,cantidad')||[]
+    sbGet('movimientos_stock','?cuadrilla_id=eq.'+cuadId+'&tipo_movimiento=eq.CONSUMO_OT&created_at=gte.'+hoy()+'T00:00:00&select=material_id,cantidad')||[],
+    sbGet('movimientos_stock','?cuadrilla_id=eq.'+cuadId+'&tipo_movimiento=eq.REPARTO_CUADRILLA&order=created_at.desc&limit=100&select=material_id,cantidad,created_at,catalogo_materiales(nombre,unidad)')||[]
   ]);
   var scMap={};sc.forEach(function(s){scMap[s.material_id]=s.cantidad||0;});
   var usadoHoyMap={};
   movHoy.forEach(function(m){usadoHoyMap[m.material_id]=(usadoHoyMap[m.material_id]||0)+Math.abs(m.cantidad);});
 
+  // Stock total
   var html='<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#15803d;font-weight:600">📦 Stock disponible en el vehículo</div>';
-  html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
-    +'<thead><tr style="font-size:11px;color:#94a3b8;text-transform:uppercase;border-bottom:1.5px solid var(--border)">'
-    +'<th style="text-align:left;padding:6px 4px">Material</th>'
-    +'<th style="text-align:right;padding:6px 4px">Físico</th>'
-    +'<th style="text-align:right;padding:6px 4px;color:#dc2626">Usado hoy</th>'
-    +'</tr></thead><tbody>';
-  mats.forEach(function(m){
-    var fis=scMap[m.id]||0;
-    var usado=usadoHoyMap[m.id]||0;
-    if(fis===0&&usado===0)return;
-    html+='<tr style="border-bottom:1px solid var(--border)">'
-      +'<td style="padding:8px 4px;font-weight:600">'+m.nombre+'<span style="font-size:10px;color:#94a3b8;margin-left:4px">'+m.unidad+'</span></td>'
-      +'<td style="text-align:right;padding:8px 4px;font-weight:700;font-size:15px;color:'+(fis>0?'#16a34a':'#94a3b8')+'">'+fis+'</td>'
-      +'<td style="text-align:right;padding:8px 4px;color:'+(usado>0?'#dc2626':'#94a3b8')+'">'+( usado>0?'-'+usado:'—')+'</td>'
-      +'</tr>';
-  });
-  html+='</tbody></table></div>';
-  if(mats.every(function(m){return(scMap[m.id]||0)===0&&(usadoHoyMap[m.id]||0)===0;})){
-    html='<div style="text-align:center;padding:2rem;color:#94a3b8;font-size:13px;font-style:italic">No tenés materiales cargados todavía.</div>';
+  var tieneStock=mats.some(function(m){return(scMap[m.id]||0)>0||(usadoHoyMap[m.id]||0)>0;});
+  if(!tieneStock){
+    html+='<div style="text-align:center;padding:1.5rem;color:#94a3b8;font-size:13px;font-style:italic">No tenés materiales cargados todavía.</div>';
+  }else{
+    html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+      +'<thead><tr style="font-size:11px;color:#94a3b8;text-transform:uppercase;border-bottom:1.5px solid var(--border)">'
+      +'<th style="text-align:left;padding:6px 4px">Material</th>'
+      +'<th style="text-align:right;padding:6px 4px">Físico</th>'
+      +'<th style="text-align:right;padding:6px 4px;color:#dc2626">Usado hoy</th>'
+      +'</tr></thead><tbody>';
+    mats.forEach(function(m){
+      var fis=scMap[m.id]||0;
+      var usado=usadoHoyMap[m.id]||0;
+      if(fis===0&&usado===0)return;
+      html+='<tr style="border-bottom:1px solid var(--border)">'
+        +'<td style="padding:8px 4px;font-weight:600">'+m.nombre+'<span style="font-size:10px;color:#94a3b8;margin-left:4px">'+m.unidad+'</span></td>'
+        +'<td style="text-align:right;padding:8px 4px;font-weight:700;font-size:15px;color:'+(fis>0?'#16a34a':'#94a3b8')+'">'+fis+'</td>'
+        +'<td style="text-align:right;padding:8px 4px;color:'+(usado>0?'#dc2626':'#94a3b8')+'">'+(usado>0?'-'+usado:'—')+'</td>'
+        +'</tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+
+  // Última carga detectada (heurístico ±30 min)
+  if(movRepartos.length){
+    var t0=new Date(movRepartos[0].created_at).getTime();
+    var VENTANA=30*60*1000;
+    var lote=movRepartos.filter(function(m){return t0-new Date(m.created_at).getTime()<=VENTANA;});
+    var maxDiff=0;
+    for(var i=1;i<lote.length;i++){
+      var d1=new Date(lote[i-1].created_at).getTime();
+      var d2=new Date(lote[i].created_at).getTime();
+      if(d1-d2>maxDiff)maxDiff=d1-d2;
+    }
+    var hayMezcla=maxDiff>5*60*1000;
+    var fechaLote=new Date(movRepartos[0].created_at);
+    var fmtLote=fechaLote.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})
+      +' · '+fechaLote.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'hs';
+    var loteMap={};
+    lote.forEach(function(m){
+      var nom=m.catalogo_materiales?.nombre||'?';
+      var und=m.catalogo_materiales?.unidad||'';
+      if(!loteMap[nom])loteMap[nom]={nom:nom,unidad:und,cant:0};
+      loteMap[nom].cant+=Math.abs(m.cantidad);
+    });
+    html+='<div style="margin-top:14px;background:'+(hayMezcla?'#fff7ed':'#f0fdf4')+';border:1.5px solid '+(hayMezcla?'#fed7aa':'#bbf7d0')+';border-radius:12px;padding:12px 14px">'
+      +'<div style="font-size:12px;font-weight:700;color:'+(hayMezcla?'#c2410c':'#15803d')+';margin-bottom:6px">📋 Última carga detectada · '+fmtLote+'</div>';
+    if(hayMezcla){
+      html+='<div style="font-size:11px;color:#92400e;background:#fef3c7;border-radius:8px;padding:5px 9px;margin-bottom:8px">⚠️ Se detectaron movimientos con más de 5 min de diferencia. Puede haber movimientos de distintas sesiones mezclados.</div>';
+    }
+    Object.values(loteMap).forEach(function(r){
+      html+='<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.05)">'
+        +'<span>'+r.nom+'</span><span style="font-weight:700">+'+r.cant+' '+r.unidad+'</span></div>';
+    });
+    html+='</div>';
   }
   cont.innerHTML=html;
 }
+
 
 async function renderSerialesDisponiblesTec(cont){
   var cuadId=CUAD.id;
@@ -1952,31 +2214,26 @@ async function renderMovimientosHoyTec(cont){
 }
 
 async function confirmarStockRevisado(){
-  // Guarda confirmación en ot_cambios como registro de auditoría
-  // (no requiere tabla nueva — campo='confirmacion_stock' acepta texto libre)
   if(!confirm('¿Confirmás que revisaste tu stock y está correcto?'))return;
+  // Registrar en equipo_historial como evento de auditoría
+  // No usa ot_cambios (ot_id NOT NULL) ni movimientos_stock (material_id NOT NULL)
+  var hora=new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  var msg='Cuadrilla '+CUAD.nombre+' confirmó stock revisado el '+hoy()+' a las '+hora;
   try{
-    await sbPost('ot_cambios',{
-      ot_id:null, // sin OT asociada — es un registro de cuadrilla
-      campo:'confirmacion_stock',
-      valor_anterior:null,
-      valor_nuevo:'Cuadrilla '+CUAD.nombre+' confirmó stock revisado el '+hoy()+' a las '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}),
-      usuario_id:null,
-      origen:'TECNICO'
-    });
-    // También lo registra como movimiento de stock tipo CONFIRMACION (cantidad=0, solo auditoría)
-    await sbPost('movimientos_stock',{
-      tipo_movimiento:'CONFIRMACION_STOCK',
+    // equipo_historial acepta serial OR equipo_id — usamos serial con valor especial de auditoría
+    await sbPost('equipo_historial',{
+      serial:'CONFIRMACION-'+CUAD.id+'-'+hoy(),
+      evento:'AJUSTE_MANUAL',
+      origen:'STOCK',
       cuadrilla_id:parseInt(CUAD.id),
-      material_id:null,
-      cantidad:0,
-      obs:'Stock revisado y confirmado por cuadrilla '+CUAD.nombre
-    }).catch(function(){});// si falla (null material_id) no bloquea
-    alert('✅ Confirmación registrada correctamente.\n\nHora: '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
+      usuario:CUAD.nombre,
+      obs:msg
+    });
   }catch(e){
-    // Fallback: si ot_cambios requiere ot_id NOT NULL, guardamos igual la confirmación visual
-    alert('✅ Confirmación registrada localmente.\n\nHora: '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
+    console.warn('[confirmacion-stock]',e.message);
+    // El fallo no impide mostrar la confirmación visual al técnico
   }
+  alert('✅ Confirmación registrada.\n\nHora: '+hora);
 }
 
 function volverAtras(){
@@ -1997,6 +2254,7 @@ function volverAtras(){
   if(enRechazo){cancelarRechazo();return;}
   if(enMod){cerrarModificacion();return;}
   if(enStock){cerrarMiStock();return;}
+  if(document.getElementById('s-retiro').style.display!=='none'){cerrarRetiroEquipos();return;}
   if(enGrupo){
     GRUPO_ACTIVO=null;
     document.getElementById('s-grupo').style.display='none';

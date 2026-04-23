@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v199</title>
+<title>FG Gestión OTs v201</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V199</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V201</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v199</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v201</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -227,6 +227,12 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div class="val" style="color:#dc2626" id="dash-pend-dev">—</div>
       <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-pend-dev-sub"></div>
       <div style="font-size:10px;color:#dc2626;margin-top:4px">OTs a devolver · ver →</div>
+    </div>
+    <div class="stat" style="cursor:pointer;border-left:4px solid #64748b" onclick="irAConFiltroEstado('DEVUELTA_GIGARED')">
+      <div class="lbl">Devueltas Gigared</div>
+      <div class="val" style="color:#64748b" id="dash-repro">—</div>
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-repro-ots"></div>
+      <div style="font-size:10px;color:#64748b;margin-top:4px">ver OTs →</div>
     </div>
   </div>
 
@@ -765,10 +771,14 @@ tr:hover td{background:rgba(37,99,235,.02)}
 </div>
 
 <div id="s-equipos" style="display:none">
-  <div class="ph"><div class="ph-icon blue">📡</div><div><div class="ph-title">Equipos</div><div class="ph-sub">Cablemodems, ONUs, decos</div></div>
-    <div style="margin-left:auto"><button class="btn btn-sm btn-primary" onclick="alert('Próximamente')">+ Ingresar</button></div>
+  <div class="ph"><div class="ph-icon blue">📡</div><div><div class="ph-title">Equipos</div><div class="ph-sub">Trazabilidad de equipos recuperados y devueltos</div></div></div>
+  <div class="nav" id="eq-nav" style="margin-bottom:1rem">
+    <div class="ntab active" onclick="eqTab('cuadrilla',this)">🔧 En cuadrillas</div>
+    <div class="ntab" onclick="eqTab('deposito',this)">📦 En depósito</div>
+    <div class="ntab" onclick="eqTab('historial',this)">📋 Entregado Gigared</div>
+    <div class="ntab" onclick="eqTab('buscar',this)">🔍 Buscar serial</div>
   </div>
-  <div id="eq-lista"><div class="loading"><span class="spinner"></span></div></div>
+  <div id="eq-lista"></div>
 </div>
 
 <div id="s-config" style="display:none">
@@ -1470,6 +1480,17 @@ async function sbFetch(table,method,body,params=''){
 const sbGet=(t,p='')=>sbFetch(t,'GET',null,p);
 const sbPost=(t,b)=>sbFetch(t,'POST',b);
 const sbPatch=(t,p,b)=>sbFetch(t,'PATCH',b,p);
+
+// Labels de tipos de OT — usado en panel Rendimiento y otros
+const TIPO_LABELS={
+  BASICA:'📶 Instalación',ONU:'📶 ONU',CABLEMODEM:'📶 Cablemodem',
+  CM_EXISTENTE:'📶 CM existente',CAMBIO_TECNOLOGIA:'🔄 Cambio tecnología',
+  BOCA_ADICIONAL:'➕ Boca adicional',AGREGA_TV:'📺 Agrega TV',
+  TV_BOX:'📺 TV Box',DECODIFICADOR:'📺 Decodificador',SMART_CARD:'💳 Smart Card',
+  REPARACION:'🔧 Reparación',REUBICACION:'📍 Reubicación',
+  RECONEXION:'🔁 Reconexión',RECONEXION_EQUIPO:'🔁 Reconexión equipo',
+  DESCONEXION:'❌ Desconexión'
+};
 async function sbUpsert(table,body,onConflict=''){
   const params=onConflict?`?on_conflict=${onConflict}`:'';
   const r=await fetch(`${SB_URL}/rest/v1/${table}${params}`,{
@@ -1477,6 +1498,17 @@ async function sbUpsert(table,body,onConflict=''){
     headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json',
       'Prefer':'resolution=merge-duplicates,return=minimal'},
     body:JSON.stringify(body)
+  });
+  const t=await r.text();if(!r.ok)throw new Error(t);
+  return t?JSON.parse(t):null;
+}
+
+async function sbRpc(fn,params={}){
+  // Para funciones RPC de Supabase que retornan scalar (TEXT, INT, etc.)
+  const r=await fetch(`${SB_URL}/rest/v1/rpc/${fn}`,{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify(params)
   });
   const t=await r.text();if(!r.ok)throw new Error(t);
   return t?JSON.parse(t):null;
@@ -8535,6 +8567,21 @@ async function finalizarAsignacion(){
         else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:matId,cantidad:cant});
         const obs=item.tipo==='CORRELATIVO'?'Precintos '+seriales[0]+' al '+seriales[seriales.length-1]:'Asignación '+cant+' equipos';
         await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:matId,cuadrilla_id:parseInt(cuadId),cantidad:-cant,obs});
+        // Historial ASIGNADO_CUADRILLA por serial (en try/catch, no bloquea la asignación)
+        for(const s of seriales){
+          try{
+            const normT=item.tipo==='CORRELATIVO'?'PRECINTO':'MAC';
+            const normR=normalizarSerialAdmin(s,normT);
+            const serialN=normR.ok?normR.valor:s.toUpperCase();
+            const eqBusc=await sbGet('equipos','?serial=eq.'+encodeURIComponent(serialN)+'&select=id')||[];
+            const eqId=eqBusc.length?eqBusc[0].id:null;
+            await sbPost('equipo_historial',{
+              serial:serialN,equipo_id:eqId,material_id:matId,
+              evento:'ASIGNADO_CUADRILLA',origen:'STOCK',
+              cuadrilla_id:parseInt(cuadId),usuario:CU.nombre||CU.email,obs:'Asignación stock'
+            });
+          }catch(eh){console.warn('[hist-asig]',s,eh.message);}
+        }
       }else{
         const cant=item.cantidad;
         const sd=await sbGet('stock_deposito','?material_id=eq.'+matId)||[];
@@ -9188,14 +9235,336 @@ async function verHistorialMaterial(matId){
 
 
 // EQUIPOS
+let _EQ_TAB='cuadrilla';
+
+function eqTab(tab,el){
+  _EQ_TAB=tab;
+  document.querySelectorAll('#eq-nav .ntab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderEquipos();
+}
+
+function normalizarSerialAdmin(raw,tipo){
+  const s=(raw||'').trim();
+  if(tipo==='MAC'){
+    const clean=s.toUpperCase().replace(/[:\-\.\s]/g,'');
+    if(!/^[0-9A-F]{12}$/.test(clean))
+      return{ok:false,error:'MAC inválida. Debe tener 12 caracteres hexadecimales.'};
+    return{ok:true,valor:clean};
+  }
+  if(tipo==='PRECINTO'){
+    if(!/^\d{4,20}$/.test(s))return{ok:false,error:'Precinto inválido. Solo números, 4-20 dígitos.'};
+    return{ok:true,valor:s};
+  }
+  if(!s)return{ok:false,error:'Serial vacío'};
+  return{ok:true,valor:s.toUpperCase()};
+}
+
 async function renderEquipos(){
-  const el=document.getElementById('eq-lista');el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  const el=document.getElementById('eq-lista');
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
-    const d=await sbGet('equipos','?select=*,tipos_equipo(nombre),clientes(apellido,nombre),cuadrillas(nombre)&order=created_at.desc&limit=50')||[];
-    if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📡</div><div>Sin equipos</div></div>';return;}
-    const cm={EN_DEPOSITO:'b-gray',EN_CUADRILLA:'b-blue',INSTALADO:'b-green',RECUPERADO:'b-amber',DEVUELTO_GIGARED:'b-red'};
-    el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Tipo</th><th>Serial/MAC</th><th>Estado</th><th>Ubicación</th></tr></thead><tbody>${d.map(e=>`<tr><td>${e.tipos_equipo?.nombre||'—'}</td><td style="font-family:monospace;font-size:12px">${e.serial||e.mac||'—'}</td><td><span class="badge ${cm[e.estado]||'b-gray'}">${(e.estado||'').replace(/_/g,' ')}</span></td><td style="font-size:12px">${e.clientes?e.clientes.apellido+', '+e.clientes.nombre:e.cuadrillas?'🔧 '+e.cuadrillas.nombre:'Depósito'}</td></tr>`).join('')}</tbody></table></div>`;
+    if(_EQ_TAB==='cuadrilla') await renderEquiposEnCuadrilla(el);
+    else if(_EQ_TAB==='deposito') await renderEquiposEnDeposito(el);
+    else if(_EQ_TAB==='historial') await renderEquiposEntregados(el);
+    else if(_EQ_TAB==='buscar') renderBuscarSerial(el);
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
+}
+
+function _badgeOrigen(origen){
+  if(origen==='RECUPERO_CLIENTE')return'<span style="font-size:10px;font-weight:700;color:#1d4ed8;background:#dbeafe;padding:2px 8px;border-radius:6px">Cliente</span>';
+  if(origen==='DEVOLUCION_CUADRILLA')return'<span style="font-size:10px;font-weight:700;color:#c2410c;background:#ffedd5;padding:2px 8px;border-radius:6px">Devolución</span>';
+  return'';
+}
+
+async function renderEquiposEnCuadrilla(el){
+  const d=await sbGet('equipos','?estado=eq.EN_CUADRILLA&select=id,serial,mac,estado,origen,observaciones,tipos_equipo(nombre),clientes(apellido,nombre),cuadrillas(id,nombre)&order=cuadrilla_id,created_at.desc&limit=200')||[];
+  if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">✅</div><div style="color:#94a3b8">No hay equipos pendientes en cuadrillas</div></div>';return;}
+  // Agrupar por cuadrilla
+  const porCuad={};
+  d.forEach(eq=>{const k=eq.cuadrillas?.nombre||'Sin cuadrilla';if(!porCuad[k])porCuad[k]=[];porCuad[k].push(eq);});
+  window._EQ_LOTE_IDS={}; // { nombreCuadrilla: [ids] }
+  let html='';
+  for(const [cuad,eqs] of Object.entries(porCuad)){
+    window._EQ_LOTE_IDS[cuad]=eqs.map(e=>e.id);
+    html+=`<div class="card" style="margin-bottom:1rem">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>🔧 ${cuad} <span style="font-size:12px;color:#64748b;font-weight:400">${eqs.length} equipo${eqs.length!==1?'s':''}</span></span>
+        <button class="btn btn-sm btn-primary" onclick="recibirLoteActual()">📥 Recibir todos en depósito</button>
+      </div>
+      <div class="ot-table-wrap"><table class="ot-table"><thead><tr>
+        <th>Tipo</th><th>Serial / MAC</th><th>Origen</th><th>Cliente</th><th></th>
+      </tr></thead><tbody>`;
+    eqs.forEach(eq=>{
+      const ser=eq.serial||eq.mac||'—';
+      const cli=eq.clientes?eq.clientes.apellido+', '+eq.clientes.nombre:'—';
+      html+=`<tr>
+        <td style="font-size:12px;font-weight:600">${eq.tipos_equipo?.nombre||'?'}</td>
+        <td style="font-family:monospace;font-size:12px">${ser}</td>
+        <td>${_badgeOrigen(eq.origen)}</td>
+        <td style="font-size:12px;color:#64748b">${cli}</td>
+        <td><button class="btn btn-sm" onclick="recibirEnDeposito(${eq.id})" style="font-size:11px">📥 Recibir</button></td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div></div>`;
+  }
+  el.innerHTML=html;
+}
+
+async function renderEquiposEnDeposito(el){
+  window._EQ_DEP_SEL=new Set(); // inicializar ANTES del render para que depToggleSel no trabaje sobre Set viejo
+  const d=await sbGet('equipos','?estado=eq.EN_DEPOSITO&select=id,serial,mac,estado,origen,observaciones,tipos_equipo(nombre),clientes(apellido,nombre)&order=origen,created_at.desc&limit=200')||[];
+  if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📦</div><div style="color:#94a3b8">No hay equipos en depósito</div></div>';return;}
+  // Separar por origen
+  const recuperados=d.filter(e=>e.origen==='RECUPERO_CLIENTE');
+  const devoluciones=d.filter(e=>e.origen!=='RECUPERO_CLIENTE');
+  const selIds=new Set();
+  const toggleSel=(id)=>{selIds.has(id)?selIds.delete(id):selIds.add(id);};
+  let html=`<div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+    <button class="btn btn-sm" onclick="selTodosDeposito()">Seleccionar todos</button>
+    <button class="btn btn-sm btn-primary" id="btn-gen-remito" onclick="generarRemitoEquipos()">📄 Generar remito seleccionados</button>
+    <button class="btn btn-sm" style="background:#dc2626;color:#fff;border-color:#dc2626" id="btn-conf-gigared" onclick="confirmarEntregaGigared()">✅ Confirmar entrega a Gigared</button>
+  </div>`;
+  const tablaGrupo=(titulo,eqs)=>{
+    if(!eqs.length)return'';
+    const grupoKey='grp_'+titulo.replace(/[^a-z0-9]/gi,'_');
+    window._EQ_GRUPOS=window._EQ_GRUPOS||{};
+    window._EQ_GRUPOS[grupoKey]=eqs.map(e=>e.id);
+    let t=`<div class="card" style="margin-bottom:1rem">
+      <div class="card-title">${titulo} <span style="font-size:12px;color:#64748b;font-weight:400">${eqs.length} equipo${eqs.length!==1?'s':''}</span></div>
+      <div class="ot-table-wrap"><table class="ot-table"><thead><tr>
+        <th><input type="checkbox" onchange="selGrupoDeposito('${grupoKey}',this.checked)"/></th>
+        <th>Tipo</th><th>Serial / MAC</th><th>Cliente</th>
+      </tr></thead><tbody>`;
+    eqs.forEach(eq=>{
+      const ser=eq.serial||eq.mac||'—';
+      const cli=eq.clientes?eq.clientes.apellido+', '+eq.clientes.nombre:'—';
+      t+=`<tr>
+        <td><input type="checkbox" class="dep-sel" data-id="${eq.id}" onchange="depToggleSel(${eq.id},this.checked)"/></td>
+        <td style="font-size:12px;font-weight:600">${eq.tipos_equipo?.nombre||'?'}</td>
+        <td style="font-family:monospace;font-size:12px">${ser}</td>
+        <td style="font-size:12px;color:#64748b">${cli}</td>
+      </tr>`;
+    });
+    t+=`</tbody></table></div></div>`;
+    return t;
+  };
+  html+=tablaGrupo('📤 Recuperados de clientes',recuperados);
+  html+=tablaGrupo('↩ Devoluciones de cuadrilla',devoluciones);
+  el.innerHTML=html;
+}
+
+function depToggleSel(id,checked){if(!window._EQ_DEP_SEL)window._EQ_DEP_SEL=new Set();checked?window._EQ_DEP_SEL.add(id):window._EQ_DEP_SEL.delete(id);}
+function selTodosDeposito(){document.querySelectorAll('.dep-sel').forEach(cb=>{cb.checked=true;depToggleSel(parseInt(cb.dataset.id),true);});}
+function selGrupoDeposito(key,checked){
+  const ids=(window._EQ_GRUPOS||{})[key]||[];
+  ids.forEach(id=>{const cb=document.querySelector('.dep-sel[data-id="'+id+'"]');if(cb){cb.checked=checked;depToggleSel(id,checked);}});
+}
+
+async function recibirLoteActual(){
+  // Lee los IDs del lote por cuadrilla desde la variable global para evitar JSON en onclick
+  const btn=event?.target;
+  const card=btn?.closest('.card');
+  const titulo=card?.querySelector('.card-title span')?.textContent?.trim()||'';
+  const cuadNombre=Object.keys(window._EQ_LOTE_IDS||{}).find(k=>titulo.startsWith(k))||null;
+  const ids=cuadNombre?(window._EQ_LOTE_IDS[cuadNombre]||[]):Object.values(window._EQ_LOTE_IDS||{}).flat();
+  if(!ids.length){alert('No se encontraron equipos para recibir.');return;}
+  if(!confirm(`¿Recibir ${ids.length} equipo${ids.length!==1?'s':''} en depósito?\n\nSe generará un comprobante REC-.`))return;
+  await _recibirEnDeposito(ids);
+}
+
+async function recibirEnDeposito(equipoId){
+  if(!confirm('¿Confirmar recepción en depósito de este equipo?'))return;
+  await _recibirEnDeposito([equipoId]);
+}
+
+async function recibirLoteCuadrilla(ids){
+  if(!confirm(`¿Recibir ${ids.length} equipo${ids.length!==1?'s':''} en depósito?\n\nSe generará un comprobante REC-.`))return;
+  await _recibirEnDeposito(ids);
+}
+
+async function _recibirEnDeposito(ids){
+  try{
+    // Generar comprobante REC- via RPC
+    let nro='REC-'+Date.now(); // fallback si RPC no disponible
+    let compId=null;
+    try{
+      const nroRes=await sbRpc('generar_numero_comprobante',{prefijo:'REC'});
+      if(nroRes)nro=typeof nroRes==='string'?nroRes:(nroRes.generar_numero_comprobante||nro);
+      const compRes=await sbPost('comprobantes',{numero:nro,tipo:'REC',usuario:CU.nombre||CU.email});
+      compId=(Array.isArray(compRes)?compRes[0]:compRes)?.id||null;
+    }catch(eRec){console.warn('[comprobante-rec]',eRec.message);}
+
+    const now=new Date().toISOString();
+    for(const id of ids){
+      await sbPatch('equipos',`?id=eq.${id}`,{estado:'EN_DEPOSITO'});
+      // comprobante_detalle
+      if(compId){
+        const eq=await sbGet('equipos',`?id=eq.${id}&select=serial,mac,tipo_equipo_id`)||[];
+        if(eq.length){
+          await sbPost('comprobante_detalle',{comprobante_id:compId,equipo_id:id,serial:eq[0].serial||eq[0].mac,tipo_equipo_id:eq[0].tipo_equipo_id}).catch(()=>{});
+        }
+      }
+      // historial — incluye serial para cumplir CHECK constraint
+      try{
+        const eqD=await sbGet('equipos',`?id=eq.${id}&select=serial,mac`)||[];
+        const serialH=eqD[0]?.serial||eqD[0]?.mac||null;
+        await sbPost('equipo_historial',{equipo_id:id,serial:serialH,evento:'RECIBIDO_DEPOSITO',comprobante_id:compId,usuario:CU.nombre||CU.email});
+      }catch(eh){console.warn('[hist-rec]',eh.message);}
+    }
+    alert(`✅ ${ids.length} equipo${ids.length!==1?'s':''} recibido${ids.length!==1?'s':''} en depósito.\nComprobante: ${nro}`);
+    renderEquipos();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function confirmarEntregaGigared(){
+  const ids=[...(window._EQ_DEP_SEL||new Set())];
+  if(!ids.length){alert('Seleccioná al menos un equipo para entregar a Gigared.');return;}
+  if(!confirm(`¿Confirmar entrega a Gigared de ${ids.length} equipo${ids.length!==1?'s':''}?\n\nSe generará un comprobante ENT-.`))return;
+  try{
+    let nro='ENT-'+Date.now();
+    let compId=null;
+    try{
+      const nroRes=await sbRpc('generar_numero_comprobante',{prefijo:'ENT'});
+      if(nroRes)nro=typeof nroRes==='string'?nroRes:(nroRes.generar_numero_comprobante||nro);
+      const compRes=await sbPost('comprobantes',{numero:nro,tipo:'ENT',usuario:CU.nombre||CU.email});
+      compId=(Array.isArray(compRes)?compRes[0]:compRes)?.id||null;
+    }catch(eEnt){console.warn('[comprobante-ent]',eEnt.message);}
+
+    for(const id of ids){
+      await sbPatch('equipos',`?id=eq.${id}`,{estado:'DEVUELTO_GIGARED'});
+      if(compId){
+        const eq=await sbGet('equipos',`?id=eq.${id}&select=serial,mac,tipo_equipo_id`)||[];
+        if(eq.length) await sbPost('comprobante_detalle',{comprobante_id:compId,equipo_id:id,serial:eq[0].serial||eq[0].mac,tipo_equipo_id:eq[0].tipo_equipo_id}).catch(()=>{});
+      }
+      try{
+        const eqE=await sbGet('equipos',`?id=eq.${id}&select=serial,mac`)||[];
+        const serialE=eqE[0]?.serial||eqE[0]?.mac||null;
+        await sbPost('equipo_historial',{equipo_id:id,serial:serialE,evento:'ENTREGADO_GIGARED',comprobante_id:compId,usuario:CU.nombre||CU.email});
+      }catch(eh){console.warn('[hist-ent]',eh.message);}
+    }
+    alert(`✅ Entrega confirmada.\nComprobante: ${nro}`);
+    renderEquipos();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function generarRemitoEquipos(){
+  const ids=[...(window._EQ_DEP_SEL||new Set())];
+  if(!ids.length){alert('Seleccioná al menos un equipo para el remito.');return;}
+  const d=[];
+  for(const id of ids){
+    const eq=await sbGet('equipos',`?id=eq.${id}&select=id,serial,mac,origen,tipos_equipo(nombre),clientes(apellido,nombre)`)||[];
+    if(eq.length)d.push(eq[0]);
+  }
+  const rec=d.filter(e=>e.origen==='RECUPERO_CLIENTE');
+  const dev=d.filter(e=>e.origen!=='RECUPERO_CLIENTE');
+  const filas=(eqs)=>eqs.map(e=>`<tr><td>${e.tipos_equipo?.nombre||'?'}</td><td style="font-family:monospace">${e.serial||e.mac||'—'}</td><td>${e.clientes?e.clientes.apellido+', '+e.clientes.nombre:'—'}</td></tr>`).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Remito equipos</title>
+    <style>body{font-family:Arial,sans-serif;font-size:13px;max-width:700px;margin:2rem auto}h1{font-size:18px}h2{font-size:14px;margin-top:1.5rem;border-bottom:1px solid #ccc;padding-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:.5rem}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}th{background:#f5f5f5;font-weight:700}@media print{.no-print{display:none}}</style>
+    </head><body>
+    <button class="no-print" onclick="window.print()" style="margin-bottom:1rem;padding:8px 16px;cursor:pointer">🖨️ Imprimir</button>
+    <h1>Remito de equipos — ${new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})}</h1>
+    <p>Total: ${d.length} equipo${d.length!==1?'s':''} | Generado por: ${CU.nombre||CU.email}</p>
+    ${rec.length?`<h2>📤 Recuperados de clientes (${rec.length})</h2><table><thead><tr><th>Tipo</th><th>Serial / MAC</th><th>Cliente</th></tr></thead><tbody>${filas(rec)}</tbody></table>`:''}
+    ${dev.length?`<h2>↩ Devoluciones de cuadrilla (${dev.length})</h2><table><thead><tr><th>Tipo</th><th>Serial / MAC</th><th>Obs</th></tr></thead><tbody>${filas(dev)}</tbody></table>`:''}
+    <div style="margin-top:3rem;display:flex;justify-content:space-between">
+      <div style="text-align:center;width:45%"><div style="border-top:1px solid #000;padding-top:4px;margin-top:40px">Firma responsable</div></div>
+      <div style="text-align:center;width:45%"><div style="border-top:1px solid #000;padding-top:4px;margin-top:40px">Firma receptor Gigared</div></div>
+    </div></body></html>`;
+  const w=window.open('','_blank');w.document.write(html);w.document.close();
+}
+
+async function renderEquiposEntregados(el){
+  const d=await sbGet('equipos','?estado=eq.DEVUELTO_GIGARED&select=id,serial,mac,origen,tipos_equipo(nombre),clientes(apellido,nombre)&order=created_at.desc&limit=200')||[];
+  if(!d.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div style="color:#94a3b8">Sin equipos entregados a Gigared todavía</div></div>';return;}
+  let html=`<div class="card"><div class="card-title">Entregados a Gigared (${d.length})</div>
+    <div class="ot-table-wrap"><table class="ot-table"><thead><tr>
+      <th>Tipo</th><th>Serial / MAC</th><th>Origen</th><th>Cliente</th>
+    </tr></thead><tbody>`;
+  d.forEach(eq=>{
+    html+=`<tr>
+      <td style="font-size:12px;font-weight:600">${eq.tipos_equipo?.nombre||'?'}</td>
+      <td style="font-family:monospace;font-size:12px">${eq.serial||eq.mac||'—'}</td>
+      <td>${_badgeOrigen(eq.origen)}</td>
+      <td style="font-size:12px;color:#64748b">${eq.clientes?eq.clientes.apellido+', '+eq.clientes.nombre:'—'}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div></div>`;
+  el.innerHTML=html;
+}
+
+function renderBuscarSerial(el){
+  el.innerHTML=`<div class="card">
+    <div class="card-title">🔍 Buscar por serial o MAC</div>
+    <div style="display:flex;gap:8px;margin-top:.75rem">
+      <input id="eq-buscar-inp" type="text" placeholder="Ej: A41F723C8801 o número de precinto..."
+        style="flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:monospace;text-transform:uppercase"
+        onkeydown="if(event.key==='Enter')buscarSerial()"/>
+      <button class="btn btn-primary" onclick="buscarSerial()">Buscar</button>
+    </div>
+    <div id="eq-buscar-resultado" style="margin-top:1rem"></div>
+  </div>`;
+}
+
+async function buscarSerial(){
+  const raw=(document.getElementById('eq-buscar-inp')?.value||'').trim();
+  if(!raw){alert('Ingresá un serial o MAC para buscar.');return;}
+  const resDom=document.getElementById('eq-buscar-resultado');
+  resDom.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+
+  // Normalizar: intentar MAC, luego precinto, luego texto libre
+  let normalizado=raw.toUpperCase().replace(/[:\-\.\s]/g,'');
+  if(!/^[0-9A-F]{12}$/.test(normalizado)) normalizado=raw.toUpperCase();
+
+  const [hist,eqArr]=await Promise.all([
+    sbGet('equipo_historial',`?serial=eq.${encodeURIComponent(normalizado)}&order=created_at.asc&select=id,evento,origen,created_at,cuadrillas(nombre),clientes(apellido,nombre),comprobantes(numero),obs`)||[],
+    sbGet('equipos',`?serial=eq.${encodeURIComponent(normalizado)}&select=id,estado,origen,tipos_equipo(nombre),clientes(apellido,nombre),cuadrillas(nombre)&limit=1`)||[]
+  ]);
+
+  if(!hist.length&&!eqArr.length){
+    resDom.innerHTML='<div style="color:#64748b;padding:1rem;text-align:center">No se encontraron registros para ese serial.</div>';
+    return;
+  }
+
+  const eq=eqArr[0];
+  const iconoEvento={
+    ASIGNADO_CUADRILLA:'📦',INSTALADO_CLIENTE:'🏠',RETIRADO_CLIENTE:'↩',
+    DEVUELTO_CUADRILLA:'🔄',RECIBIDO_DEPOSITO:'📥',ENTREGADO_GIGARED:'📤',AJUSTE_MANUAL:'✏️'
+  };
+
+  let html='';
+  if(eq){
+    html+=`<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:1rem">
+      <div style="font-size:14px;font-weight:700;color:#15803d">📡 ${eq.tipos_equipo?.nombre||'Equipo'} · Serial: ${normalizado}</div>
+      <div style="font-size:12px;color:#64748b;margin-top:3px">Estado actual: <strong>${(eq.estado||'?').replace(/_/g,' ')}</strong>
+      ${eq.cuadrillas?' · '+eq.cuadrillas.nombre:''}${eq.clientes?' · '+eq.clientes.apellido+', '+eq.clientes.nombre:''}</div>
+    </div>`;
+  }
+
+  if(hist.length){
+    html+=`<div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:.5rem">Historial completo</div>`;
+    html+=`<div style="display:flex;flex-direction:column;gap:6px">`;
+    hist.forEach(h=>{
+      const dt=new Date(h.created_at);
+      const fmtDT=dt.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' '+dt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+      const icono=iconoEvento[h.evento]||'•';
+      const cuad=h.cuadrillas?.nombre||'';
+      const cli=h.clientes?h.clientes.apellido+', '+h.clientes.nombre:'';
+      const comp=h.comprobantes?.numero?` · ${h.comprobantes.numero}`:'';
+      html+=`<div style="display:flex;gap:10px;padding:8px 10px;background:#f8fafc;border-radius:8px;border-left:3px solid #2563eb">
+        <div style="font-size:18px;line-height:1.2;flex-shrink:0">${icono}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:#1e3a5f">${h.evento.replace(/_/g,' ')}</div>
+          <div style="font-size:11px;color:#64748b">${fmtDT}${cuad?' · '+cuad:''}${cli?' · '+cli:''}${comp}</div>
+          ${h.obs?`<div style="font-size:11px;color:#94a3b8">${h.obs}</div>`:''}
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }else{
+    html+='<div style="color:#64748b;font-size:13px;font-style:italic">Sin eventos de historial registrados para este serial.</div>';
+  }
+  resDom.innerHTML=html;
 }
 
 // CONFIG
