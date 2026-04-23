@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v207</title>
+<title>FG Gestión OTs v208</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V207</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V208</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v207</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v208</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -205,10 +205,10 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div style="font-size:10px;color:#f59e0b;margin-top:4px">clientes · ver →</div>
     </div>
     <div class="stat" style="cursor:pointer;border-left:4px solid #2563eb" onclick="irAConFiltroEstado('ASIGNADA')">
-      <div class="lbl">Asignadas</div>
+      <div class="lbl">En curso</div>
       <div class="val blue" id="dash-asig">—</div>
       <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px" id="dash-asig-ots"></div>
-      <div style="font-size:10px;color:#2563eb;margin-top:4px">en curso hoy</div>
+      <div style="font-size:10px;color:#2563eb;margin-top:4px">asignadas + en proceso · ver →</div>
     </div>
     <div class="stat" style="cursor:pointer;border-left:4px solid #16a34a" onclick="irAFinalizadasHoy()">
       <div class="lbl">Finalizadas hoy</div>
@@ -399,9 +399,17 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
   <!-- Filtros -->
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;align-items:flex-end">
-    <div style="flex:1;min-width:140px">
-      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Fecha</label>
+    <div style="flex:1;min-width:130px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Desde</label>
       <input type="date" id="asig-list-fecha" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit" onchange="renderAsignadas()"/>
+    </div>
+    <div style="flex:1;min-width:130px">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Hasta</label>
+      <input type="date" id="asig-list-hasta" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit" onchange="renderAsignadas()"/>
+    </div>
+    <div style="display:flex;gap:6px;align-self:flex-end">
+      <button class="btn btn-sm" onclick="asigFechaHoy()" style="padding:8px 12px;white-space:nowrap">Hoy</button>
+      <button class="btn btn-sm" onclick="asigFechaSemana()" style="padding:8px 12px;white-space:nowrap">Semana</button>
     </div>
     <div style="flex:1;min-width:160px">
       <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Cuadrilla</label>
@@ -4327,8 +4335,9 @@ function irAConFiltroEstado(estado){
 function inicializarAsignadas(){
   const hoy=fechaHoyLocal();
   const fechaEl=document.getElementById('asig-list-fecha');
-  // Siempre setear la fecha a hoy al entrar a la pantalla
+  const hastaEl=document.getElementById('asig-list-hasta');
   if(fechaEl) fechaEl.value=hoy;
+  if(hastaEl) hastaEl.value=hoy;
   const sel=document.getElementById('asig-list-cuad');
   if(sel&&sel.options.length<=1){
     sbGet('cuadrillas','?activo=eq.true&order=nombre').then(cuads=>{
@@ -4338,6 +4347,26 @@ function inicializarAsignadas(){
   }else{
     renderAsignadas();
   }
+}
+
+function asigFechaHoy(){
+  const hoy=fechaHoyLocal();
+  const d=document.getElementById('asig-list-fecha');
+  const h=document.getElementById('asig-list-hasta');
+  if(d)d.value=hoy;
+  if(h)h.value=hoy;
+  renderAsignadas();
+}
+
+function asigFechaSemana(){
+  const hoy=new Date();
+  const lunes=new Date(hoy);
+  lunes.setDate(hoy.getDate()-hoy.getDay()+1);
+  const d=document.getElementById('asig-list-fecha');
+  const h=document.getElementById('asig-list-hasta');
+  if(d)d.value=`${lunes.getFullYear()}-${String(lunes.getMonth()+1).padStart(2,'0')}-${String(lunes.getDate()).padStart(2,'0')}`;
+  if(h)h.value=fechaHoyLocal();
+  renderAsignadas();
 }
 
 // Llamada desde el dashboard — necesita también mostrar la sección
@@ -4354,12 +4383,14 @@ function irAOTsAsignadas(){
 let ASIG_LIST_DATA=[];
 async function renderAsignadas(){
   const el=document.getElementById('asig-list-tabla');
-  const fecha=document.getElementById('asig-list-fecha')?.value;
+  const desde=document.getElementById('asig-list-fecha')?.value;
+  const hasta=document.getElementById('asig-list-hasta')?.value;
   const cuadId=document.getElementById('asig-list-cuad')?.value;
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
     let q='?select=id,horario_visita,duracion_minutos,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_tarea,tipo_item,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,telefono1))&order=horario_visita&eliminado=eq.false';
-    if(fecha) q+='&fecha_trabajo=eq.'+fecha;
+    if(desde) q+='&fecha_trabajo=gte.'+desde;
+    if(hasta) q+='&fecha_trabajo=lte.'+hasta;
     if(cuadId) q+='&cuadrilla_id=eq.'+cuadId;
     else q+='&cuadrilla_id=not.is.null';
     const d=await sbGet('grupos_ot',q)||[];
