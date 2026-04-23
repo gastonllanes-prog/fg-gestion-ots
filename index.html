@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v208</title>
+<title>FG Gestión OTs v209</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V208</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V209</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v208</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v209</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -11839,7 +11839,7 @@ function renderTablaValidacion(lista){
   if(!lista.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">✅</div><div>Sin grupos pendientes para los filtros seleccionados</div></div>';return;}
   el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.5rem">'+lista.length+' grupo'+(lista.length!==1?'s':'')+' · clic en una fila para ver detalle</div>'
     +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
-    +'<th>Fecha</th><th>Cuadrilla</th><th>Cliente</th><th>OTs</th><th>Estado</th><th>Alertas</th><th>Acciones</th>'
+    +'<th>Fecha</th><th>Cuadrilla</th><th>Cliente</th><th>Tipos</th><th style="text-align:center">OTs</th><th>Estado</th><th>Alertas</th><th>Acciones</th>'
     +'</tr></thead><tbody>'
     +lista.map(g=>{
       const ots=(g.ordenes_trabajo||[])
@@ -11851,11 +11851,18 @@ function renderTablaValidacion(lista){
       const pendVal=ots.filter(o=>['FINALIZADA_TECNICO','RECHAZADA_TECNICO','NO_REALIZADA'].includes(o.estados_ot?.nombre)&&!o.validado_admin_at).length;
       const totVal=ots.filter(o=>['FINALIZADA_TECNICO','RECHAZADA_TECNICO','NO_REALIZADA'].includes(o.estados_ot?.nombre)).length;
       const estColor=estG==='COMPLETO'?'#16a34a':estG==='PARCIAL'?'#d97706':'#2563eb';
+      // Tipos únicos ya en orden jerárquico (ots ya está ordenado por jerarquía)
+      const tiposUniq=[...new Set(ots.map(o=>o.tipo_item||o.tipo_tarea||''))].filter(Boolean);
+      const tiposBadge=tiposUniq.map(t=>{
+        const bc=t==='BASICA'||t==='INSTALAR'?'b-green':t==='REPARACION'?'b-orange':'b-blue';
+        return'<span class="badge '+bc+'" style="font-size:10px;margin-bottom:2px">'+t.replace(/_/g,' ')+'</span>';
+      }).join(' ');
       return '<tr style="cursor:pointer" onclick="verGrupoValidacion('+g.id+')">'
         +'<td style="font-size:12px;font-weight:600;white-space:nowrap">'+(g.fecha_trabajo||'—')+(g.horario_visita?'<br><span style="color:#94a3b8">'+g.horario_visita.slice(0,5)+'</span>':'')+'</td>'
         +'<td style="font-size:12px;font-weight:600">'+(g.cuadrillas?.nombre||'—')+'</td>'
         +'<td style="font-size:12px"><div style="font-weight:600">'+fmtCodigo(cl.codigo_gigared)+' — '+(cl.apellido||'')+' '+(cl.nombre||'')+'</div>'
           +'<div style="font-size:11px;color:#64748b">'+dom+(cl.nodo?' · <span style="color:#2563eb">'+cl.nodo+'</span>':'')+'</div></td>'
+        +'<td style="font-size:11px;min-width:120px">'+tiposBadge+'</td>'
         +'<td style="font-size:12px;text-align:center">'+ots.length+'<br><span style="font-size:10px;color:#64748b">'+pendVal+'/'+totVal+' pend</span></td>'
         +'<td><span style="font-size:11px;font-weight:700;color:'+estColor+'">'+estG+'</span></td>'
         +'<td>'+(alertas.bloq.length?'<span style="font-size:11px;font-weight:700;color:#dc2626;background:#fee2e2;padding:2px 8px;border-radius:6px">🚨 '+alertas.bloq.length+'</span> ':'')
