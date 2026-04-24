@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.29</title>
+<title>FG Cuadrillas v4.30</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.29 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.30 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -404,7 +404,7 @@ async function iniciarApp(){
   document.getElementById('btn-retiro').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.29';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.30';
 
   // Cargar estados con fallback
   try{
@@ -1328,7 +1328,7 @@ function comprimirImagen(file){
     var img=new Image();
     var objUrl=URL.createObjectURL(file);
     img.onload=function(){
-      var MAX=1920;
+      var MAX=1280;
       var w=img.width,h=img.height;
       if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
       if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}
@@ -1336,7 +1336,7 @@ function comprimirImagen(file){
       canvas.width=w;canvas.height=h;
       canvas.getContext('2d').drawImage(img,0,0,w,h);
       URL.revokeObjectURL(objUrl);
-      canvas.toBlob(function(blob){resolve(blob);},'image/jpeg',0.75);
+      canvas.toBlob(function(blob){resolve(blob);},'image/jpeg',0.70);
     };
     img.onerror=function(){URL.revokeObjectURL(objUrl);resolve(null);};
     img.src=objUrl;
