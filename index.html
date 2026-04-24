@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v210</title>
+<title>FG Gestión OTs v211</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V210</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V211</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v210</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v211</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -3972,7 +3972,7 @@ async function cargarOTsPendientes(){
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
     const estadosPend=ESTADOS.filter(e=>e.nombre==='PENDIENTE'||e.nombre==='ASIGNADA').map(e=>e.id);
-    let q='?select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,nodo,telefono1),estados_ot(nombre),grupos_ot(id,cuadrilla_id,cuadrillas(nombre))&order=fecha_impresion.asc.nullslast&limit=500';
+    let q='?select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,nodo,telefono1),estados_ot(nombre),grupos_ot(id,cuadrilla_id,cuadrillas(nombre))&order=fecha_impresion.asc.nullslast&eliminado=eq.false&limit=2000';
     if(estadosPend.length) q+='&estado_id=in.('+estadosPend.join(',')+')';
     const ots=await sbGet('ordenes_trabajo',q)||[];
 
