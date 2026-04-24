@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v209</title>
+<title>FG Gestión OTs v210</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V209</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V210</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v209</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v210</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -3247,9 +3247,19 @@ async function confirmarImport(){
         grupoEsExistente=true; // No tocar el estado del grupo existente
       }
       // Ordenar OTs del grupo por jerarquía de tipo antes de asignar orden_cierre
+      // Deduplicar dentro del mismo batch: si el mismo numero_ot ya fue insertado en este ciclo, saltearlo
+      const insertadosEnEsteBatch=new Set();
       gr.sort((a,b)=>{const oa=ordenJerarquiaOT(a.tipo_item||''),ob=ordenJerarquiaOT(b.tipo_item||'');if(oa!==ob)return oa-ob;return (a.numero_ot||'').localeCompare(b.numero_ot||'');});
       for(let idx=0;idx<gr.length;idx++){
         const o=gr[idx];
+        // Saltar si este numero_ot ya fue insertado en este batch (duplicado interno)
+        if(insertadosEnEsteBatch.has(o.numero_ot)){
+          ok++; // no contar como error, solo saltar
+          continue;
+        }
+        // Re-verificar contra BD por si se importaron en sesión anterior sin refrescar la preview
+        const yaEnBD=await sbGet('ordenes_trabajo','?numero_ot=eq.'+encodeURIComponent(o.numero_ot)+'&select=id&limit=1').then(r=>(r||[]).length>0).catch(()=>false);
+        if(yaEnBD){ok++;continue;}
         try{
           const otData={numero_ot:o.numero_ot,grupo_id:gId,cliente_id:cliId,tipo_tarea:o.tipo_tarea||'INSTALAR',tipo_item:o.tipo_item||'BASICA',orden_cierre:idx,estado_id:ePend?.id,fecha_emision:o.fecha_emision||null,fecha_asignacion_giga:o.fecha_asignacion_giga||null,obs_gigared:o.obs_gigared||null,tag:o.tag||null,es_cambio_domicilio:o.es_cambio_domicilio||false,fecha_impresion:o.fecha_impresion||null,codigo_cliente_real:o.codigo_cliente_real||null,pdf_page:o.pdf_page||null};
           if(o.tipo_tarea==='REPARACION'){
@@ -3260,11 +3270,19 @@ async function confirmarImport(){
           const ot=await sbPost('ordenes_trabajo',otData);
           const otId=(Array.isArray(ot)?ot[0]:ot)?.id;
           if(otId){
-            o._dbId=otId; // guardar id real para actualizar pdf_url después
+            o._dbId=otId;
+            insertadosEnEsteBatch.add(o.numero_ot);
             if(o.items?.length){for(const it of o.items){try{await sbPost('ot_items_contratados',{ot_id:otId,descripcion:it.descripcion,cantidad:it.cantidad});}catch(e){}}}
           }
           ok++;
-        }catch(e){errores.push(`OT ${o.numero_ot}: ${e.message}`);}
+        }catch(e){
+          // Si es duplicate key, la OT ya existe — contar como OK, no como error
+          if(e.message&&(e.message.includes('duplicate key')||e.message.includes('unique constraint')||e.message.includes('23505'))){
+            ok++;
+          }else{
+            errores.push(`OT ${o.numero_ot}: ${e.message}`);
+          }
+        }
       }
     }
     document.getElementById('import-ok-msg').textContent=`✓ ${ok} OTs importadas correctamente`;
@@ -3953,7 +3971,7 @@ async function cargarOTsPendientes(){
   const el=document.getElementById('asgn-tabla');
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
-    const estadosPend=ESTADOS.filter(e=>e.nombre==='PENDIENTE').map(e=>e.id);
+    const estadosPend=ESTADOS.filter(e=>e.nombre==='PENDIENTE'||e.nombre==='ASIGNADA').map(e=>e.id);
     let q='?select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,barrio,nodo,telefono1),estados_ot(nombre),grupos_ot(id,cuadrilla_id,cuadrillas(nombre))&order=fecha_impresion.asc.nullslast&limit=500';
     if(estadosPend.length) q+='&estado_id=in.('+estadosPend.join(',')+')';
     const ots=await sbGet('ordenes_trabajo',q)||[];
