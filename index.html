@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v218</title>
+<title>FG Gestión OTs v220</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V218</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V220</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v218</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v220</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -3222,21 +3222,48 @@ async function confirmarImport(){
         const ex=await sbGet('clientes',`?codigo_gigared=eq.${gr[0].codigo_cliente}&eliminado=eq.false`)||[];
         if(ex.length){
           cliId=ex[0].id;
+          const cli=ex[0];
           const upd={};
-          if(gr[0].telefono1&&gr[0].telefono1!==ex[0].telefono1)upd.telefono1=gr[0].telefono1;
-          if(gr[0].telefono2&&gr[0].telefono2!==ex[0].telefono2)upd.telefono2=gr[0].telefono2;
-          // Actualizar domicilio si el existente está vacío o parece un label incorrecto
-          const domExist=ex[0].domicilio||'';
-          const domNuevo=gr[0].domicilio||'';
-          const domMalo=domExist.length<5||/^(Cliente|Barrio|Nodo|Telef|Localid)/i.test(domExist);
-          if(domNuevo.length>5&&(domMalo||!ex[0].calle)){
-            upd.domicilio=domNuevo;
-            if(gr[0].calle)upd.calle=gr[0].calle;
-            if(gr[0].numero_domicilio)upd.numero_domicilio=gr[0].numero_domicilio;
-            if(gr[0].obs_domicilio)upd.obs_domicilio=gr[0].obs_domicilio;
+          const hist=[]; // cambios a registrar en clientes_historial
+          const nroOT=gr[0]?.numero_ot||null;
+
+          // Campos que se actualizan si el PDF trae valor distinto y no vacío
+          // EXCEPCIÓN: domicilio/calle no se toca si hay OT de CAMBIO_DOMICILIO —
+          // se actualiza recién al validar esa OT
+          const esCambioDom=gr.some(o=>o.tipo_item==='CAMBIO_DOMICILIO'||o.tipo_tarea==='CAMBIO_DOMICILIO');
+          const campos=[
+            {k:'telefono1',src:gr[0].telefono1},
+            {k:'telefono2',src:gr[0].telefono2},
+            {k:'nodo',src:gr[0].nodo},
+            {k:'barrio',src:gr[0].barrio},
+            {k:'localidad',src:gr[0].localidad},
+          ];
+          if(!esCambioDom){
+            // Solo actualizar domicilio si NO es CAMBIO_DOMICILIO
+            const domExist=cli.domicilio||'';
+            const domNuevo=gr[0].domicilio||'';
+            const domMalo=domExist.length<5||/^(Cliente|Barrio|Nodo|Telef|Localid)/i.test(domExist);
+            if(domNuevo.length>5&&(domMalo||!cli.calle)){
+              campos.push({k:'domicilio',src:domNuevo});
+              if(gr[0].calle)campos.push({k:'calle',src:gr[0].calle});
+              if(gr[0].numero_domicilio)campos.push({k:'numero_domicilio',src:gr[0].numero_domicilio});
+              if(gr[0].obs_domicilio)campos.push({k:'obs_domicilio',src:gr[0].obs_domicilio});
+            }
           }
-          if(gr[0].barrio&&!ex[0].barrio)upd.barrio=gr[0].barrio;
-          if(Object.keys(upd).length)await sbPatch('clientes',`?id=eq.${cliId}`,upd);
+          campos.forEach(({k,src})=>{
+            if(src&&String(src).trim()&&String(src).trim()!==String(cli[k]||'').trim()){
+              upd[k]=String(src).trim();
+              hist.push({cliente_id:cliId,campo:k,valor_ant:cli[k]||null,valor_nuevo:String(src).trim(),origen:'PDF',ot_numero:nroOT});
+            }
+          });
+
+          if(Object.keys(upd).length){
+            await sbPatch('clientes',`?id=eq.${cliId}`,upd);
+            // Registrar historial de cambios (en paralelo, no bloquea si falla)
+            for(const h of hist){
+              sbPost('clientes_historial',h).catch(()=>{});
+            }
+          }
         }else{
           const c=await sbPost('clientes',{codigo_gigared:gr[0].codigo_cliente,apellido:gr[0].apellido||'',nombre:gr[0].nombre||'',domicilio:gr[0].domicilio||'',calle:gr[0].calle||'',numero_domicilio:gr[0].numero_domicilio||'',obs_domicilio:gr[0].obs_domicilio||'',barrio:gr[0].barrio||'',localidad:gr[0].localidad||'',provincia:'MISIONES',nodo:gr[0].nodo||'',telefono1:gr[0].telefono1||'',telefono2:gr[0].telefono2||''});
           cliId=(Array.isArray(c)?c[0]:c)?.id;
@@ -12626,6 +12653,78 @@ async function otAGigaradAdmin(otId, grupoId){
 }
 
 // ── APROBAR TODO EL GRUPO CON VALIDACIONES ────────────────────────────────────
+// Helper: al validar CAMBIO_DOMICILIO, muestra popup de confirmación al admin
+// y actualiza domicilio del cliente solo si confirma explícitamente.
+// Lee los campos estructurados de la OT (calle, numero_domicilio, domicilio),
+// NO usa obs_gigared como fuente de datos.
+async function _actualizarDomicilioEnValidacion(otId, grupoId, adminNombre){
+  try{
+    const otDatos=await sbGet('ordenes_trabajo',
+      `?id=eq.${otId}&select=id,numero_ot,calle,numero_domicilio,obs_domicilio,barrio,localidad,domicilio,cliente_id,clientes(id,domicilio,calle,numero_domicilio,obs_domicilio,barrio,localidad)&eliminado=eq.false`)||[];
+    if(!otDatos.length)return;
+    const ot=otDatos[0];
+    const cli=ot.clientes;
+    if(!cli)return;
+
+    // Nuevo domicilio: usar campos estructurados de la OT, nunca obs_gigared
+    const nuevoCalleRaw=(ot.calle||'').trim();
+    const nuevoNroRaw=(ot.numero_domicilio||'').trim();
+    const nuevoDomRaw=(ot.domicilio||'').trim();
+    const nuevoBarrio=(ot.barrio||'').trim();
+    const nuevaLocalidad=(ot.localidad||'').trim();
+
+    // Si la OT no tiene datos de domicilio, no hay nada que actualizar
+    const hayNuevoDom=nuevoCalleRaw||nuevoDomRaw;
+    if(!hayNuevoDom)return;
+
+    const nuevoTexto=nuevoCalleRaw
+      ?(nuevoCalleRaw+(nuevoNroRaw?' '+nuevoNroRaw:'')+((ot.obs_domicilio||'').trim()?' '+(ot.obs_domicilio||'').trim():''))
+      :nuevoDomRaw;
+    const actualTexto=(cli.domicilio||'').trim();
+
+    // Si es el mismo domicilio, no preguntar
+    if(nuevoTexto===actualTexto)return;
+
+    // Popup de confirmación explícita
+    const msg=`📍 CAMBIO DE DOMICILIO — OT ${ot.numero_ot}\n\n`
+      +`Domicilio actual del cliente:\n→ ${actualTexto||'(vacío)'}\n\n`
+      +`Nuevo domicilio en la OT:\n→ ${nuevoTexto}\n`
+      +(nuevoBarrio?`   Barrio: ${nuevoBarrio}\n`:'')
+      +(nuevaLocalidad?`   Localidad: ${nuevaLocalidad}\n`:'')
+      +`\n¿Actualizar los datos del cliente ahora?`
+      +`\n\n(Si cancelás, la OT se aprueba igual sin cambiar el domicilio del cliente)`;
+
+    if(!confirm(msg))return; // Admin cancela → OT aprobada igual, cliente sin cambios
+
+    // Admin confirmó → actualizar cliente y registrar historial
+    const upd={};
+    const hist=[];
+    const campos=[
+      {k:'domicilio',nuevo:nuevoTexto,act:actualTexto},
+      {k:'calle',nuevo:nuevoCalleRaw,act:cli.calle||''},
+      {k:'numero_domicilio',nuevo:nuevoNroRaw,act:cli.numero_domicilio||''},
+      {k:'obs_domicilio',nuevo:(ot.obs_domicilio||'').trim(),act:cli.obs_domicilio||''},
+      {k:'barrio',nuevo:nuevoBarrio,act:cli.barrio||''},
+      {k:'localidad',nuevo:nuevaLocalidad,act:cli.localidad||''},
+    ];
+    campos.forEach(({k,nuevo,act})=>{
+      if(nuevo&&nuevo!==act){
+        upd[k]=nuevo;
+        hist.push({cliente_id:cli.id,campo:k,valor_ant:act||null,valor_nuevo:nuevo,origen:'VALIDACION_CAMBIO_DOM',ot_numero:ot.numero_ot});
+      }
+    });
+    if(Object.keys(upd).length){
+      await sbPatch('clientes',`?id=eq.${cli.id}`,upd);
+      for(const h of hist){
+        sbPost('clientes_historial',h).catch(()=>{});
+      }
+    }
+  }catch(e){
+    console.warn('[_actualizarDomicilioEnValidacion]',e.message);
+    // No propagar — no debe bloquear la validación bajo ninguna circunstancia
+  }
+}
+
 async function aprobarGrupo(grupoId){
   // Cargar OTs una sola vez, luego fotos y materiales en paralelo
   const ots=await sbGet('ordenes_trabajo',`?grupo_id=eq.${grupoId}&select=id,numero_ot,tipo_item,tipo_tarea,tag,hora_inicio_tec,hora_fin_tec,estados_ot(nombre)&eliminado=eq.false`)||[];
@@ -12677,6 +12776,10 @@ async function aprobarGrupo(grupoId){
       if(est==='FINALIZADA_TECNICO'){
         await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{estado_id:eFin.id,fecha_fin:fechaHoyLocal(),validado_admin_at:now,validado_admin_por:adminNombre});
         await sbPost('historial_estados_ot',{ot_id:ot.id,estado_nuevo_id:eFin.id,observacion:'APROBADO POR ADMIN (grupal): '+adminNombre,usuario_id:CU.id});
+        // Al validar CAMBIO_DOMICILIO: actualizar domicilio del cliente con historial
+        if(ot.tipo_item==='CAMBIO_DOMICILIO'||ot.tipo_tarea==='CAMBIO_DOMICILIO'){
+          await _actualizarDomicilioEnValidacion(ot.id,grupoId,adminNombre);
+        }
       }else if(est==='RECHAZADA_TECNICO'||est==='NO_REALIZADA'){
         await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{validado_admin_at:now,validado_admin_por:adminNombre});
         await sbPost('historial_estados_ot',{ot_id:ot.id,estado_nuevo_id:ot.estados_ot?.id||null,observacion:'VALIDADO POR ADMIN (grupal): '+adminNombre,usuario_id:CU.id});
@@ -12746,6 +12849,10 @@ async function aprobarSoloFinalizadas(grupoId){
         observacion:'APROBADO POR ADMIN (parcial): '+adminNombre,
         usuario_id:CU.id
       });
+      // Al validar CAMBIO_DOMICILIO: actualizar domicilio del cliente con historial
+      if(ot.tipo_item==='CAMBIO_DOMICILIO'||ot.tipo_tarea==='CAMBIO_DOMICILIO'){
+        await _actualizarDomicilioEnValidacion(ot.id,grupoId,adminNombre);
+      }
     }
     await verGrupoValidacion(grupoId);
     renderValidacion();
