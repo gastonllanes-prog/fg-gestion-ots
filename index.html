@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v211</title>
+<title>FG Gestión OTs v213</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V211</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V213</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v211</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v213</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1041,7 +1041,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <!-- SIN PAQUETE (unidades sueltas) -->
     <div id="es-cantidad-wrap">
       <div class="fg"><label>Cantidad</label>
-        <input type="number" id="es-cantidad" min="1" placeholder="Ej: 100" oninput="onCambioMaterialEntrada()"/>
+        <input type="number" id="es-cantidad" min="1" placeholder="Ej: 100" oninput="onCambioMaterialEntrada();actualizarContadorSeriales()"/>
       </div>
     </div>
 
@@ -1059,8 +1059,14 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div id="es-individual-wrap" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:1rem;margin-bottom:.75rem">
       <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:.75rem">🔢 Seriales individuales</div>
       <div style="font-size:12px;color:#64748b;margin-bottom:.5rem">Un serial por línea:</div>
-      <textarea id="es-seriales-txt" rows="5" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:13px;resize:vertical" placeholder="1C60D2F96288&#10;A0B1C2D3E4F5&#10;..."></textarea>
-      <div id="es-serial-count" style="font-size:12px;color:#64748b;margin-top:.4rem"></div>
+      <textarea id="es-seriales-txt" rows="8" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:13px;resize:vertical" placeholder="1C60D2F96288&#10;A0B1C2D3E4F5&#10;..." oninput="actualizarContadorSeriales()"></textarea>
+      <div id="es-serial-count" style="margin-top:.5rem;font-size:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <span id="es-cnt-ingresados" style="color:#64748b">Ingresados: 0</span>
+        <span id="es-cnt-faltan" style="color:#2563eb;font-weight:700"></span>
+        <span id="es-cnt-ok" style="color:#16a34a;font-weight:700"></span>
+        <span id="es-cnt-err" style="color:#dc2626;font-weight:700"></span>
+      </div>
+      <div id="es-serial-errores" style="margin-top:.4rem;font-size:11px;color:#dc2626;font-family:monospace;max-height:80px;overflow-y:auto"></div>
     </div>
 
     <div class="fg"><label>Fecha de entrada</label><input type="date" id="es-fecha"/></div>
@@ -9174,10 +9180,42 @@ document.addEventListener('click',function(e){
   }
 });
 
+function actualizarContadorSeriales(){
+  const matId=parseInt(document.getElementById('es-material').value)||0;
+  const matObj=ES_MATERIALES.find(m=>m.id===matId)||{};
+  const cantEsp=parseInt(document.getElementById('es-cantidad').value)||0;
+  const tipoVal=matObj.validacion_serial||'MAC_HEX';
+  const macReg=/^[0-9A-Fa-f]{12}$/;
+
+  const txt=(document.getElementById('es-seriales-txt').value||'');
+  const lineas=txt.split('\n').map(s=>s.trim()).filter(Boolean);
+
+  let ok=0,errores=[];
+  lineas.forEach(function(s){
+    if(tipoVal==='MAC_HEX'){
+      const clean=s.replace(/[:\-\.\s]/g,'');
+      if(macReg.test(clean)) ok++;
+      else errores.push(s);
+    }else{
+      if(s.length>=2) ok++;
+      else errores.push(s+' (demasiado corto)');
+    }
+  });
+
+  const total=lineas.length;
+  const faltan=cantEsp>0?Math.max(0,cantEsp-total):0;
+
+  document.getElementById('es-cnt-ingresados').textContent='Ingresados: '+total+(cantEsp>0?' / '+cantEsp:'');
+  document.getElementById('es-cnt-faltan').textContent=cantEsp>0&&faltan>0?'Faltan: '+faltan:'';
+  document.getElementById('es-cnt-ok').textContent=ok>0?'✅ '+ok+' válidos':'';
+  document.getElementById('es-cnt-err').textContent=errores.length>0?'❌ '+errores.length+' con error':'';
+  document.getElementById('es-serial-errores').textContent=errores.length?'Con error: '+errores.slice(0,10).join(', ')+(errores.length>10?' y '+(errores.length-10)+' más':''):'';
+}
+
 function onCambioMaterialEntrada(){
-  // Now handled by seleccionarMaterial(), this is kept for compatibility
   calcularTotalPaquetes();
   previewCorrelativo();
+  actualizarContadorSeriales();
 }
 
 function calcularTotalPaquetes(){
@@ -9242,14 +9280,22 @@ async function confirmarEntradaStock(finalizar=false){
     for(let i=0;i<cant;i++)seriales.push(String(primer+i));
   }else if(tipo==='INDIVIDUAL'){
     const txt=document.getElementById('es-seriales-txt').value.trim();
-    seriales=txt.split('\n').map(s=>s.trim().toLowerCase()).filter(Boolean);
+    seriales=txt.split('\n').map(s=>s.trim()).filter(Boolean);
     if(seriales.length!==cant){err.textContent='Ingresaste '+seriales.length+' seriales pero la cantidad es '+cant;return;}
     const unicos=new Set(seriales);
     if(unicos.size!==seriales.length){err.textContent='Hay seriales duplicados en la lista';return;}
-    // Validación MAC: 12 caracteres hexadecimales
-    const macReg=/^[0-9A-Fa-f]{12}$/;
-    const invalidos=seriales.filter(s=>!macReg.test(s.replace(/[:\-]/g,'')));
-    if(invalidos.length){err.textContent='Seriales inválidos (deben ser 12 caracteres hex): '+invalidos.slice(0,3).join(', ');return;}
+    // Validación según tipo de serial del material
+    const tipoVal=matObj.validacion_serial||'MAC_HEX';
+    if(tipoVal==='MAC_HEX'){
+      const macReg=/^[0-9A-Fa-f]{12}$/;
+      const invalidos=seriales.filter(s=>!macReg.test(s.replace(/[:\-]/g,'')));
+      if(invalidos.length){err.textContent='MACs inválidas (deben ser 12 caracteres hex): '+invalidos.slice(0,3).join(', ');return;}
+      // Normalizar MACs: sin separadores, mayúsculas
+      seriales=seriales.map(s=>s.replace(/[:\-\.\s]/g,'').toUpperCase());
+    }else{
+      // SERIAL_LIBRE: solo validar que no estén vacíos (ya filtrados arriba)
+      seriales=seriales.map(s=>s.toUpperCase());
+    }
   }
   err.textContent='';
 
@@ -9259,7 +9305,28 @@ async function confirmarEntradaStock(finalizar=false){
     const obsStr='Entrada Gigared'+(numPaq?' — '+numPaq+' '+nomPaq+(parseFloat(numPaq)!==1?'s':''):'')
       +(tipo==='CORRELATIVO'?' — Precintos correlativos':tipo==='INDIVIDUAL'?' — Seriales individuales':'');
 
-    const fechaEntrada=document.getElementById('es-fecha').value||new Date().toISOString().slice(0,10);
+    const fechaEntrada=document.getElementById('es-fecha').value||fechaHoyLocal();
+
+    // Para INDIVIDUAL: verificar que ningún serial ya existe antes de tocar el stock
+    if(tipo==='INDIVIDUAL'&&seriales.length){
+      const chk=await sbGet('stock_seriales','?serial=in.('+seriales.join(',')+')'
+        +'&select=serial,ubicacion&limit='+seriales.length)||[];
+      if(chk.length){
+        const yaExisten=chk.map(s=>s.serial).slice(0,5).join(', ')+(chk.length>5?' y '+(chk.length-5)+' más':'');
+        err.textContent='⚠️ '+chk.length+' serial'+(chk.length!==1?'es ya existen':' ya existe')+' en el sistema: '+yaExisten+'. Revisá la lista antes de continuar.';
+        return;
+      }
+    }
+    // Para CORRELATIVO: verificar lo mismo
+    if(tipo==='CORRELATIVO'&&seriales.length){
+      const chkC=await sbGet('stock_seriales','?serial=in.('+seriales.join(',')+')'
+        +'&select=serial&limit='+seriales.length)||[];
+      if(chkC.length){
+        err.textContent='⚠️ '+chkC.length+' precinto'+(chkC.length!==1?'s ya existen':' ya existe')+'. Revisá el rango antes de continuar.';
+        return;
+      }
+    }
+
     const mov=await sbPost('movimientos_stock',{
       tipo_movimiento:'ENTRADA_DEPOSITO',
       material_id:matId,
@@ -9269,32 +9336,31 @@ async function confirmarEntradaStock(finalizar=false){
     });
     const movId=(Array.isArray(mov)?mov[0]:mov)?.id;
 
-    // Actualizar stock depósito
-    const sd=await sbGet('stock_deposito','?material_id=eq.'+matId)||[];
-    if(sd.length){
-      await sbPatch('stock_deposito','?material_id=eq.'+matId,{cantidad:sd[0].cantidad+cant,updated_at:new Date().toISOString()});
-    }else{
-      await sbPost('stock_deposito',{material_id:matId,cantidad:cant});
-    }
-
-    // Registrar seriales — batch insert para máximo rendimiento
+    // Registrar seriales PRIMERO — si falla, no se toca el stock
+    let serialesInsertados=0;
     if(seriales.length){
-      const BATCH=200; // Supabase acepta hasta ~500 por request
+      const BATCH=200;
       for(let i=0;i<seriales.length;i+=BATCH){
         const lote=seriales.slice(i,i+BATCH).map(s=>({
           material_id:matId,serial:s,ubicacion:'DEPOSITO',movimiento_id:movId||null
         }));
-        try{
-          await sbPost('stock_seriales',lote);
-        }catch(e2){
-          // Si alguno ya existe, intentar uno por uno solo en ese lote
-          if(e2.message.includes('unique')||e2.message.includes('duplica')){
-            for(const item of lote){
-              try{await sbPost('stock_seriales',item);}catch(e3){}
-            }
-          }else throw e2;
-        }
+        await sbPost('stock_seriales',lote);
+        serialesInsertados+=lote.length;
       }
+    }
+
+    // Para INDIVIDUAL/CORRELATIVO: la cantidad real es la de seriales insertados
+    // Para otros: es cant
+    const cantReal=(tipo==='INDIVIDUAL'||tipo==='CORRELATIVO')&&serialesInsertados>0
+      ? serialesInsertados
+      : cant;
+
+    // Actualizar stock depósito DESPUÉS de los inserts exitosos
+    const sd=await sbGet('stock_deposito','?material_id=eq.'+matId)||[];
+    if(sd.length){
+      await sbPatch('stock_deposito','?material_id=eq.'+matId,{cantidad:sd[0].cantidad+cantReal,updated_at:new Date().toISOString()});
+    }else{
+      await sbPost('stock_deposito',{material_id:matId,cantidad:cantReal});
     }
 
     if(finalizar){
