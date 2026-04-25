@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v220</title>
+<title>FG Gestión OTs v224</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V220</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V224</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v220</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v224</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1504,6 +1504,8 @@ async function sbFetch(table,method,body,params=''){
 const sbGet=(t,p='')=>sbFetch(t,'GET',null,p);
 const sbPost=(t,b)=>sbFetch(t,'POST',b);
 const sbPatch=(t,p,b)=>sbFetch(t,'PATCH',b,p);
+// Normaliza cualquier serial/MAC: trim + UPPER + quita separadores MAC (:,-,.)
+const normSerial=(s)=>(s||'').trim().toUpperCase().replace(/[:\-.\s]/g,'');
 
 // Devuelve la fecha LOCAL de Argentina en formato YYYY-MM-DD
 // Usa toLocaleDateString con locale 'sv' que garantiza formato ISO sin depender de UTC
@@ -5888,8 +5890,10 @@ function renderWizPaso(){
       return `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--border2)">
         <span style="flex:1;font-size:12px">${m.nombre}</span>
         <span style="font-size:10px;color:${stock>0?'#16a34a':'#94a3b8'};min-width:28px;text-align:right">${stock||''}</span>
-        <input type="number" min="0" value="${val}" style="width:52px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"
-          onchange="WIZ.pasos[${WIZ.paso}].mats[${m.id}]=parseInt(this.value)||0" data-mid="${m.id}" class="wiz-mat"/>
+        <input type="number" min="0" value="${val||''}" placeholder="0" style="width:52px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"
+          onchange="WIZ.pasos[${WIZ.paso}].mats[${m.id}]=parseInt(this.value)||0"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();var inputs=[...document.querySelectorAll('.wiz-mat')];var idx=inputs.indexOf(this);if(idx>=0&&inputs[idx+1])inputs[idx+1].focus();}"
+          data-mid="${m.id}" class="wiz-mat"/>
       </div>`;
     }).join('')
     +'</div>';
@@ -5936,9 +5940,11 @@ function renderWizPaso(){
         return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border2)">
           <span style="flex:1;font-size:12px;font-weight:600">${m.nombre}</span>
           <span style="font-size:10px;color:${dispCant>0?'#2563eb':'#94a3b8'}">${dispCant>0?dispCant+' disp.':''}</span>
-          <input type="number" min="0" max="${dispCant||99}" value="${val}"
+          <input type="number" min="0" max="${dispCant||99}" value="${val||''}" placeholder="0"
             style="width:52px;padding:3px 6px;border:2px solid ${val>0?'#2563eb':'#dbeafe'};border-radius:6px;font-size:13px;text-align:center;color:${val>0?'#2563eb':'inherit'};font-weight:${val>0?'700':'400'}"
-            onchange="WIZ.pasos[${WIZ.paso}].mats[${m.id}]=parseInt(this.value)||0;this.style.borderColor=this.value>0?'#2563eb':'#dbeafe';this.style.color=this.value>0?'#2563eb':'inherit';this.style.fontWeight=this.value>0?'700':'400'" data-mid="${m.id}" class="wiz-mat"/>
+            onchange="WIZ.pasos[${WIZ.paso}].mats[${m.id}]=parseInt(this.value)||0;this.style.borderColor=this.value>0?'#2563eb':'#dbeafe';this.style.color=this.value>0?'#2563eb':'inherit';this.style.fontWeight=this.value>0?'700':'400'"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();var inputs=[...document.querySelectorAll('.wiz-mat')];var idx=inputs.indexOf(this);if(idx>=0&&inputs[idx+1])inputs[idx+1].focus();}"
+            data-mid="${m.id}" class="wiz-mat"/>
         </div>`;
       }).join('')
       +'</div>';
@@ -7963,14 +7969,54 @@ async function confirmarAjusteManualCuadrilla(){
       let cantNueva,serialesNuevos=[];
       if(m.serial_tipo==='INDIVIDUAL'||m.serial_tipo==='CORRELATIVO'){
         const txt=(document.getElementById('ajuste-ser-'+m.id)?.value||'').trim();
-        serialesNuevos=txt?txt.split('\n').map(s=>s.trim()).filter(Boolean):[];
+        serialesNuevos=txt?txt.split('\n').map(s=>normSerial(s)).filter(Boolean):[];
         cantNueva=serialesNuevos.length;
+        const actUbic='CUADRILLA_'+cuadId;
+
+        // Verificar seriales realmente activos en BD (pueden diferir de sersMap si hubo cambios)
+        const sersActivosBD=await sbGet('stock_seriales',
+          '?material_id=eq.'+m.id+'&ubicacion=eq.'+actUbic+'&select=serial&limit=500')||[];
+        const actualesNorm=sersActivosBD.map(s=>normSerial(s.serial));
+        const aEliminar=actualesNorm.filter(s=>!serialesNuevos.includes(s));
+        const aAgregar=serialesNuevos.filter(s=>!actualesNorm.includes(s));
+
+        // REGLA: si cantNueva=0 y hay seriales activos en BD → bloquear hasta confirmación
+        if(cantNueva===0&&actualesNorm.length>0){
+          const ok=confirm(
+            '⚠️ "'+m.nombre+'" tiene '+actualesNorm.length+' serial'+(actualesNorm.length!==1?'es activos':' activo')+' en la cuadrilla.\n\n'
+            +'Para dejar el stock en 0, esos seriales deben pasar a BAJA_AJUSTE.\n\n'
+            +'¿Confirmás dar de baja los '+actualesNorm.length+' serial'+(actualesNorm.length!==1?'es':'')+' y dejar el stock en 0?\n\n'
+            +'Cancelar = no se modifica este material.'
+          );
+          if(!ok)continue; // Cancelar → saltar este material sin cambios
+          // Marcar todos como BAJA_AJUSTE
+          for(const s of actualesNorm){
+            await sbPatch('stock_seriales',
+              '?material_id=eq.'+m.id+'&serial=eq.'+encodeURIComponent(s)+'&ubicacion=eq.'+actUbic,
+              {ubicacion:'BAJA_AJUSTE'}).catch(()=>{});
+          }
+        }else{
+          // Caso parcial: dar de baja los que salen, agregar los nuevos
+          for(const s of aEliminar){
+            await sbPatch('stock_seriales',
+              '?material_id=eq.'+m.id+'&serial=eq.'+encodeURIComponent(s)+'&ubicacion=eq.'+actUbic,
+              {ubicacion:'BAJA_AJUSTE'}).catch(()=>{});
+          }
+          if(aAgregar.length){
+            await sbPost('stock_seriales',
+              aAgregar.map(s=>({material_id:m.id,serial:s,ubicacion:actUbic}))
+            ).catch(e=>{errores.push(m.nombre+': '+e.message);});
+          }
+        }
+        if(aEliminar.length||aAgregar.length)cambios++;
+
       }else{
         cantNueva=parseInt(document.getElementById('ajuste-cant-'+m.id)?.value)||0;
       }
+
       const cantActual=scMap[m.id]||0;
       const diff=cantNueva-cantActual;
-      if(diff===0&&(m.serial_tipo==='NINGUNO'))continue; // sin cambio
+      if(diff===0&&m.serial_tipo==='NINGUNO')continue;
 
       // Actualizar stock_cuadrillas
       const sc2=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+m.id)||[];
@@ -7980,7 +8026,6 @@ async function confirmarAjusteManualCuadrilla(){
         await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:m.id,cantidad:cantNueva});
       }
 
-      // Registrar movimiento de ajuste (solo si hubo cambio de cantidad)
       if(diff!==0){
         await sbPost('movimientos_stock',{
           tipo_movimiento:'AJUSTE_VALIDACION',material_id:m.id,cuadrilla_id:parseInt(cuadId),
@@ -7989,20 +8034,6 @@ async function confirmarAjusteManualCuadrilla(){
         cambios++;
       }
 
-      // Actualizar seriales si corresponde
-      if(m.serial_tipo!=='NINGUNO'){
-        const actUbic='CUADRILLA_'+cuadId;
-        const actuales=sersMap[m.id]||[];
-        const aEliminar=actuales.filter(s=>!serialesNuevos.includes(s));
-        const aAgregar=serialesNuevos.filter(s=>!actuales.includes(s));
-        for(const s of aEliminar){
-          await sbPatch('stock_seriales','?material_id=eq.'+m.id+'&serial=eq.'+encodeURIComponent(s)+'&ubicacion=eq.'+actUbic,{ubicacion:'BAJA_AJUSTE'}).catch(()=>{});
-        }
-        if(aAgregar.length){
-          await sbPost('stock_seriales',aAgregar.map(s=>({material_id:m.id,serial:s,ubicacion:actUbic}))).catch(e=>{errores.push(m.nombre+': '+e.message);});
-        }
-        if(aEliminar.length||aAgregar.length)cambios++;
-      }
     }catch(e){errores.push(m.nombre+': '+e.message);}
   }
   cerrarModal('ajuste-cuad-modal');
@@ -8424,7 +8455,7 @@ async function confirmarAutocompletado(){
         // fallback: asignar cantidad sin verificar serial (para precintos sin serial individual en BD)
         sinStock.push(item.mat.nombre+': '+enDep.length+'/'+cant+' seriales encontrados en depósito');
       }
-      for(const s of enDep.map(e=>e.serial)){
+      for(const s of enDep.map(e=>normSerial(e.serial))){
         await sbPatch('stock_seriales',`?material_id=eq.${item.mat.id}&serial=eq.${s}`,{ubicacion:'CUADRILLA_'+cuadId});
       }
       const cantReal=enDep.length||cant;
@@ -8455,8 +8486,8 @@ async function confirmarAutocompletado(){
         if(!conf){err.textContent='Cancelado. Verificá los seriales de '+item.mat.nombre;return;}
         // Registrar cada serial faltante como entrada al depósito
         for(const s of noEnDep){
-          await sbPost('stock_seriales',{material_id:item.mat.id,serial:s,ubicacion:'DEPOSITO'});
-          await sbPost('movimientos_stock',{tipo_movimiento:'ENTRADA_DEPOSITO',material_id:item.mat.id,cantidad:1,obs:'Ingreso automático — serial '+s+' no estaba en BD'});
+          await sbPost('stock_seriales',{material_id:item.mat.id,serial:normSerial(s),ubicacion:'DEPOSITO'});
+          await sbPost('movimientos_stock',{tipo_movimiento:'ENTRADA_DEPOSITO',material_id:item.mat.id,cantidad:1,obs:'Ingreso automático — serial '+normSerial(s)+' no estaba en BD'});
         }
         // Actualizar cantidad en stock_deposito por los nuevos (se descontarán luego)
         const sdNuevo=await sbGet('stock_deposito','?material_id=eq.'+item.mat.id)||[];
@@ -8466,7 +8497,7 @@ async function confirmarAutocompletado(){
 
       // Mover todos los seriales de DEPOSITO -> CUADRILLA
       for(const s of seriales){
-        await sbPatch('stock_seriales','?material_id=eq.'+item.mat.id+'&serial=eq.'+s,{ubicacion:'CUADRILLA_'+cuadId});
+        await sbPatch('stock_seriales','?material_id=eq.'+item.mat.id+'&serial=eq.'+normSerial(s),{ubicacion:'CUADRILLA_'+cuadId});
       }
       const sd=await sbGet('stock_deposito','?material_id=eq.'+item.mat.id)||[];
       if(sd.length) await sbPatch('stock_deposito','?material_id=eq.'+item.mat.id,{cantidad:Math.max(0,(sd[0].cantidad||0)-cant),updated_at:new Date().toISOString()});
@@ -8575,7 +8606,7 @@ async function confirmarIngresoTotal(){
       if(seriales.length){
         const BATCH=200;
         for(let i=0;i<seriales.length;i+=BATCH){
-          const lote=seriales.slice(i,i+BATCH).map(s=>({material_id:matId,serial:s,ubicacion:'DEPOSITO',movimiento_id:movId||null}));
+          const lote=seriales.slice(i,i+BATCH).map(s=>({material_id:matId,serial:normSerial(s),ubicacion:'DEPOSITO',movimiento_id:movId||null}));
           await sbPost('stock_seriales',lote);
         }
       }
@@ -9384,10 +9415,38 @@ async function abrirEntradaStockMaterial(matId){
 }
 
 async function ponerEnCero(matId, nombre){
-  if(!confirm('¿Poner en 0 el stock de "'+nombre+'"?\nEsto registrará un ajuste en movimientos.'))return;
+  // Verificar si hay seriales activos en depósito para este material
+  const sersActivos=await sbGet('stock_seriales',
+    '?material_id=eq.'+matId+'&ubicacion=eq.DEPOSITO&select=serial&limit=500')||[];
+
+  if(sersActivos.length){
+    // Hay seriales — no se puede dejar en 0 sin darlos de baja
+    const ok=confirm(
+      '⚠️ "'+nombre+'" tiene '+sersActivos.length+' serial'+(sersActivos.length!==1?'es activos':' activo')+' en depósito.\n\n'
+      +'Para poner el stock en 0, esos seriales deben pasar a BAJA_AJUSTE.\n\n'
+      +'¿Confirmás dar de baja los '+sersActivos.length+' serial'+(sersActivos.length!==1?'es':'')+' y dejar el stock en 0?\n\n'
+      +'Cancelar = no se hace ningún cambio.'
+    );
+    if(!ok)return; // Cancelar → no se toca nada
+    // Marcar todos los seriales como BAJA_AJUSTE
+    try{
+      const serList=sersActivos.map(s=>normSerial(s.serial));
+      const BATCH=200;
+      for(let i=0;i<serList.length;i+=BATCH){
+        const lote=serList.slice(i,i+BATCH);
+        await sbPatch('stock_seriales',
+          '?material_id=eq.'+matId+'&ubicacion=eq.DEPOSITO&serial=in.('+lote.join(',')+')',
+          {ubicacion:'BAJA_AJUSTE'});
+      }
+    }catch(e){alert('Error al dar de baja seriales: '+e.message);return;}
+  }else{
+    // Sin seriales — confirmar normalmente
+    if(!confirm('¿Poner en 0 el stock de "'+nombre+'"?'))return;
+  }
+
   try{
     await sbPatch('stock_deposito','?material_id=eq.'+matId,{cantidad:0,updated_at:new Date().toISOString()});
-    await sbPost('movimientos_stock',{tipo_movimiento:'AJUSTE_VALIDACION',material_id:matId,cantidad:0,obs:'Ajuste manual → 0'});
+    await sbPost('movimientos_stock',{tipo_movimiento:'AJUSTE_VALIDACION',material_id:matId,cantidad:0,obs:'Ajuste manual → 0'+(sersActivos.length?' ('+sersActivos.length+' seriales dados de baja)':'')});
     renderStock('deposito');
   }catch(e){alert('Error: '+e.message);}
 }
@@ -13114,8 +13173,32 @@ async function _registrarCambio(otId, campo, anterior, nuevo, origen){
 }
 
 // Helper: ajustar stock de cuadrilla por diferencia + registrar movimiento
-async function _ajustarStock(cuadId, materialId, diferencia, obs){
+async function _ajustarStock(cuadId, materialId, diferencia, obs, otId){
   if(!cuadId||!materialId||!diferencia)return;
+
+  // ── PROTECCIÓN MODELO DIFERIDO (Etapa 2.1.bis — temporal) ──────────────────
+  // Si la OT tiene stock_descontado=false (modelo nuevo), NO se debe tocar
+  // stock_cuadrillas ni movimientos_stock acá. El descuento real ocurrirá en
+  // la validación admin (Etapa 2.2 — pendiente de implementar).
+  // Sin esta guarda, editar materiales en validación de OTs nuevas descontaría
+  // stock que NUNCA fue descontado en el cierre técnico → stock erróneo.
+  // Comportamiento por OT:
+  //   stock_descontado=true  (modelo viejo) → SIGUE IGUAL, descuenta normal
+  //   stock_descontado=false (modelo nuevo) → NO TOCA STOCK, solo log
+  //   sin otId / OT no encontrada / error de query → fallback a viejo (descontar)
+  if(otId){
+    try{
+      const otRows=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=stock_descontado`)||[];
+      if(otRows[0]?.stock_descontado===false){
+        console.log('[_ajustarStock] OT '+otId+' modelo diferido (stock_descontado=false) — skip ajuste de stock. Material '+materialId+', diferencia '+diferencia+'. ot_materiales_usados ya fue actualizado correctamente; el descuento real ocurrirá en validación admin (Etapa 2.2).');
+        return;
+      }
+    }catch(eGuard){
+      // Si no se puede verificar, fallback al comportamiento viejo (descontar).
+      console.warn('[_ajustarStock] No se pudo verificar stock_descontado de OT '+otId+'. Aplicando comportamiento viejo. Error:',eGuard.message);
+    }
+  }
+
   const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadId}&material_id=eq.${materialId}`)||[];
   if(!sc.length)return; // sin registro de stock → no tocar
   const actual=sc[0].cantidad||0;
@@ -13185,7 +13268,7 @@ function valQtyInput(input){
         await sbPatch('ot_materiales_usados',`?id=eq.${mid}`,{activo:false,cantidad:0});
         // Devolver todo al stock
         if(cuadId&&materialId&&cantBD>0){
-          await _ajustarStock(cuadId,materialId,-cantBD,`Eliminación en validación OT ${otId}`);
+          await _ajustarStock(cuadId,materialId,-cantBD,`Eliminación en validación OT ${otId}`,otId);
           if(serTipo==='CORRELATIVO') await _devolverSerialCorrelativoLIFO(otId,materialId,cuadId,cantBD);
         }
         // Registrar eliminación en ot_cambios
@@ -13198,7 +13281,7 @@ function valQtyInput(input){
           if(diferencia<0&&serTipo==='CORRELATIVO'){
             await _devolverSerialCorrelativoLIFO(otId,materialId,cuadId,Math.abs(diferencia));
           }
-          await _ajustarStock(cuadId,materialId,diferencia,`Ajuste ${cantBD}→${cantNueva} en validación OT ${otId}`);
+          await _ajustarStock(cuadId,materialId,diferencia,`Ajuste ${cantBD}→${cantNueva} en validación OT ${otId}`,otId);
         }
         // Registrar cambio de cantidad solo si hubo diferencia real
         if(diferencia!==0) _registrarCambio(otId,`material:${nombreMat}`,cantBD,cantNueva,'ADMIN');
@@ -13232,7 +13315,7 @@ async function valEliminarMat(mid,grupoId){
     await sbPatch('ot_materiales_usados',`?id=eq.${mid}`,{activo:false,cantidad:0});
     // Devolver stock
     if(cuadId&&row?.material_id&&row?.cantidad>0){
-      await _ajustarStock(cuadId,row.material_id,-row.cantidad,`Eliminación admin validación OT ${row.ot_id}`);
+      await _ajustarStock(cuadId,row.material_id,-row.cantidad,`Eliminación admin validación OT ${row.ot_id}`,row.ot_id);
       if(row.catalogo_materiales?.serial_tipo==='CORRELATIVO'){
         await _devolverSerialCorrelativoLIFO(row.ot_id,row.material_id,cuadId,row.cantidad);
       }else if(row.catalogo_materiales?.serial_tipo==='INDIVIDUAL'){
@@ -13263,7 +13346,7 @@ async function valConfirmarAddMat(otId,grupoId){
   try{
     const nombreMat=sel?.options[sel.selectedIndex]?.text||String(matId);
     await sbPost('ot_materiales_usados',{ot_id:parseInt(otId),material_id:matId,cantidad:cant,activo:true});
-    if(cuadId) await _ajustarStock(cuadId,matId,cant,`Agregado admin en validación OT ${otId}`);
+    if(cuadId) await _ajustarStock(cuadId,matId,cant,`Agregado admin en validación OT ${otId}`,otId);
     // Registrar agregado
     _registrarCambio(otId,`material:${nombreMat}`,0,cant,'ADMIN');
     await verGrupoValidacion(grupoId);

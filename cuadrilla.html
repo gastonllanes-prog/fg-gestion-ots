@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.30</title>
+<title>FG Cuadrillas v4.35</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.30 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.35 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -404,7 +404,7 @@ async function iniciarApp(){
   document.getElementById('btn-retiro').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.30';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.35';
 
   // Cargar estados con fallback
   try{
@@ -971,6 +971,35 @@ function renderWizPaso(){
 }
 
 // ── WIZARD — MATERIALES ───────────────────────────────────────────────────────
+// Helper: suma cargando_ahora = total de mats[matId] en TODOS los pasos
+// del wizard actual. Defensivo para multi-OT: evita over-allocation.
+function _wizCargandoTotal(matId){
+  if(!PWIZ||!PWIZ.pasos)return 0;
+  var total=0;
+  PWIZ.pasos.forEach(function(p){
+    if(!p||!p.mats)return;
+    total+=parseInt(p.mats[matId]||0,10)||0;
+  });
+  return total;
+}
+
+// Recalcula y refresca el bloque de stock teórico de un material, sin re-render
+// global (para no perder foco del input). Llamado desde wizCambiarMat / wizSetMatQty.
+function _wizRefrescarStockTeorico(matId){
+  var fisico=PWIZ.scMap[matId]||0;
+  var pendiente=PWIZ.pendienteMap[matId]||0;
+  var cargando=_wizCargandoTotal(matId);
+  var disp=fisico-pendiente-cargando;
+  var dispClass=disp<0?'var(--red)':disp===0?'var(--amber)':'var(--green)';
+  var elCar=document.getElementById('wiz-stock-cargando-'+matId);
+  var elDisp=document.getElementById('wiz-stock-disp-'+matId);
+  if(elCar)elCar.textContent=cargando;
+  if(elDisp){
+    elDisp.textContent=disp;
+    elDisp.style.color=dispClass;
+  }
+}
+
 function renderWizMateriales(p){
   var mats=PWIZ.catalogoMats;
   if(!mats.length)return'';
@@ -979,21 +1008,21 @@ function renderWizMateriales(p){
   mats.forEach(function(m){
     var qty=p.mats[m.id]||0;
     var fisico=PWIZ.scMap[m.id]||0;
-    var pendiente=PWIZ.pendienteMap[m.material_id||m.id]||0;
-    var disponible=Math.max(0,fisico-pendiente);
+    var pendiente=PWIZ.pendienteMap[m.id]||0;
+    var cargando=_wizCargandoTotal(m.id);
+    var disp=fisico-pendiente-cargando;
+    var dispColor=disp<0?'var(--red)':disp===0?'var(--amber)':'var(--green)';
+    var unidad=m.unidad||'';
     var badge=m.serial_tipo==='INDIVIDUAL'?' <span style="font-size:10px;background:var(--blue-l);color:var(--blue);padding:1px 6px;border-radius:5px;font-weight:700">SERIAL</span>':m.serial_tipo==='CORRELATIVO'?' <span style="font-size:10px;background:var(--amber-l);color:var(--amber);padding:1px 6px;border-radius:5px;font-weight:700">PRECINTO</span>':'';
-    // UI de stock: compacta si no hay pendiente, desglosada si hay
-    var stockHtml;
-    if(pendiente>0){
-      stockHtml='<div style="font-size:11px;margin-top:2px">'
-        +'<span style="color:var(--muted)">Físico: <strong>'+fisico+'</strong></span>'
-        +' · <span style="color:var(--amber)">Pendiente: <strong>'+pendiente+'</strong></span>'
-        +' · <span style="color:'+(disponible<=0?'var(--red)':'var(--green)')+'">Disponible: <strong>'+disponible+'</strong></span>'
-        +' '+(m.unidad||'')
-        +'</div>';
-    }else{
-      stockHtml='<div class="mat-stock">Stock: '+fisico+' '+(m.unidad||'')+'</div>';
-    }
+
+    // Bloque de stock teórico (4 líneas, ids para refresh en tiempo real)
+    var stockHtml='<div style="font-size:11px;line-height:1.5;margin-top:3px;color:var(--muted)">'
+      +'<div>Stock real: <strong style="color:var(--text2)">'+fisico+'</strong> '+unidad+'</div>'
+      +'<div>Ya comprometido: <strong style="color:var(--amber)">'+pendiente+'</strong> '+unidad+'</div>'
+      +'<div>Cargando ahora: <strong id="wiz-stock-cargando-'+m.id+'" style="color:var(--blue)">'+cargando+'</strong> '+unidad+'</div>'
+      +'<div>Disponible teórico: <strong id="wiz-stock-disp-'+m.id+'" style="color:'+dispColor+'">'+disp+'</strong> '+unidad+'</div>'
+      +'</div>';
+
     html+='<div class="mat-row">'
       +'<div style="flex:1;min-width:0"><div class="mat-nombre">'+m.nombre+badge+'</div>'
         +stockHtml+'</div>'
@@ -1194,6 +1223,8 @@ function wizCambiarMat(matId,delta){
   }else{
     renderWizPaso();
   }
+  // Refrescar stock teórico (cargando ahora + disponible) sin perder foco
+  _wizRefrescarStockTeorico(matId);
 }
 
 function wizSetMatQty(matId,val){
@@ -1208,6 +1239,8 @@ function wizSetMatQty(matId,val){
     var btnMenos=inp.previousElementSibling;
     if(btnMenos)btnMenos.disabled=(n<=0);
   }
+  // Refrescar stock teórico (cargando ahora + disponible) sin perder foco
+  _wizRefrescarStockTeorico(matId);
 }
 
 function wizCambiarServ(servId,delta){
@@ -1218,7 +1251,8 @@ function wizCambiarServ(servId,delta){
 
 function wizElegirSerial(matId,serial){
   var p=PWIZ.pasos[PWIZ.paso];if(!p)return;
-  p.seriales[matId]=serial;
+  // Normalizar siempre a UPPER antes de guardar
+  p.seriales[matId]=(serial||'').trim().toUpperCase();
   renderWizPaso();
 }
 
@@ -1605,65 +1639,40 @@ async function confirmarWizard(){
         });
         if(moArr.length){try{await sbPost('ot_servicios_realizados',moArr);}catch(e){console.warn('mo:',e.message);}}
 
-        // Stock y seriales
+        // ── MODELO DIFERIDO (Etapa 2.1) ─────────────────────────────────────
+        // El cierre técnico NO mueve stock_cuadrillas ni inserta movimientos_stock.
+        // Solo declara consumos en ot_materiales_usados (ya hecho arriba) y
+        // marca los seriales seleccionados como COMPROMETIDO. El descuento real
+        // se ejecuta en la validación administrativa (Etapa 2.2).
         if(cuadId){
-          var hayFaltante=false;
-          // Materiales NINGUNO y CORRELATIVO — descontar por cantidad
+          // Precintos (CORRELATIVO) — marcar seriales como COMPROMETIDO
           for(var mid in p.mats){
             var qty=p.mats[mid]||0;if(!qty)continue;
             var mat=PWIZ.catalogoMats.find(function(m){return m.id===parseInt(mid);});
-            if(!mat||mat.serial_tipo==='INDIVIDUAL')continue;
-            try{
-              var sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+mid)||[];
-              if(sc.length){
-                var stockActual=sc[0].cantidad||0;
-                var resultado=stockActual-qty;
-                await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+mid,{cantidad:Math.max(0,resultado)});
-                await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:parseInt(mid),cuadrilla_id:parseInt(cuadId),cantidad:-qty,obs:'OT '+otId});
-                if(resultado<0){
-                  try{await sbPost('movimientos_stock',{tipo_movimiento:'FALTANTE',material_id:parseInt(mid),cuadrilla_id:parseInt(cuadId),cantidad:Math.abs(resultado),obs:'Faltante cierre OT '+otId+' — usó '+qty+', tenía '+stockActual});}
-                  catch(ef){console.warn('[FALTANTE]',ef.message);window._wizFaltNoGuard=true;}
-                  hayFaltante=true;
-                }
-              }
-            }catch(e){console.warn('stock-mat:',e.message);}
-            // Precintos (CORRELATIVO) — marcar seriales como CLIENTE
-            if(mat.serial_tipo==='CORRELATIVO'){
-              var selsCorr=p.corrSels[mid]||[];
-              for(var si=0;si<selsCorr.length;si++){
-                try{await sbPatch('stock_seriales','?material_id=eq.'+mid+'&serial=eq.'+selsCorr[si],{ubicacion:'CLIENTE',ot_id:otId});}catch(e){}
-                // Historial precinto (en try/catch)
-                try{
-                  var normP=normalizarSerial(selsCorr[si],'PRECINTO');
-                  var prec=normP.ok?normP.valor:String(selsCorr[si]);
-                  var cliIdP=GRUPO_ACTIVO&&GRUPO_ACTIVO.ordenes_trabajo&&GRUPO_ACTIVO.ordenes_trabajo[0]?GRUPO_ACTIVO.ordenes_trabajo[0].clientes?.id||null:null;
-                  await sbPost('equipo_historial',{
-                    serial:prec,material_id:parseInt(mid),evento:'INSTALADO_CLIENTE',origen:'STOCK',
-                    cuadrilla_id:parseInt(cuadId),cliente_id:cliIdP,ot_id:otId,
-                    usuario:CUAD.nombre,obs:'Precinto OT'
-                  });
-                }catch(ep){console.warn('[historial-prec]',ep.message);}
-              }
+            if(!mat||mat.serial_tipo!=='CORRELATIVO')continue;
+            var selsCorr=p.corrSels[mid]||[];
+            for(var si=0;si<selsCorr.length;si++){
+              var corrSer=String(selsCorr[si]).trim().toUpperCase();
+              try{await sbPatch('stock_seriales','?material_id=eq.'+mid+'&serial=eq.'+corrSer,{ubicacion:'COMPROMETIDO',ot_id:otId});}catch(e){console.warn('serial-corr:',e.message);}
+              // Historial precinto (best-effort, no bloquea el cierre)
+              try{
+                var normP=normalizarSerial(selsCorr[si],'PRECINTO');
+                var prec=normP.ok?normP.valor:String(selsCorr[si]);
+                var cliIdP=GRUPO_ACTIVO&&GRUPO_ACTIVO.ordenes_trabajo&&GRUPO_ACTIVO.ordenes_trabajo[0]?GRUPO_ACTIVO.ordenes_trabajo[0].clientes?.id||null:null;
+                await sbPost('equipo_historial',{
+                  serial:prec,material_id:parseInt(mid),evento:'COMPROMETIDO_OT',origen:'STOCK',
+                  cuadrilla_id:parseInt(cuadId),cliente_id:cliIdP,ot_id:otId,
+                  usuario:CUAD.nombre,obs:'Precinto comprometido (pendiente validación)'
+                });
+              }catch(ep){console.warn('[historial-prec]',ep.message);}
             }
           }
-          // INDIVIDUAL — marcar serial y descontar 1
+          // INDIVIDUAL — marcar serial como COMPROMETIDO
           for(var midI in p.seriales){
-            var serI=p.seriales[midI];if(!serI)continue;
+            var serI=(p.seriales[midI]||'').trim().toUpperCase();if(!serI)continue;
             try{
-              await sbPatch('stock_seriales','?material_id=eq.'+midI+'&serial=eq.'+serI,{ubicacion:'CLIENTE',ot_id:otId});
-              var scI=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+midI)||[];
-              if(scI.length){
-                var stockActualI=scI[0].cantidad||0;
-                var resultadoI=stockActualI-1;
-                await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+midI,{cantidad:Math.max(0,resultadoI)});
-                await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:parseInt(midI),cuadrilla_id:parseInt(cuadId),cantidad:-1,obs:'OT '+otId+' serial:'+serI});
-                if(resultadoI<0){
-                  try{await sbPost('movimientos_stock',{tipo_movimiento:'FALTANTE',material_id:parseInt(midI),cuadrilla_id:parseInt(cuadId),cantidad:1,obs:'Faltante cierre OT '+otId+' serial:'+serI});}
-                  catch(ef){console.warn('[FALTANTE]',ef.message);window._wizFaltNoGuard=true;}
-                  hayFaltante=true;
-                }
-              }
-              // Historial INSTALADO_CLIENTE (en try/catch para no bloquear el cierre)
+              await sbPatch('stock_seriales','?material_id=eq.'+midI+'&serial=eq.'+serI,{ubicacion:'COMPROMETIDO',ot_id:otId});
+              // Historial COMPROMETIDO_OT (best-effort, no bloquea el cierre)
               try{
                 var normI=normalizarSerial(serI,'MAC');
                 var serialGuardar=normI.ok?normI.valor:serI.toUpperCase();
@@ -1672,31 +1681,70 @@ async function confirmarWizard(){
                 var cliId=GRUPO_ACTIVO&&GRUPO_ACTIVO.ordenes_trabajo&&GRUPO_ACTIVO.ordenes_trabajo[0]?GRUPO_ACTIVO.ordenes_trabajo[0].clientes?.id||null:null;
                 await sbPost('equipo_historial',{
                   serial:serialGuardar,equipo_id:eqIdI,
-                  material_id:parseInt(midI),evento:'INSTALADO_CLIENTE',origen:'STOCK',
+                  material_id:parseInt(midI),evento:'COMPROMETIDO_OT',origen:'STOCK',
                   cuadrilla_id:parseInt(cuadId),cliente_id:cliId,ot_id:otId,
-                  usuario:CUAD.nombre,obs:'Cierre OT'
+                  usuario:CUAD.nombre,obs:'Cierre OT (pendiente validación)'
                 });
               }catch(eh){console.warn('[historial-ind]',eh.message);}
-            }catch(e){console.warn('stock-ind:',e.message);}
-          }
-          if(hayFaltante){
-            // Acumular para mostrar aviso al final del cierre completo
-            if(!window._wizFaltantes)window._wizFaltantes=[];
-            window._wizFaltantes.push(otId);
+            }catch(e){console.warn('serial-ind:',e.message);}
           }
         }
 
-        // Patch OT → FINALIZADA_TECNICO
+        // Patch OT → FINALIZADA_TECNICO (modelo diferido: stock_descontado=false)
         var serDesc=Object.values(p.seriales).filter(Boolean).join(', ');
         var corrTodos=[];
         Object.values(p.corrSels).forEach(function(arr){corrTodos=corrTodos.concat(arr);});
-        var pOT={estado_id:eFinTec.id,hora_fin_tec:ahora};
+        var pOT={estado_id:eFinTec.id,hora_fin_tec:ahora,stock_descontado:false};
         if(serDesc)pOT.equipo_instalado=serDesc;
         if(corrTodos.length)pOT.tag=corrTodos.join(' - ');
         if(gpsFin){pOT.lat_fin_tec=parseFloat(gpsFin.lat);pOT.lng_fin_tec=parseFloat(gpsFin.lng);}
         if(p.serialRetirado)pOT.serial_retirado=p.serialRetirado;
         await sbPatch('ordenes_trabajo','?id=eq.'+otId,pOT);
         try{await sbPost('historial_estados_ot',{ot_id:otId,estado_nuevo_id:eFinTec.id});}catch(e){}
+
+        // CAMBIO_TECNOLOGIA: registrar equipo retirado en circuito de recupero
+        var tipoOTw=p.ot?p.ot.tipo_item||p.ot.tipo_tarea||'':'';
+        if(p.serialRetirado&&tipoOTw==='CAMBIO_TECNOLOGIA'){
+          try{
+            var serialRet=p.serialRetirado; // ya normalizado a UPPER por wizSetSerialRetirado
+            var clienteIdRet=p.ot.clientes?.id||p.ot.cliente_id||null;
+            // Verificar si ya existe ese serial en equipos
+            var eqExist=await sbGet('equipos','?serial=eq.'+encodeURIComponent(serialRet)+'&select=id,estado')||[];
+            if(!eqExist.length){
+              // Crear nuevo equipo recuperado
+              var nuevoEqRet=await sbPost('equipos',{
+                serial:serialRet,
+                mac:serialRet,
+                estado:'RECUPERADO_CLIENTE',
+                cuadrilla_id:parseInt(cuadId),
+                cliente_id:clienteIdRet,
+                observaciones:'Recuperado en CAMBIO_TECNOLOGIA — OT '+otId,
+                origen:'RECUPERO_CLIENTE'
+              });
+              var eqRetId=(Array.isArray(nuevoEqRet)?nuevoEqRet[0]:nuevoEqRet)?.id||null;
+              await sbPost('equipo_historial',{
+                serial:serialRet,equipo_id:eqRetId,
+                evento:'RETIRADO_CLIENTE',origen:'RECUPERO_CLIENTE',
+                cuadrilla_id:parseInt(cuadId),cliente_id:clienteIdRet,
+                ot_id:otId,usuario:CUAD.nombre,
+                obs:'Retiro automático en cierre CAMBIO_TECNOLOGIA'
+              });
+            }else{
+              // Ya existe — actualizar estado y cuadrilla
+              await sbPatch('equipos','?id=eq.'+eqExist[0].id,{
+                estado:'RECUPERADO_CLIENTE',cuadrilla_id:parseInt(cuadId),
+                cliente_id:clienteIdRet,origen:'RECUPERO_CLIENTE'
+              });
+              await sbPost('equipo_historial',{
+                serial:serialRet,equipo_id:eqExist[0].id,
+                evento:'RETIRADO_CLIENTE',origen:'RECUPERO_CLIENTE',
+                cuadrilla_id:parseInt(cuadId),cliente_id:clienteIdRet,
+                ot_id:otId,usuario:CUAD.nombre,
+                obs:'Retiro CAMBIO_TECNOLOGIA (equipo ya registrado)'
+              });
+            }
+          }catch(eRet){console.warn('[recupero-CT]',eRet.message);}
+        }
 
         // Guardar fotos subidas en ot_fotos
         var fotosOk=(p.fotos||[]).filter(function(f){return f.estado==='ok'&&f.url;});
@@ -1739,15 +1787,9 @@ async function confirmarWizard(){
     document.getElementById('topbar-title').textContent=((cl.apellido||'')+(cl.nombre?' '+cl.nombre:'')).trim()||'Cliente';
     renderGrupo();
     var msgFin='✅ Visita registrada correctamente.';
-    if(window._wizFaltantes&&window._wizFaltantes.length){
-      if(window._wizFaltNoGuard){
-        msgFin+='\n\n⚠️ Aviso: en '+window._wizFaltantes.length+' OT(s) el material usado superó el stock disponible, pero NO se pudo registrar el faltante en el sistema. Informá al administrador.';
-      }else{
-        msgFin+='\n\n⚠️ Aviso: en '+window._wizFaltantes.length+' OT(s) el material usado superó el stock disponible. Quedó registrado como faltante. El administrador lo verá en el panel.';
-      }
-      window._wizFaltantes=[];
-      window._wizFaltNoGuard=false;
-    }
+    // Modelo diferido (Etapa 2.1): el cierre técnico no descuenta stock,
+    // por lo tanto no se generan faltantes en este paso. Los faltantes
+    // (si corresponden) se detectan al validar admin (Etapa 2.2).
     alert(msgFin);
 
   }catch(e){
@@ -2155,42 +2197,81 @@ async function renderMiStockTab(){
 
 async function renderStockActualTec(cont){
   var cuadId=CUAD.id;
-  var [mats,sc,movHoy,movRepartos]=await Promise.all([
+  // Cargar grupos de la cuadrilla y el ID de FINALIZADA_TECNICO en paralelo con el resto
+  var [mats,sc,movRepartos,gruposCuad]=await Promise.all([
     sbGet('catalogo_materiales','?activo=eq.true&order=orden_display')||[],
     sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId)||[],
-    sbGet('movimientos_stock','?cuadrilla_id=eq.'+cuadId+'&tipo_movimiento=eq.CONSUMO_OT&created_at=gte.'+hoy()+'T00:00:00&select=material_id,cantidad')||[],
-    sbGet('movimientos_stock','?cuadrilla_id=eq.'+cuadId+'&tipo_movimiento=eq.REPARTO_CUADRILLA&order=created_at.desc&limit=100&select=material_id,cantidad,created_at,catalogo_materiales(nombre,unidad)')||[]
+    sbGet('movimientos_stock','?cuadrilla_id=eq.'+cuadId+'&tipo_movimiento=eq.REPARTO_CUADRILLA&order=created_at.desc&limit=100&select=material_id,cantidad,created_at,catalogo_materiales(nombre,unidad)')||[],
+    sbGet('grupos_ot','?cuadrilla_id=eq.'+cuadId+'&select=id')||[]
   ]);
   var scMap={};sc.forEach(function(s){scMap[s.material_id]=s.cantidad||0;});
-  var usadoHoyMap={};
-  movHoy.forEach(function(m){usadoHoyMap[m.material_id]=(usadoHoyMap[m.material_id]||0)+Math.abs(m.cantidad);});
 
-  // Stock total
+  // ── A DESCONTAR (modelo diferido): sumar materiales declarados en OTs
+  // FINALIZADA_TECNICO de esta cuadrilla, sin validar por admin ────────────
+  var pendienteMap={};
+  try{
+    var eFinTecId=(ESTADOS.find(function(e){return e.nombre==='FINALIZADA_TECNICO';})||{}).id;
+    var grupoIds=(gruposCuad||[]).map(function(g){return g.id;});
+    if(grupoIds.length&&eFinTecId){
+      var otsPend=await sbGet('ordenes_trabajo',
+        '?grupo_id=in.('+grupoIds.join(',')+')'
+        +'&estado_id=eq.'+eFinTecId
+        +'&validado_admin_at=is.null'
+        +'&select=id'
+      )||[];
+      if(otsPend.length){
+        var otPendIds=otsPend.map(function(o){return o.id;});
+        var matsPend=await sbGet('ot_materiales_usados',
+          '?ot_id=in.('+otPendIds.join(',')+')'
+          +'&activo=eq.true'
+          +'&select=material_id,cantidad'
+        )||[];
+        matsPend.forEach(function(m){
+          pendienteMap[m.material_id]=(pendienteMap[m.material_id]||0)+(parseInt(m.cantidad)||0);
+        });
+      }
+    }
+  }catch(ep){console.warn('[Mi Stock pendienteMap]',ep.message);}
+
+  // ── HEADER ──────────────────────────────────────────────────────────────
   var html='<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#15803d;font-weight:600">📦 Stock disponible en el vehículo</div>';
-  var tieneStock=mats.some(function(m){return(scMap[m.id]||0)>0||(usadoHoyMap[m.id]||0)>0;});
+  // Si hay pendiente, mostrar leyenda explicativa
+  var hayPend=Object.values(pendienteMap).some(function(v){return v>0;});
+  if(hayPend){
+    html+='<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:#92400e;line-height:1.4">'
+      +'⏳ <strong>A descontar</strong> = materiales declarados en OTs cerradas pendientes de validación admin. '
+      +'El stock real se actualiza cuando el admin valida.'
+      +'</div>';
+  }
+
+  var tieneStock=mats.some(function(m){return(scMap[m.id]||0)>0||(pendienteMap[m.id]||0)>0;});
   if(!tieneStock){
     html+='<div style="text-align:center;padding:1.5rem;color:#94a3b8;font-size:13px;font-style:italic">No tenés materiales cargados todavía.</div>';
   }else{
     html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
-      +'<thead><tr style="font-size:11px;color:#94a3b8;text-transform:uppercase;border-bottom:1.5px solid var(--border)">'
+      +'<thead><tr style="font-size:10px;color:#94a3b8;text-transform:uppercase;border-bottom:1.5px solid var(--border)">'
       +'<th style="text-align:left;padding:6px 4px">Material</th>'
-      +'<th style="text-align:right;padding:6px 4px">Físico</th>'
-      +'<th style="text-align:right;padding:6px 4px;color:#dc2626">Usado hoy</th>'
+      +'<th style="text-align:right;padding:6px 4px">Stock real</th>'
+      +'<th style="text-align:right;padding:6px 4px;color:#d97706">A descontar</th>'
+      +'<th style="text-align:right;padding:6px 4px;color:#16a34a">Disp. teórico</th>'
       +'</tr></thead><tbody>';
     mats.forEach(function(m){
       var fis=scMap[m.id]||0;
-      var usado=usadoHoyMap[m.id]||0;
-      if(fis===0&&usado===0)return;
+      var pend=pendienteMap[m.id]||0;
+      if(fis===0&&pend===0)return;
+      var disp=fis-pend;
+      var dispColor=disp<0?'#dc2626':disp===0?'#d97706':'#16a34a';
       html+='<tr style="border-bottom:1px solid var(--border)">'
         +'<td style="padding:8px 4px;font-weight:600">'+m.nombre+'<span style="font-size:10px;color:#94a3b8;margin-left:4px">'+m.unidad+'</span></td>'
         +'<td style="text-align:right;padding:8px 4px;font-weight:700;font-size:15px;color:'+(fis>0?'#16a34a':'#94a3b8')+'">'+fis+'</td>'
-        +'<td style="text-align:right;padding:8px 4px;color:'+(usado>0?'#dc2626':'#94a3b8')+'">'+(usado>0?'-'+usado:'—')+'</td>'
+        +'<td style="text-align:right;padding:8px 4px;font-weight:700;color:'+(pend>0?'#d97706':'#94a3b8')+'">'+(pend>0?'-'+pend:'—')+'</td>'
+        +'<td style="text-align:right;padding:8px 4px;font-weight:700;font-size:15px;color:'+dispColor+'">'+disp+'</td>'
         +'</tr>';
     });
     html+='</tbody></table></div>';
   }
 
-  // Última carga detectada (heurístico ±30 min)
+  // ── Última carga detectada (heurístico ±30 min) — sin cambios ────────────
   if(movRepartos.length){
     var t0=new Date(movRepartos[0].created_at).getTime();
     var VENTANA=30*60*1000;
@@ -2563,9 +2644,12 @@ async function guardarModificacion(){
     var otId=MOD_OT.ot.id;
     var cuadId=CUAD.id;
     var hayAlgo=false;
-    var hayFaltMod=false;
 
     // ── MATERIALES ────────────────────────────────────────────────────────────
+    // MODELO DIFERIDO (Etapa 2.1): la corrección post-cierre solo modifica
+    // ot_materiales_usados (cantidad / activo). NO toca stock_cuadrillas ni
+    // movimientos_stock. El descuento real lo hace la validación admin (Etapa 2.2)
+    // sobre los valores corregidos.
     for(var i=0;i<MOD_OT.mats.length;i++){
       var m=MOD_OT.mats[i];
       var cantVieja=m.cantidad;
@@ -2574,33 +2658,13 @@ async function guardarModificacion(){
       hayAlgo=true;
       var matId=m.catalogo_materiales?.id||m.material_id;
       var nomMat=m.catalogo_materiales?.nombre||String(matId);
-      var dif=cantNueva-cantVieja;
 
       if(cantNueva===0){
-        // Soft delete
+        // Soft delete (preserva trazabilidad)
         await sbPatch('ot_materiales_usados','?id=eq.'+m.id,{activo:false,cantidad:0});
       }else{
         await sbPatch('ot_materiales_usados','?id=eq.'+m.id,{cantidad:cantNueva});
       }
-
-      // Ajustar stock por diferencia: dif>0=se agregó más=descontar; dif<0=se redujo=devolver
-      try{
-        var sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+matId)||[];
-        if(sc.length){
-          var stockActM=sc[0].cantidad||0;
-          var resultadoM=stockActM-dif;
-          var nueva=Math.max(0,resultadoM);
-          await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+matId,{cantidad:nueva});
-          await sbPost('movimientos_stock',{tipo_movimiento:'AJUSTE_TECNICO',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:-dif,obs:'Corrección post-cierre OT '+otId});
-          if(resultadoM<0){
-            var faltModNoGuard=false;
-            try{await sbPost('movimientos_stock',{tipo_movimiento:'FALTANTE',material_id:parseInt(matId),cuadrilla_id:parseInt(cuadId),cantidad:Math.abs(resultadoM),obs:'Faltante corrección post-cierre OT '+otId+' — ajuste '+dif+', tenía '+stockActM});}
-            catch(ef){console.warn('[FALTANTE]',ef.message);faltModNoGuard=true;}
-            if(faltModNoGuard)hayFaltMod='noGuard';
-            else if(hayFaltMod!=='noGuard')hayFaltMod=true;
-          }
-        }
-      }catch(es){console.warn('[mod stock]',es.message);}
 
       await _registrarCambioTec(otId,'material:'+nomMat,cantVieja,cantNueva);
     }
@@ -2644,8 +2708,6 @@ async function guardarModificacion(){
     await cargarGrupos();
     cerrarModificacion();
     var msgMod='✅ Cambios guardados correctamente.';
-    if(hayFaltMod==='noGuard')msgMod+='\n\n⚠️ El material ajustado superó el stock disponible, pero NO se pudo registrar el faltante en el sistema. Informá al administrador.';
-    else if(hayFaltMod)msgMod+='\n\n⚠️ El material ajustado superó el stock disponible. Quedó registrado como faltante.';
     alert(msgMod);
 
   }catch(e){
