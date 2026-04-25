@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v228</title>
+<title>FG Gestión OTs v229</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V228</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V229</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v228</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v229</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -606,6 +606,133 @@ tr:hover td{background:rgba(37,99,235,.02)}
     <div id="cli-det-ots"></div>
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- MÓDULO EDIFICIOS v229 — CRUD básico                                     -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div id="s-edificios" style="display:none">
+
+  <!-- ── VISTA LISTA ──────────────────────────────────────────────────────── -->
+  <div id="edif-list-view">
+    <div class="ph"><div class="ph-icon blue">🏢</div><div><div class="ph-title">Edificios</div><div class="ph-sub">Trabajos de cableado y mantenimiento</div></div>
+      <div style="margin-left:auto"><button class="btn btn-sm btn-primary" onclick="abrirNuevoEdificio()">+ Nuevo edificio</button></div>
+    </div>
+    <div class="search-bar">
+      <input class="search-input" id="edif-buscar" placeholder="Buscar por nombre / dirección / nodo / barrio..." oninput="filtrarEdificios()" style="min-width:240px"/>
+      <select class="filter-select" id="edif-fil-estado" onchange="filtrarEdificios()">
+        <option value="">Todos los estados (trabajo)</option>
+        <option value="PENDIENTE">Pendiente</option>
+        <option value="EN_PROCESO">En proceso</option>
+        <option value="PAUSADO">Pausado</option>
+        <option value="FINALIZADO">Finalizado</option>
+        <option value="CANCELADO">Cancelado</option>
+      </select>
+      <select class="filter-select" id="edif-fil-cableado" onchange="filtrarEdificios()">
+        <option value="">Todos los cableados</option>
+        <option value="NO_CABLEADO">No cableado</option>
+        <option value="EN_PROCESO">Cableado en proceso</option>
+        <option value="CABLEADO">Cableado</option>
+        <option value="BLOQUEADO">⛔ Bloqueado</option>
+        <option value="NO_AUTORIZADO">⛔ No autorizado</option>
+      </select>
+      <select class="filter-select" id="edif-fil-cuad" onchange="filtrarEdificios()">
+        <option value="">Todas las cuadrillas</option>
+      </select>
+    </div>
+    <div id="edif-lista"><div class="loading"><span class="spinner"></span></div></div>
+  </div>
+
+  <!-- ── VISTA FORM (NUEVO/EDITAR) ────────────────────────────────────────── -->
+  <div id="edif-form-view" style="display:none">
+    <div class="ph">
+      <button class="btn btn-sm" onclick="cancelarFormEdificio()" style="margin-right:8px">← Volver</button>
+      <div class="ph-icon blue">🏢</div>
+      <div><div class="ph-title" id="edif-form-titulo">Nuevo edificio</div></div>
+    </div>
+    <div class="card">
+      <div class="form-2col">
+        <div class="fg" style="grid-column:1/-1"><label>Nombre *</label><input id="ef-nombre" placeholder="Ej: Edificio Torres Norte"/></div>
+        <div class="fg"><label>Tipo *</label>
+          <select id="ef-tipo">
+            <option value="VERTICAL">Vertical</option>
+            <option value="HORIZONTAL">Horizontal</option>
+            <option value="MIXTO">Mixto</option>
+            <option value="COMPLEJO">Complejo</option>
+            <option value="COUNTRY">Country</option>
+          </select>
+        </div>
+        <div class="fg"><label>Cuadrilla principal</label>
+          <select id="ef-cuadrilla"><option value="">— Sin asignar —</option></select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Dirección (calle)</label><input id="ef-direccion" placeholder="Av. Mitre"/></div>
+        <div class="fg"><label>Número</label><input id="ef-numero"/></div>
+        <div class="fg"><label>Obs. domicilio</label><input id="ef-obsdom"/></div>
+        <div class="fg"><label>Barrio</label><input id="ef-barrio"/></div>
+        <div class="fg"><label>Localidad</label><input id="ef-localidad"/></div>
+        <div class="fg"><label>Nodo</label><input id="ef-nodo"/></div>
+        <div class="fg"><label>GigaTracer (código)</label><input id="ef-gigatracer" placeholder="opcional"/></div>
+        <div class="fg"><label>Cantidad de pisos</label><input type="number" min="0" id="ef-pisos"/></div>
+        <div class="fg"><label>Cantidad de unidades</label><input type="number" min="0" id="ef-unidades"/></div>
+        <div class="fg" style="grid-column:1/-1"><label>Observaciones técnicas</label><textarea id="ef-obstec" rows="3" placeholder="Planos, puntos de fusión, fibra a usar, indicaciones..." style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;resize:vertical"></textarea></div>
+        <div class="fg"><label>Estado del trabajo</label>
+          <select id="ef-estado">
+            <option value="PENDIENTE">Pendiente</option>
+            <option value="EN_PROCESO">En proceso</option>
+            <option value="PAUSADO">Pausado</option>
+            <option value="FINALIZADO">Finalizado</option>
+            <option value="CANCELADO">Cancelado</option>
+          </select>
+        </div>
+        <div class="fg"><label>Estado del cableado</label>
+          <select id="ef-cableado" onchange="edifFormCableadoChange()">
+            <option value="NO_CABLEADO">No cableado</option>
+            <option value="EN_PROCESO">En proceso</option>
+            <option value="CABLEADO">Cableado</option>
+            <option value="BLOQUEADO">⛔ Bloqueado</option>
+            <option value="NO_AUTORIZADO">⛔ No autorizado</option>
+          </select>
+        </div>
+        <div class="fg" id="ef-motivo-bloqueo-wrap" style="display:none;grid-column:1/-1">
+          <label style="color:#dc2626">Motivo del bloqueo / no autorización *</label>
+          <textarea id="ef-motivo-bloqueo" rows="2" placeholder="Ej: Administrador del edificio no autoriza ingreso por falta de permiso comercial." style="width:100%;padding:10px;border:1.5px solid #fca5a5;border-radius:10px;font-family:inherit;font-size:14px;background:#fef2f2"></textarea>
+        </div>
+      </div>
+    </div>
+    <p class="err-msg" id="edif-form-err" style="white-space:pre-line"></p>
+    <div style="display:flex;gap:10px;margin-top:1rem">
+      <button class="btn" onclick="cancelarFormEdificio()" style="flex:1">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEdificio()" style="flex:2" id="edif-btn-guardar">💾 Guardar</button>
+    </div>
+  </div>
+
+  <!-- ── VISTA DETALLE ────────────────────────────────────────────────────── -->
+  <div id="edif-det-view" style="display:none">
+    <div class="ph">
+      <button class="btn btn-sm" onclick="cerrarDetalleEdificio()" style="margin-right:8px">← Volver</button>
+      <div class="ph-icon blue">🏢</div>
+      <div style="flex:1">
+        <div class="ph-title" id="edif-det-nombre">—</div>
+        <div class="ph-sub" id="edif-det-sub">—</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" id="edif-det-btn-editar" onclick="editarEdificioActual()">✏️ Editar</button>
+        <button class="btn btn-sm" id="edif-det-btn-eliminar" onclick="eliminarEdificioActual()" style="color:#dc2626;border-color:rgba(220,38,38,.3)">🗑️ Eliminar</button>
+      </div>
+    </div>
+    <div class="nav" id="edif-det-tabs" style="margin-bottom:1rem">
+      <div class="ntab active" onclick="edifTab('info',this)">📋 Info</div>
+      <div class="ntab" onclick="edifTab('jornadas',this)">⏱️ Jornadas</div>
+      <div class="ntab" onclick="edifTab('tareas',this)">✅ Tareas internas</div>
+    </div>
+    <div id="edif-det-cont"></div>
+  </div>
+
+</div>
+
+<!-- /MÓDULO EDIFICIOS v229 -->
+
+
+<!-- INSERT-MARKER-EDIFICIOS-END -->
 
 <div id="s-cuadrillas" style="display:none">
   <!-- LISTA -->
@@ -1683,7 +1810,7 @@ function construirMenu(){
     {sec:'Principal'},{id:'dashboard',icon:'📊',label:'Dashboard'},{id:'ots',icon:'📋',label:'Órdenes de trabajo'},
     {id:'asignar',icon:'📍',label:'Asignar OTs'},{id:'asignadas',icon:'✓',label:'Cerrar OTs'},{id:'validacion',icon:'✅',label:'Validación'},{id:'liquidacion',icon:'📊',label:'Rendición operativa'},
     {id:'rendimiento',icon:'📈',label:'Rendimiento'},
-    {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},{id:'logistic',icon:'📤',label:'Logistic'},
+    {sec:'Gestión'},{id:'clientes',icon:'👥',label:'Clientes'},{id:'edificios',icon:'🏢',label:'Edificios'},{id:'cuadrillas',icon:'🔧',label:'Cuadrillas'},{id:'logistic',icon:'📤',label:'Logistic'},
     {id:'tecnicos',icon:'👷',label:'Técnicos'},
     {sec:'Stock'},{id:'stock-cuad',icon:'🔧',label:'Stock Cuadrillas'},{id:'stock',icon:'📦',label:'Stock Depósito'},
     {sec:'Informes'},{id:'informes',icon:'📑',label:'Informes'},
@@ -1702,7 +1829,7 @@ function irA(sec){
   const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
   document.querySelectorAll('#page-area > div').forEach(d=>d.style.display='none');
   const s=document.getElementById('s-'+sec);if(s)s.style.display='';
-  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',validacion:'Validación',liquidacion:'Rendición operativa',informes:'Informes',clientes:'Clientes',cuadrillas:'Cuadrillas',logistic:'Logistic',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
+  document.getElementById('mobile-title').textContent={dashboard:'Dashboard',ots:'OTs',asignar:'Asignar OTs',asignadas:'Cerrar OTs',validacion:'Validación',liquidacion:'Rendición operativa',informes:'Informes',clientes:'Clientes',edificios:'Edificios',cuadrillas:'Cuadrillas',logistic:'Logistic',tecnicos:'Técnicos','stock-cuad':'Stock Cuadrillas',stock:'Stock Depósito',config:'Config'}[sec]||'FG';
   closeSidebar();
   const fn={dashboard:renderDashboard,ots:()=>{
     const selE=document.getElementById('ot-fil-estado');
@@ -1724,7 +1851,7 @@ function irA(sec){
     if(d&&!d.value){const hoy=new Date();d.value=new Date(hoy.getFullYear(),hoy.getMonth(),1).toISOString().slice(0,10);}
     if(h&&!h.value){h.value=new Date().toISOString().slice(0,10);}
     renderRendimiento();
-  },asignar:renderAsignarOTs,asignadas:inicializarAsignadas,validacion:inicializarValidacion,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:()=>{renderClientes();},cuadrillas:()=>{renderCuadrillas();},logistic:renderLogistic,tecnicos:()=>{renderTecnicos();},'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
+  },asignar:renderAsignarOTs,asignadas:inicializarAsignadas,validacion:inicializarValidacion,liquidacion:()=>abrirReporteGigaredSeccion(),informes:renderInformes,clientes:()=>{renderClientes();},edificios:()=>{renderEdificios();},cuadrillas:()=>{renderCuadrillas();},logistic:renderLogistic,tecnicos:()=>{renderTecnicos();},'stock-cuad':iniciarStockCuadrillas,stock:()=>renderStock('deposito'),equipos:renderEquipos,config:()=>renderConfig('estados')};
   if(fn[sec])fn[sec]();
 }
 
@@ -6819,6 +6946,568 @@ async function confirmarWizardCierre(){
 async function confirmarCierre(){await confirmarWizardCierre();}
 
 // CLIENTES
+// ═══════════════════════════════════════════════════════════════════════════
+// MÓDULO EDIFICIOS v229 — CRUD básico
+// ───────────────────────────────────────────────────────────────────────────
+// Tablas: edificios, edificio_jornadas (solo lectura), edificio_tareas
+// NO toca: ordenes_trabajo, stock, validación, importador, PWA
+// Permisos: admin/superadmin crean y editan. Solo superadmin elimina (soft-delete).
+// ═══════════════════════════════════════════════════════════════════════════
+
+var EDIF_DATA=[];           // todos los edificios cargados (sin eliminados)
+var EDIF_DETALLE=null;      // edificio cuyo detalle estamos viendo
+var EDIF_DET_TAB='info';    // tab activa en el detalle
+var EDIF_FORM_ID=null;      // id del edificio en edición (null = nuevo)
+var EDIF_TAREA_FORM_ID=null;// id de tarea en edición (null = nueva)
+var EDIF_TECNICOS_CACHE=[]; // cache de técnicos para el selector de tareas
+
+// ── Helpers visuales ────────────────────────────────────────────────────────
+function badgeEstadoCableado(est){
+  var cfg={
+    NO_CABLEADO:   ['#fef3c7','#92400e','⚠ No cableado'],
+    EN_PROCESO:    ['#dbeafe','#1e40af','◐ En proceso'],
+    CABLEADO:      ['#dcfce7','#166534','✓ Cableado'],
+    BLOQUEADO:     ['#fee2e2','#991b1b','⛔ Bloqueado'],
+    NO_AUTORIZADO: ['#fee2e2','#991b1b','⛔ No autorizado']
+  };
+  var c=cfg[est]||['#f1f5f9','#475569',est||'—'];
+  return '<span style="display:inline-block;background:'+c[0]+';color:'+c[1]+';font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px">'+c[2]+'</span>';
+}
+
+function badgeEstadoEdif(est){
+  var cfg={
+    PENDIENTE:   ['#fef3c7','#92400e'],
+    EN_PROCESO:  ['#dbeafe','#1e40af'],
+    PAUSADO:     ['#fed7aa','#9a3412'],
+    FINALIZADO:  ['#dcfce7','#166534'],
+    CANCELADO:   ['#f1f5f9','#475569']
+  };
+  var c=cfg[est]||['#f1f5f9','#475569'];
+  return '<span style="display:inline-block;background:'+c[0]+';color:'+c[1]+';font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px">'+(est||'—').replace(/_/g,' ')+'</span>';
+}
+
+function fmtMin(min){
+  if(!min||min<0)return '—';
+  var h=Math.floor(min/60), m=min%60;
+  return (h>0?h+'h ':'')+m+'m';
+}
+
+function fmtFechaCorta(d){
+  if(!d)return '—';
+  try{return new Date(d).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'});}catch(e){return d;}
+}
+function fmtHoraCorta(d){
+  if(!d)return '—';
+  try{return new Date(d).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});}catch(e){return d;}
+}
+
+// ── LISTADO ─────────────────────────────────────────────────────────────────
+async function renderEdificios(){
+  // Mostrar lista, ocultar form/detalle (por si veníamos de otra vista)
+  document.getElementById('edif-list-view').style.display='';
+  document.getElementById('edif-form-view').style.display='none';
+  document.getElementById('edif-det-view').style.display='none';
+
+  // Poblar selector de cuadrillas en filtros (una sola vez)
+  var selCuad=document.getElementById('edif-fil-cuad');
+  if(selCuad&&selCuad.options.length<=1){
+    CUADRILLAS.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;selCuad.appendChild(o);});
+  }
+
+  var el=document.getElementById('edif-lista');
+  el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    var data=await sbGet('edificios',
+      '?eliminado=eq.false&select=id,nombre,tipo,direccion,numero_domicilio,barrio,localidad,nodo,cantidad_pisos,cantidad_unidades,cuadrilla_principal_id,estado,estado_cableado,motivo_bloqueo,fecha_estado_cableado,gigatracer_codigo,fecha_inicio_real,fecha_fin_real,observaciones_tecnicas,created_at,cuadrillas:cuadrilla_principal_id(id,nombre)&order=created_at.desc'
+    )||[];
+    EDIF_DATA=data;
+    filtrarEdificios();
+  }catch(e){
+    el.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';
+  }
+}
+
+function filtrarEdificios(){
+  var busq=(document.getElementById('edif-buscar')?.value||'').toLowerCase().trim();
+  var fEst=document.getElementById('edif-fil-estado')?.value||'';
+  var fCab=document.getElementById('edif-fil-cableado')?.value||'';
+  var fCuad=document.getElementById('edif-fil-cuad')?.value||'';
+  var lista=EDIF_DATA.filter(function(e){
+    if(fEst&&e.estado!==fEst)return false;
+    if(fCab&&e.estado_cableado!==fCab)return false;
+    if(fCuad&&String(e.cuadrilla_principal_id||'')!==String(fCuad))return false;
+    if(busq){
+      var hay=[(e.nombre||''),(e.direccion||''),(e.nodo||''),(e.barrio||''),(e.localidad||'')].join(' ').toLowerCase();
+      if(hay.indexOf(busq)<0)return false;
+    }
+    return true;
+  });
+  renderTablaEdificios(lista);
+}
+
+function renderTablaEdificios(lista){
+  var el=document.getElementById('edif-lista');
+  if(!lista.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🏢</div><div>Sin edificios para los filtros seleccionados.</div></div>';
+    return;
+  }
+  el.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.5rem">'+lista.length+' edificio'+(lista.length!==1?'s':'')+'</div>'
+    +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+    +'<th>Nombre</th><th>Tipo</th><th>Dirección</th><th>Cuadrilla</th>'
+    +'<th>Pisos/Unid.</th><th>Estado trabajo</th><th>Estado cableado</th><th></th>'
+    +'</tr></thead><tbody>'
+    +lista.map(function(e){
+      var cuadNom=e.cuadrillas?.nombre||'<span style="color:#94a3b8">— sin asignar —</span>';
+      var dir=(e.direccion||'')+(e.numero_domicilio?' '+e.numero_domicilio:'');
+      var loc=(e.barrio||'')+(e.localidad?' · '+e.localidad:'');
+      return '<tr style="cursor:pointer" onclick="abrirDetalleEdificio('+e.id+')">'
+        +'<td style="font-weight:700;color:#1e3a5f">'+(e.nombre||'?')+(e.nodo?'<div style="font-size:10px;color:#94a3b8;font-weight:500;margin-top:2px">📡 '+e.nodo+'</div>':'')+'</td>'
+        +'<td><span style="font-size:11px;font-weight:600;color:#475569">'+(e.tipo||'—')+'</span></td>'
+        +'<td style="font-size:12px"><div>'+(dir||'—')+'</div>'+(loc?'<div style="font-size:11px;color:#94a3b8">'+loc+'</div>':'')+'</td>'
+        +'<td style="font-size:12px">'+cuadNom+'</td>'
+        +'<td style="font-size:12px;text-align:center"><strong>'+(e.cantidad_pisos||0)+'</strong> pisos<div style="font-size:11px;color:#94a3b8">'+(e.cantidad_unidades||0)+' unid.</div></td>'
+        +'<td>'+badgeEstadoEdif(e.estado)+'</td>'
+        +'<td>'+badgeEstadoCableado(e.estado_cableado)+'</td>'
+        +'<td onclick="event.stopPropagation()"><button class="btn btn-sm" onclick="abrirEditarEdificio('+e.id+')" style="font-size:11px">✏️</button></td>'
+      +'</tr>';
+    }).join('')+'</tbody></table></div>';
+}
+
+// ── FORM (NUEVO/EDITAR) ─────────────────────────────────────────────────────
+function abrirNuevoEdificio(){
+  EDIF_FORM_ID=null;
+  // Poblar selector de cuadrilla del form
+  var selC=document.getElementById('ef-cuadrilla');
+  if(selC.options.length<=1){
+    CUADRILLAS.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;selC.appendChild(o);});
+  }
+  // Reset
+  document.getElementById('ef-nombre').value='';
+  document.getElementById('ef-tipo').value='VERTICAL';
+  document.getElementById('ef-cuadrilla').value='';
+  document.getElementById('ef-direccion').value='';
+  document.getElementById('ef-numero').value='';
+  document.getElementById('ef-obsdom').value='';
+  document.getElementById('ef-barrio').value='';
+  document.getElementById('ef-localidad').value='';
+  document.getElementById('ef-nodo').value='';
+  document.getElementById('ef-gigatracer').value='';
+  document.getElementById('ef-pisos').value='';
+  document.getElementById('ef-unidades').value='';
+  document.getElementById('ef-obstec').value='';
+  document.getElementById('ef-estado').value='PENDIENTE';
+  document.getElementById('ef-cableado').value='NO_CABLEADO';
+  document.getElementById('ef-motivo-bloqueo').value='';
+  edifFormCableadoChange();
+  document.getElementById('edif-form-err').textContent='';
+  document.getElementById('edif-form-titulo').textContent='Nuevo edificio';
+  document.getElementById('edif-list-view').style.display='none';
+  document.getElementById('edif-det-view').style.display='none';
+  document.getElementById('edif-form-view').style.display='';
+}
+
+async function abrirEditarEdificio(id){
+  EDIF_FORM_ID=id;
+  // Poblar selector si hace falta
+  var selC=document.getElementById('ef-cuadrilla');
+  if(selC.options.length<=1){
+    CUADRILLAS.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.nombre;selC.appendChild(o);});
+  }
+  try{
+    var rows=await sbGet('edificios','?id=eq.'+id+'&eliminado=eq.false&select=*')||[];
+    if(!rows.length){alert('Edificio no encontrado.');return;}
+    var e=rows[0];
+    document.getElementById('ef-nombre').value=e.nombre||'';
+    document.getElementById('ef-tipo').value=e.tipo||'VERTICAL';
+    document.getElementById('ef-cuadrilla').value=e.cuadrilla_principal_id||'';
+    document.getElementById('ef-direccion').value=e.direccion||'';
+    document.getElementById('ef-numero').value=e.numero_domicilio||'';
+    document.getElementById('ef-obsdom').value=e.obs_domicilio||'';
+    document.getElementById('ef-barrio').value=e.barrio||'';
+    document.getElementById('ef-localidad').value=e.localidad||'';
+    document.getElementById('ef-nodo').value=e.nodo||'';
+    document.getElementById('ef-gigatracer').value=e.gigatracer_codigo||'';
+    document.getElementById('ef-pisos').value=e.cantidad_pisos||'';
+    document.getElementById('ef-unidades').value=e.cantidad_unidades||'';
+    document.getElementById('ef-obstec').value=e.observaciones_tecnicas||'';
+    document.getElementById('ef-estado').value=e.estado||'PENDIENTE';
+    document.getElementById('ef-cableado').value=e.estado_cableado||'NO_CABLEADO';
+    document.getElementById('ef-motivo-bloqueo').value=e.motivo_bloqueo||'';
+    edifFormCableadoChange();
+    document.getElementById('edif-form-err').textContent='';
+    document.getElementById('edif-form-titulo').textContent='Editar edificio: '+(e.nombre||'');
+    document.getElementById('edif-list-view').style.display='none';
+    document.getElementById('edif-det-view').style.display='none';
+    document.getElementById('edif-form-view').style.display='';
+  }catch(err){
+    alert('Error: '+err.message);
+  }
+}
+
+function edifFormCableadoChange(){
+  var est=document.getElementById('ef-cableado').value;
+  var bloqueado=(est==='BLOQUEADO'||est==='NO_AUTORIZADO');
+  document.getElementById('ef-motivo-bloqueo-wrap').style.display=bloqueado?'':'none';
+}
+
+function cancelarFormEdificio(){
+  EDIF_FORM_ID=null;
+  document.getElementById('edif-form-view').style.display='none';
+  document.getElementById('edif-list-view').style.display='';
+}
+
+async function guardarEdificio(){
+  var errEl=document.getElementById('edif-form-err');
+  errEl.textContent='';
+  var btn=document.getElementById('edif-btn-guardar');
+
+  var nombre=document.getElementById('ef-nombre').value.trim();
+  var tipo=document.getElementById('ef-tipo').value;
+  var cableado=document.getElementById('ef-cableado').value;
+  var motivo=document.getElementById('ef-motivo-bloqueo').value.trim();
+
+  // Validaciones frontend
+  var probs=[];
+  if(!nombre)probs.push('• El nombre es obligatorio');
+  if(!tipo)probs.push('• El tipo es obligatorio');
+  if((cableado==='BLOQUEADO'||cableado==='NO_AUTORIZADO')&&!motivo)probs.push('• Si el estado de cableado es '+cableado+' debe indicar el motivo');
+  if(probs.length){errEl.textContent='⛔ Corregir:\n'+probs.join('\n');return;}
+
+  var pisos=parseInt(document.getElementById('ef-pisos').value)||null;
+  var unidades=parseInt(document.getElementById('ef-unidades').value)||null;
+  var cuadId=parseInt(document.getElementById('ef-cuadrilla').value)||null;
+
+  var data={
+    nombre:nombre,
+    tipo:tipo,
+    direccion:document.getElementById('ef-direccion').value.trim()||null,
+    numero_domicilio:document.getElementById('ef-numero').value.trim()||null,
+    obs_domicilio:document.getElementById('ef-obsdom').value.trim()||null,
+    barrio:document.getElementById('ef-barrio').value.trim()||null,
+    localidad:document.getElementById('ef-localidad').value.trim()||null,
+    nodo:document.getElementById('ef-nodo').value.trim()||null,
+    cantidad_pisos:pisos,
+    cantidad_unidades:unidades,
+    observaciones_tecnicas:document.getElementById('ef-obstec').value.trim()||null,
+    cuadrilla_principal_id:cuadId,
+    estado:document.getElementById('ef-estado').value,
+    estado_cableado:cableado,
+    motivo_bloqueo:(cableado==='BLOQUEADO'||cableado==='NO_AUTORIZADO')?motivo:null,
+    gigatracer_codigo:document.getElementById('ef-gigatracer').value.trim()||null
+  };
+
+  if(btn){btn.disabled=true;btn.textContent='Guardando...';}
+  try{
+    if(EDIF_FORM_ID){
+      data.updated_at=new Date().toISOString();
+      await sbPatch('edificios','?id=eq.'+EDIF_FORM_ID,data);
+    }else{
+      data.created_by=CU.id||null;
+      await sbPost('edificios',data);
+    }
+    cancelarFormEdificio();
+    await renderEdificios();
+  }catch(err){
+    errEl.textContent='Error: '+err.message;
+    if(btn){btn.disabled=false;btn.textContent='💾 Guardar';}
+  }
+}
+
+// ── DETALLE ─────────────────────────────────────────────────────────────────
+async function abrirDetalleEdificio(id){
+  try{
+    var rows=await sbGet('edificios','?id=eq.'+id+'&eliminado=eq.false&select=*,cuadrillas:cuadrilla_principal_id(id,nombre)')||[];
+    if(!rows.length){alert('Edificio no encontrado o eliminado.');return;}
+    EDIF_DETALLE=rows[0];
+    EDIF_DET_TAB='info';
+    document.getElementById('edif-det-nombre').textContent=EDIF_DETALLE.nombre||'—';
+    var sub=(EDIF_DETALLE.tipo||'')+(EDIF_DETALLE.direccion?' · '+EDIF_DETALLE.direccion+(EDIF_DETALLE.numero_domicilio?' '+EDIF_DETALLE.numero_domicilio:''):'')+(EDIF_DETALLE.localidad?' · '+EDIF_DETALLE.localidad:'');
+    document.getElementById('edif-det-sub').textContent=sub;
+    // Botón eliminar: solo superadmin
+    var btnEli=document.getElementById('edif-det-btn-eliminar');
+    if(btnEli){btnEli.style.display=(CU&&CU.rol==='superadmin')?'':'none';}
+    // Reset tabs visualmente
+    document.querySelectorAll('#edif-det-tabs .ntab').forEach(function(t,i){t.classList.toggle('active',i===0);});
+    // Mostrar vista
+    document.getElementById('edif-list-view').style.display='none';
+    document.getElementById('edif-form-view').style.display='none';
+    document.getElementById('edif-det-view').style.display='';
+    renderEdifInfo();
+  }catch(e){
+    alert('Error: '+e.message);
+  }
+}
+
+function cerrarDetalleEdificio(){
+  EDIF_DETALLE=null;
+  document.getElementById('edif-det-view').style.display='none';
+  document.getElementById('edif-list-view').style.display='';
+}
+
+function editarEdificioActual(){
+  if(!EDIF_DETALLE)return;
+  abrirEditarEdificio(EDIF_DETALLE.id);
+}
+
+async function eliminarEdificioActual(){
+  if(!EDIF_DETALLE)return;
+  if(!CU||CU.rol!=='superadmin'){alert('Solo superadmin puede eliminar edificios.');return;}
+  var msg='⛔ ¿ELIMINAR el edificio "'+(EDIF_DETALLE.nombre||'')+'"?\n\n'
+    +'Esta acción NO borra datos físicamente — el edificio queda marcado como eliminado y deja de aparecer.\n\n'
+    +'Tareas y jornadas asociadas también dejarán de mostrarse.\n\n'
+    +'Para confirmar, escribí el nombre exacto del edificio:';
+  var confirm1=prompt(msg);
+  if(confirm1===null)return;
+  if(confirm1.trim()!==(EDIF_DETALLE.nombre||'').trim()){
+    alert('El nombre no coincide. Cancelado.');
+    return;
+  }
+  try{
+    await sbPatch('edificios','?id=eq.'+EDIF_DETALLE.id,{eliminado:true,updated_at:new Date().toISOString()});
+    cerrarDetalleEdificio();
+    await renderEdificios();
+    alert('✓ Edificio eliminado.');
+  }catch(e){
+    alert('Error: '+e.message);
+  }
+}
+
+function edifTab(tab,el){
+  EDIF_DET_TAB=tab;
+  document.querySelectorAll('#edif-det-tabs .ntab').forEach(function(t){t.classList.remove('active');});
+  if(el)el.classList.add('active');
+  if(tab==='info')renderEdifInfo();
+  else if(tab==='jornadas')renderEdifJornadas();
+  else if(tab==='tareas')renderEdifTareas();
+}
+
+function renderEdifInfo(){
+  if(!EDIF_DETALLE)return;
+  var e=EDIF_DETALLE;
+  var dir=(e.direccion||'—')+(e.numero_domicilio?' '+e.numero_domicilio:'')+(e.obs_domicilio?' ('+e.obs_domicilio+')':'');
+  var motivoHTML=e.motivo_bloqueo?'<div style="margin-top:8px;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px;font-size:13px;color:#991b1b"><strong>Motivo del bloqueo:</strong> '+e.motivo_bloqueo+'</div>':'';
+  var html='<div class="form-2col">'
+    +'<div class="card">'
+    +'<div class="card-title">Estado</div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px">'
+    +'<div><span style="font-size:11px;color:#94a3b8;text-transform:uppercase">Trabajo</span><div style="margin-top:2px">'+badgeEstadoEdif(e.estado)+'</div></div>'
+    +'<div><span style="font-size:11px;color:#94a3b8;text-transform:uppercase">Cableado</span><div style="margin-top:2px">'+badgeEstadoCableado(e.estado_cableado)+'</div></div>'
+    +(e.fecha_estado_cableado?'<div style="font-size:11px;color:#64748b">Última actualización: '+fmtFechaCorta(e.fecha_estado_cableado)+' '+fmtHoraCorta(e.fecha_estado_cableado)+'</div>':'')
+    +motivoHTML
+    +'</div>'
+    +'</div>'
+    +'<div class="card">'
+    +'<div class="card-title">Información general</div>'
+    +'<div style="font-size:13px;line-height:1.7">'
+    +'<div><strong>Tipo:</strong> '+(e.tipo||'—')+'</div>'
+    +'<div><strong>Dirección:</strong> '+dir+'</div>'
+    +'<div><strong>Barrio / Localidad:</strong> '+(e.barrio||'—')+(e.localidad?' · '+e.localidad:'')+'</div>'
+    +'<div><strong>Nodo:</strong> '+(e.nodo||'—')+'</div>'
+    +'<div><strong>Pisos:</strong> '+(e.cantidad_pisos||'—')+'  ·  <strong>Unidades:</strong> '+(e.cantidad_unidades||'—')+'</div>'
+    +'<div><strong>Cuadrilla principal:</strong> '+(e.cuadrillas?.nombre||'<span style="color:#94a3b8">— sin asignar —</span>')+'</div>'
+    +(e.gigatracer_codigo?'<div><strong>GigaTracer:</strong> <span style="font-family:monospace">'+e.gigatracer_codigo+'</span></div>':'')
+    +(e.fecha_inicio_real?'<div><strong>Inicio real:</strong> '+fmtFechaCorta(e.fecha_inicio_real)+'</div>':'')
+    +(e.fecha_fin_real?'<div><strong>Fin real:</strong> '+fmtFechaCorta(e.fecha_fin_real)+'</div>':'')
+    +'</div>'
+    +'</div>'
+    +'</div>'
+    +(e.observaciones_tecnicas?'<div class="card" style="margin-top:1rem"><div class="card-title">Observaciones técnicas</div><div style="font-size:13px;white-space:pre-wrap;line-height:1.5">'+e.observaciones_tecnicas+'</div></div>':'');
+  document.getElementById('edif-det-cont').innerHTML=html;
+}
+
+async function renderEdifJornadas(){
+  if(!EDIF_DETALLE)return;
+  var cont=document.getElementById('edif-det-cont');
+  cont.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    var jrs=await sbGet('edificio_jornadas',
+      '?edificio_id=eq.'+EDIF_DETALLE.id
+      +'&select=id,fecha,hora_inicio,hora_fin,duracion_minutos,observaciones,estado,cuadrilla_id,cuadrillas(nombre)'
+      +'&order=fecha.desc,hora_inicio.desc'
+    )||[];
+    if(!jrs.length){
+      cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">⏱️</div><div>Sin jornadas registradas todavía.</div><div style="font-size:12px;color:#94a3b8;margin-top:8px">Las jornadas se crean desde la PWA cuando el técnico inicia el trabajo en el edificio.</div></div>';
+      return;
+    }
+    var totalMin=jrs.filter(function(j){return j.estado==='FINALIZADA';}).reduce(function(s,j){return s+(j.duracion_minutos||0);},0);
+    var totalH=Math.round(totalMin/60*10)/10;
+    var enCurso=jrs.filter(function(j){return j.estado==='EN_CURSO';}).length;
+    cont.innerHTML='<div class="card" style="margin-bottom:1rem;display:flex;gap:1.5rem;flex-wrap:wrap">'
+      +'<div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Total jornadas</div><div style="font-size:22px;font-weight:800;color:#1e3a5f">'+jrs.length+'</div></div>'
+      +'<div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">Horas acumuladas</div><div style="font-size:22px;font-weight:800;color:#16a34a">'+totalH+' h</div></div>'
+      +(enCurso>0?'<div><div style="font-size:11px;color:#94a3b8;text-transform:uppercase">En curso</div><div style="font-size:22px;font-weight:800;color:#2563eb">'+enCurso+' ▶</div></div>':'')
+      +'</div>'
+      +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+      +'<th>Fecha</th><th>Cuadrilla</th><th>Inicio</th><th>Fin</th><th>Duración</th><th>Estado</th><th>Observaciones</th>'
+      +'</tr></thead><tbody>'
+      +jrs.map(function(j){
+        var estBadge=j.estado==='EN_CURSO'?'<span style="background:#dbeafe;color:#1e40af;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px">▶ EN CURSO</span>'
+                    :j.estado==='FINALIZADA'?'<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px">✓ Finalizada</span>'
+                    :'<span style="background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px">✕ Cancelada</span>';
+        return '<tr>'
+          +'<td style="font-weight:700">'+fmtFechaCorta(j.fecha)+'</td>'
+          +'<td style="font-size:12px">'+(j.cuadrillas?.nombre||'—')+'</td>'
+          +'<td style="font-size:12px">'+fmtHoraCorta(j.hora_inicio)+'</td>'
+          +'<td style="font-size:12px">'+fmtHoraCorta(j.hora_fin)+'</td>'
+          +'<td style="font-size:12px;font-weight:700">'+fmtMin(j.duracion_minutos)+'</td>'
+          +'<td>'+estBadge+'</td>'
+          +'<td style="font-size:12px;max-width:280px">'+(j.observaciones||'<span style="color:#94a3b8">—</span>')+'</td>'
+        +'</tr>';
+      }).join('')+'</tbody></table></div>';
+  }catch(e){
+    cont.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';
+  }
+}
+
+async function renderEdifTareas(){
+  if(!EDIF_DETALLE)return;
+  var cont=document.getElementById('edif-det-cont');
+  cont.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    // Cargar tareas + técnicos en paralelo (técnicos solo primera vez)
+    var promises=[
+      sbGet('edificio_tareas','?edificio_id=eq.'+EDIF_DETALLE.id+'&select=id,descripcion,piso,estado,asignada_a_tecnico,observaciones,created_at,fecha_completada,tecnicos:asignada_a_tecnico(nombre)&order=created_at.desc')
+    ];
+    if(!EDIF_TECNICOS_CACHE.length){
+      promises.push(sbGet('tecnicos','?select=id,nombre&order=nombre'));
+    }
+    var res=await Promise.all(promises);
+    var tareas=res[0]||[];
+    if(res[1])EDIF_TECNICOS_CACHE=res[1];
+
+    var tecOptions=EDIF_TECNICOS_CACHE.map(function(t){return '<option value="'+t.id+'">'+t.nombre+'</option>';}).join('');
+
+    // Form de nueva tarea (siempre visible al inicio)
+    var formHTML='<div class="card" style="margin-bottom:1rem;background:#f0fdf4;border:1.5px dashed #86efac">'
+      +'<div class="card-title" style="color:#16a34a">'+(EDIF_TAREA_FORM_ID?'Editar tarea':'+ Nueva tarea interna')+'</div>'
+      +'<div class="form-2col">'
+      +'  <div class="fg" style="grid-column:1/-1"><label>Descripción *</label><input id="et-desc" placeholder="Ej: Pasar fibra desde caja PB hasta piso 8"/></div>'
+      +'  <div class="fg"><label>Piso</label><input id="et-piso" placeholder="8 / PB / Subsuelo"/></div>'
+      +'  <div class="fg"><label>Asignar a técnico</label><select id="et-tec"><option value="">— Sin asignar —</option>'+tecOptions+'</select></div>'
+      +'  <div class="fg" style="grid-column:1/-1"><label>Observaciones</label><textarea id="et-obs" rows="2" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical"></textarea></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+      +(EDIF_TAREA_FORM_ID?'<button class="btn" onclick="cancelarFormTarea()">Cancelar</button>':'')
+      +'<button class="btn btn-primary" onclick="guardarTareaInterna()" style="flex:1">'+(EDIF_TAREA_FORM_ID?'💾 Guardar cambios':'+ Agregar tarea')+'</button>'
+      +'</div>'
+      +'</div>';
+
+    var listaHTML='';
+    if(!tareas.length){
+      listaHTML='<div class="empty-state"><div class="empty-state-icon">✅</div><div>Sin tareas internas todavía.</div></div>';
+    }else{
+      var pendientes=tareas.filter(function(t){return t.estado==='PENDIENTE'||t.estado==='EN_PROCESO';});
+      var completadas=tareas.filter(function(t){return t.estado==='COMPLETADA'||t.estado==='NO_APLICA';});
+      listaHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.5rem">'+tareas.length+' tarea'+(tareas.length!==1?'s':'')+' · '+pendientes.length+' pendiente'+(pendientes.length!==1?'s':'')+' · '+completadas.length+' resuelta'+(completadas.length!==1?'s':'')+'</div>';
+      listaHTML+=tareas.map(function(t){
+        var estCfg={
+          PENDIENTE:    ['#fef3c7','#92400e','⏳ Pendiente'],
+          EN_PROCESO:   ['#dbeafe','#1e40af','◐ En proceso'],
+          COMPLETADA:   ['#dcfce7','#166534','✓ Completada'],
+          NO_APLICA:    ['#f1f5f9','#475569','⊘ No aplica']
+        };
+        var ec=estCfg[t.estado]||['#f1f5f9','#475569',t.estado];
+        var puedeCompletar=(t.estado==='PENDIENTE'||t.estado==='EN_PROCESO');
+        return '<div class="card" style="margin-bottom:8px;display:flex;gap:12px;align-items:flex-start">'
+          +'<div style="flex:1">'
+          +'<div style="font-size:14px;font-weight:600;color:#1e3a5f">'+t.descripcion+'</div>'
+          +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:11px;color:#64748b">'
+          +(t.piso?'<span>📍 Piso '+t.piso+'</span>':'')
+          +(t.tecnicos?'<span>👷 '+t.tecnicos.nombre+'</span>':'')
+          +'<span style="background:'+ec[0]+';color:'+ec[1]+';font-weight:700;padding:2px 7px;border-radius:5px">'+ec[2]+'</span>'
+          +(t.fecha_completada?'<span>✓ '+fmtFechaCorta(t.fecha_completada)+'</span>':'')
+          +'</div>'
+          +(t.observaciones?'<div style="font-size:12px;color:#64748b;margin-top:6px;font-style:italic">"'+t.observaciones+'"</div>':'')
+          +'</div>'
+          +'<div style="display:flex;flex-direction:column;gap:4px">'
+          +(puedeCompletar?'<button class="btn btn-sm" onclick="marcarTareaCompletada('+t.id+')" style="font-size:11px;color:#16a34a;border-color:#86efac">✓ Completar</button>':'')
+          +'<button class="btn btn-sm" onclick="abrirEditarTareaInterna('+t.id+')" style="font-size:11px">✏️</button>'
+          +'<button class="btn btn-sm" onclick="eliminarTareaInterna('+t.id+')" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)">🗑️</button>'
+          +'</div>'
+        +'</div>';
+      }).join('');
+    }
+
+    cont.innerHTML=formHTML+listaHTML;
+
+    // Si estamos editando, precargar valores en el form
+    if(EDIF_TAREA_FORM_ID){
+      var t=tareas.find(function(x){return x.id===EDIF_TAREA_FORM_ID;});
+      if(t){
+        document.getElementById('et-desc').value=t.descripcion||'';
+        document.getElementById('et-piso').value=t.piso||'';
+        document.getElementById('et-tec').value=t.asignada_a_tecnico||'';
+        document.getElementById('et-obs').value=t.observaciones||'';
+      }
+    }
+  }catch(e){
+    cont.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';
+  }
+}
+
+function cancelarFormTarea(){
+  EDIF_TAREA_FORM_ID=null;
+  renderEdifTareas();
+}
+
+async function abrirEditarTareaInterna(id){
+  EDIF_TAREA_FORM_ID=id;
+  renderEdifTareas();
+}
+
+async function guardarTareaInterna(){
+  if(!EDIF_DETALLE)return;
+  var desc=document.getElementById('et-desc').value.trim();
+  if(!desc){alert('La descripción es obligatoria.');return;}
+  var data={
+    descripcion:desc,
+    piso:document.getElementById('et-piso').value.trim()||null,
+    asignada_a_tecnico:parseInt(document.getElementById('et-tec').value)||null,
+    observaciones:document.getElementById('et-obs').value.trim()||null
+  };
+  try{
+    if(EDIF_TAREA_FORM_ID){
+      await sbPatch('edificio_tareas','?id=eq.'+EDIF_TAREA_FORM_ID,data);
+    }else{
+      data.edificio_id=EDIF_DETALLE.id;
+      data.estado='PENDIENTE';
+      data.created_by=CU.id||null;
+      await sbPost('edificio_tareas',data);
+    }
+    EDIF_TAREA_FORM_ID=null;
+    renderEdifTareas();
+  }catch(e){
+    alert('Error: '+e.message);
+  }
+}
+
+async function marcarTareaCompletada(id){
+  if(!confirm('¿Marcar esta tarea como COMPLETADA?'))return;
+  try{
+    await sbPatch('edificio_tareas','?id=eq.'+id,{
+      estado:'COMPLETADA',
+      fecha_completada:new Date().toISOString()
+    });
+    renderEdifTareas();
+  }catch(e){
+    alert('Error: '+e.message);
+  }
+}
+
+async function eliminarTareaInterna(id){
+  if(!confirm('¿Eliminar esta tarea? Esta acción no se puede deshacer.'))return;
+  try{
+    await sbFetch('edificio_tareas','DELETE',null,'?id=eq.'+id);
+    renderEdifTareas();
+  }catch(e){
+    alert('Error: '+e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FIN MÓDULO EDIFICIOS v229
+// ═══════════════════════════════════════════════════════════════════════════
+
 async function renderClientes(){
   const el=document.getElementById('cli-lista');
   el.innerHTML='<div class="loading"><span class="spinner"></span></div>';
