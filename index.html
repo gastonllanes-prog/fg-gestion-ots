@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v227</title>
+<title>FG Gestión OTs v228</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V227</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V228</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v227</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v228</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -867,38 +867,18 @@ tr:hover td{background:rgba(37,99,235,.02)}
   </div>
 </div>
 
-<!-- MODAL MANUAL -->
+<!-- MODAL MANUAL (wizard 2 pasos: Cliente → OTs) -->
 <div class="modal-overlay hidden" id="manual-modal">
-  <div class="modal" style="max-width:600px">
-    <div class="modal-title">OT manual <button class="modal-close" onclick="cerrarModal('manual-modal')">✕</button></div>
-    <div class="form-2col">
-      <div class="fg"><label>Número OT</label><input id="m-num" placeholder="005-00302495"/></div>
-      <div class="fg"><label>Tipo</label><select id="m-tipo" onchange="toggleManualRep()"><option value="INSTALAR">Instalar</option><option value="REPARACION">Reparación</option><option value="DESCONECTAR">Desconectar</option><option value="SERVICE">Service</option><option value="CAMBIO_DOMICILIO">Cambio domicilio</option></select></div>
-      <div class="fg"><label>Código cliente</label><input id="m-cod" placeholder="00500098504"/></div>
-      <div class="fg"><label>Apellido, Nombre</label><input id="m-nombre" placeholder="PETRUFF, CLELIA"/></div>
-      <div class="fg" style="grid-column:1/-1"><label>Calle</label><input id="m-calle" placeholder="LOS LAPACHOS PERITO MORENO"/></div>
-      <div class="fg"><label>Número</label><input id="m-numdom" placeholder="00455"/></div>
-      <div class="fg"><label>Obs. dirección</label><input id="m-obsdom" placeholder="ENTRE LINEO Y LOS JAZMINES"/></div>
-      <div class="fg"><label>Barrio</label><input id="m-barrio" placeholder="GARUPA CENTRO"/></div>
-      <div class="fg"><label>Localidad</label><input id="m-loc" placeholder="GARUPA"/></div>
-      <div class="fg"><label>Nodo</label><input id="m-nodo" placeholder="H1F144"/></div>
-      <div class="fg"><label>Teléfono 1</label><input id="m-tel1" placeholder="376-4334004"/></div>
-      <div class="fg"><label>Teléfono 2</label><input id="m-tel2"/></div>
-      <div class="fg"><label>Fecha emisión</label><input type="date" id="m-fecha"/></div>
-      <div class="fg"><label>Tag/Precinto</label><input id="m-tag" placeholder="565857"/></div>
-      <div class="fg" style="grid-column:1/-1"><label>Obs. Gigared</label><input id="m-obs" placeholder="Contrata Internet 100 megas..."/></div>
-      <div id="m-rep-fields" style="display:none;grid-column:1/-1">
-        <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:.6rem 1rem;margin-bottom:.75rem;font-size:12px;color:#9a3412">🔧 <strong>Campos de Reparación</strong></div>
-        <div class="fg"><label>Síntoma / Tarea</label><input id="m-sintoma" placeholder="INST Reubicar Acometida"/></div>
-        <div class="fg"><label>Obs. de trabajo</label><input id="m-obstrap" placeholder="cambiar acometida 4531676"/></div>
-        <div class="fg"><label>Equipo instalado</label><input id="m-equipo" placeholder="1C60D2F96288 FIBERHOME"/></div>
-      </div>
+  <div class="modal" style="max-width:820px">
+    <div class="modal-title">
+      <span id="m2-titulo">Nueva carga manual</span>
+      <button class="modal-close" onclick="cerrarModal('manual-modal')">✕</button>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary" style="flex:2" onclick="guardarManual()">Guardar</button>
-      <button class="btn" onclick="cerrarModal('manual-modal')">Cancelar</button>
-    </div>
-    <p class="err-msg" id="manual-err"></p><p class="ok-msg" id="manual-ok"></p>
+    <div id="m2-stepper" style="display:flex;align-items:center;gap:10px;padding:0 4px 14px 4px;font-size:12px;font-weight:700"></div>
+    <div id="m2-body"></div>
+    <div class="modal-footer" id="m2-footer"></div>
+    <p class="err-msg" id="m2-err" style="white-space:pre-line"></p>
+    <p class="ok-msg" id="m2-ok"></p>
   </div>
 </div>
 
@@ -1564,8 +1544,7 @@ function parseDomicilio(dom){
 }
 
 function toggleManualRep(){
-  const tipo=document.getElementById('m-tipo').value;
-  document.getElementById('m-rep-fields').style.display=tipo==='REPARACION'?'':'none';
+  // Función legacy (modal viejo eliminado en v228). No-op por compatibilidad.
 }
 
 function badgeE(n){
@@ -3392,51 +3371,441 @@ async function confirmarImport(){
 }
 
 // MANUAL
+// ═══════════════════════════════════════════════════════════════════════════
+// CARGA MANUAL v228 — Wizard 2 pasos: Cliente → OTs (1+ por grupo)
+// ═══════════════════════════════════════════════════════════════════════════
+// Reemplaza el modal monolítico anterior. Permite:
+//   - Buscar cliente por código → precarga / actualiza con historial
+//   - Cargar 1 o más OTs en un mismo grupo, cada una con su tipo_item correcto
+//   - Verificar duplicados antes de insertar (no deja grupos huérfanos)
+//   - CAMBIO_DOMICILIO: nuevos datos van a la OT, no al cliente
+//
+// Estado en memoria:
+//   MANUAL = {
+//     paso: 1|2,
+//     cliente: { codigo_gigared, apellido, nombre, calle, numero_domicilio,
+//                obs_domicilio, barrio, localidad, nodo, telefono1, telefono2 },
+//     clienteOriginal: null | {...campos originales para diff},
+//     clienteId: null | int,
+//     ots: [{ tempId, numero_ot, tipo_item, fecha_emision, obs_gigared, tag,
+//             sintoma_reportado, obs_trabajo, equipo_instalado,
+//             // campos CAMBIO_DOMICILIO (van a la OT):
+//             nv_calle, nv_numero, nv_obs, nv_barrio, nv_localidad, nv_domicilio
+//          }],
+//     _idx: 0
+//   }
+
+var MANUAL=null;
+
+// Tipos válidos agrupados (16 tipos)
+var TIPOS_OT_GROUPS=[
+  {label:'Instalaciones',tipos:['BASICA','ONU','CABLEMODEM','CM_EXISTENTE','DECODIFICADOR','SMART_CARD','TV_BOX','BOCA_ADICIONAL','AGREGA_TV','CAMBIO_TECNOLOGIA']},
+  {label:'Servicios',tipos:['REPARACION','REUBICACION','CAMBIO_DOMICILIO']},
+  {label:'Bajas / Altas',tipos:['DESCONEXION','RECONEXION','RECONEXION_EQUIPO']}
+];
+
 function abrirManual(){
-  document.getElementById('m-fecha').value=new Date().toISOString().slice(0,10);
-  document.getElementById('manual-err').textContent='';document.getElementById('manual-ok').textContent='';
-  document.getElementById('m-rep-fields').style.display='none';
+  MANUAL={
+    paso:1,
+    cliente:{codigo_gigared:'',apellido:'',nombre:'',calle:'',numero_domicilio:'',obs_domicilio:'',barrio:'',localidad:'',nodo:'',telefono1:'',telefono2:''},
+    clienteOriginal:null,
+    clienteId:null,
+    ots:[],
+    _idx:0
+  };
   abrirModal('manual-modal');
+  manualRender();
 }
-async function guardarManual(){
-  const num=document.getElementById('m-num').value.trim();
-  const err=document.getElementById('manual-err');
-  if(!num){err.textContent='Número de OT requerido';return;}
+
+function manualRender(){
+  document.getElementById('m2-err').textContent='';
+  document.getElementById('m2-ok').textContent='';
+  // Stepper
+  var p=MANUAL.paso;
+  document.getElementById('m2-stepper').innerHTML=''
+    +'<div style="display:flex;align-items:center;gap:6px;color:'+(p===1?'#2563eb':'#16a34a')+'">'
+    +'  <div style="width:24px;height:24px;border-radius:12px;background:'+(p===1?'#2563eb':'#16a34a')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px">'+(p===1?'1':'✓')+'</div>'
+    +'  <span>CLIENTE</span>'
+    +'</div>'
+    +'<div style="flex:0 0 32px;height:2px;background:'+(p===2?'#16a34a':'#e2e8f0')+'"></div>'
+    +'<div style="display:flex;align-items:center;gap:6px;color:'+(p===2?'#2563eb':'#94a3b8')+'">'
+    +'  <div style="width:24px;height:24px;border-radius:12px;background:'+(p===2?'#2563eb':'#e2e8f0')+';color:'+(p===2?'#fff':'#94a3b8')+';display:flex;align-items:center;justify-content:center;font-size:12px">2</div>'
+    +'  <span>ÓRDENES DE TRABAJO</span>'
+    +'</div>';
+
+  document.getElementById('m2-titulo').textContent=p===1?'Carga manual · Paso 1: Cliente':'Carga manual · Paso 2: Órdenes de trabajo';
+
+  if(p===1){manualRenderPaso1();}else{manualRenderPaso2();}
+}
+
+function manualRenderPaso1(){
+  var c=MANUAL.cliente;
+  var existe=!!MANUAL.clienteId;
+  var badgeHTML=existe
+    ?'<span style="display:inline-block;background:#dcfce7;color:#16a34a;border:1.5px solid #86efac;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:8px">✓ Cliente existente</span>'
+    :(c.codigo_gigared?'<span style="display:inline-block;background:#dbeafe;color:#2563eb;border:1.5px solid #93c5fd;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:8px">+ Cliente nuevo</span>':'');
+
+  document.getElementById('m2-body').innerHTML=''
+    +'<div class="form-2col">'
+    +'  <div class="fg" style="grid-column:1/-1"><label>Código cliente / Código Gigared'+badgeHTML+'</label>'
+    +'    <input id="m2-cod" placeholder="00500098504" value="'+c.codigo_gigared+'"'
+    +'      oninput="manualSetCampoCliente(\'codigo_gigared\',this.value)"'
+    +'      onblur="manualBuscarCliente()"/></div>'
+    +'  <div class="fg"><label>Apellido</label><input id="m2-ape" value="'+(c.apellido||'')+'" oninput="manualSetCampoCliente(\'apellido\',this.value)"/></div>'
+    +'  <div class="fg"><label>Nombre</label><input id="m2-nom" value="'+(c.nombre||'')+'" oninput="manualSetCampoCliente(\'nombre\',this.value)"/></div>'
+    +'  <div class="fg" style="grid-column:1/-1"><label>Dirección (calle)</label><input id="m2-cal" value="'+(c.calle||'')+'" oninput="manualSetCampoCliente(\'calle\',this.value)"/></div>'
+    +'  <div class="fg"><label>Número domicilio</label><input id="m2-nd" value="'+(c.numero_domicilio||'')+'" oninput="manualSetCampoCliente(\'numero_domicilio\',this.value)"/></div>'
+    +'  <div class="fg"><label>Observación domicilio</label><input id="m2-od" value="'+(c.obs_domicilio||'')+'" oninput="manualSetCampoCliente(\'obs_domicilio\',this.value)"/></div>'
+    +'  <div class="fg"><label>Barrio</label><input id="m2-ba" value="'+(c.barrio||'')+'" oninput="manualSetCampoCliente(\'barrio\',this.value)"/></div>'
+    +'  <div class="fg"><label>Localidad</label><input id="m2-lo" value="'+(c.localidad||'')+'" oninput="manualSetCampoCliente(\'localidad\',this.value)"/></div>'
+    +'  <div class="fg"><label>Nodo</label><input id="m2-no" value="'+(c.nodo||'')+'" oninput="manualSetCampoCliente(\'nodo\',this.value)"/></div>'
+    +'  <div class="fg"><label>Teléfono 1</label><input id="m2-t1" value="'+(c.telefono1||'')+'" oninput="manualSetCampoCliente(\'telefono1\',this.value)"/></div>'
+    +'  <div class="fg"><label>Teléfono 2</label><input id="m2-t2" value="'+(c.telefono2||'')+'" oninput="manualSetCampoCliente(\'telefono2\',this.value)"/></div>'
+    +'</div>';
+
+  document.getElementById('m2-footer').innerHTML=''
+    +'<button class="btn" onclick="cerrarModal(\'manual-modal\')">Cancelar</button>'
+    +'<button class="btn btn-primary" style="flex:2" onclick="manualPasarPaso2()">Continuar →</button>';
+}
+
+function manualSetCampoCliente(campo,val){
+  if(!MANUAL)return;
+  MANUAL.cliente[campo]=String(val||'').trim();
+  // Si cambia el código y ya había un cliente cargado, marcar que ya no es "existente conocido"
+  if(campo==='codigo_gigared'){
+    if(MANUAL.clienteId&&MANUAL.clienteOriginal&&val.trim()!==MANUAL.clienteOriginal.codigo_gigared){
+      MANUAL.clienteId=null;
+      MANUAL.clienteOriginal=null;
+    }
+  }
+}
+
+async function manualBuscarCliente(){
+  if(!MANUAL)return;
+  var cod=(MANUAL.cliente.codigo_gigared||'').trim();
+  if(!cod){MANUAL.clienteId=null;MANUAL.clienteOriginal=null;manualRender();return;}
   try{
-    const ePend=ESTADOS.find(e=>e.nombre==='PENDIENTE');
-    const cod=document.getElementById('m-cod').value.trim();
-    const nm=document.getElementById('m-nombre').value.trim().split(',');
-    const tipo=document.getElementById('m-tipo').value;
-    let cliId=null;
-    if(cod){
-      const ex=await sbGet('clientes',`?codigo_gigared=eq.${cod}&eliminado=eq.false`)||[];
-      if(ex.length)cliId=ex[0].id;
-      else{
-        const calle=document.getElementById('m-calle').value.trim();
-        const numdom=document.getElementById('m-numdom').value.trim();
-        const obsdom=document.getElementById('m-obsdom').value.trim();
-        const c=await sbPost('clientes',{codigo_gigared:cod,apellido:(nm[0]||'').trim(),nombre:(nm[1]||'').trim(),domicilio:calle+(numdom?' '+numdom:'')+(obsdom?' '+obsdom:''),calle,numero_domicilio:numdom,obs_domicilio:obsdom,barrio:document.getElementById('m-barrio').value.trim(),localidad:document.getElementById('m-loc').value.trim(),nodo:document.getElementById('m-nodo').value.trim(),telefono1:document.getElementById('m-tel1').value.trim(),telefono2:document.getElementById('m-tel2').value.trim()});
-        cliId=(Array.isArray(c)?c[0]:c)?.id;
+    var ex=await sbGet('clientes','?codigo_gigared=eq.'+encodeURIComponent(cod)+'&eliminado=eq.false&select=id,codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,obs_domicilio,barrio,localidad,nodo,telefono1,telefono2')||[];
+    if(ex.length){
+      var ec=ex[0];
+      MANUAL.clienteId=ec.id;
+      MANUAL.clienteOriginal={
+        codigo_gigared:ec.codigo_gigared||'',apellido:ec.apellido||'',nombre:ec.nombre||'',
+        calle:ec.calle||'',numero_domicilio:ec.numero_domicilio||'',obs_domicilio:ec.obs_domicilio||'',
+        barrio:ec.barrio||'',localidad:ec.localidad||'',nodo:ec.nodo||'',
+        telefono1:ec.telefono1||'',telefono2:ec.telefono2||'',domicilio:ec.domicilio||''
+      };
+      // Precargar inputs solo si están vacíos (no pisar lo que el técnico ya escribió)
+      var c=MANUAL.cliente;
+      if(!c.apellido)c.apellido=ec.apellido||'';
+      if(!c.nombre)c.nombre=ec.nombre||'';
+      if(!c.calle)c.calle=ec.calle||'';
+      if(!c.numero_domicilio)c.numero_domicilio=ec.numero_domicilio||'';
+      if(!c.obs_domicilio)c.obs_domicilio=ec.obs_domicilio||'';
+      if(!c.barrio)c.barrio=ec.barrio||'';
+      if(!c.localidad)c.localidad=ec.localidad||'';
+      if(!c.nodo)c.nodo=ec.nodo||'';
+      if(!c.telefono1)c.telefono1=ec.telefono1||'';
+      if(!c.telefono2)c.telefono2=ec.telefono2||'';
+    }else{
+      MANUAL.clienteId=null;
+      MANUAL.clienteOriginal=null;
+    }
+    manualRender();
+  }catch(e){
+    document.getElementById('m2-err').textContent='Error buscando cliente: '+e.message;
+  }
+}
+
+function manualPasarPaso2(){
+  if(!MANUAL)return;
+  var c=MANUAL.cliente;
+  var errEl=document.getElementById('m2-err');
+  if(!c.codigo_gigared&&!c.apellido){
+    errEl.textContent='⚠️ Cargá al menos código de cliente o apellido.';return;
+  }
+  // Si no hay OTs todavía, agregar una vacía
+  if(!MANUAL.ots.length)manualAddOT();
+  MANUAL.paso=2;
+  manualRender();
+}
+
+function manualVolverPaso1(){
+  if(!MANUAL)return;
+  MANUAL.paso=1;
+  manualRender();
+}
+
+function manualAddOT(){
+  if(!MANUAL)return;
+  MANUAL._idx++;
+  MANUAL.ots.push({
+    tempId:'ot'+MANUAL._idx,
+    numero_ot:'',tipo_item:'',
+    fecha_emision:new Date().toISOString().slice(0,10),
+    obs_gigared:'',tag:'',
+    sintoma_reportado:'',obs_trabajo:'',equipo_instalado:'',
+    nv_calle:'',nv_numero:'',nv_obs:'',nv_barrio:'',nv_localidad:''
+  });
+  if(MANUAL.paso===2)manualRender();
+}
+
+function manualQuitarOT(idx){
+  if(!MANUAL)return;
+  MANUAL.ots.splice(idx,1);
+  manualRender();
+}
+
+function manualSetCampoOT(idx,campo,val){
+  if(!MANUAL||!MANUAL.ots[idx])return;
+  MANUAL.ots[idx][campo]=String(val||'').trim();
+}
+
+function manualSetTipoOT(idx,tipo){
+  if(!MANUAL||!MANUAL.ots[idx])return;
+  MANUAL.ots[idx].tipo_item=tipo;
+  manualRender(); // re-render para mostrar campos extra según tipo
+}
+
+function manualRenderPaso2(){
+  var c=MANUAL.cliente;
+  var clienteResumen=(c.apellido||'')+(c.nombre?', '+c.nombre:'')+(c.codigo_gigared?' · '+c.codigo_gigared:'');
+  var tiposOptionsHTML='<option value="">— Seleccionar tipo —</option>'+TIPOS_OT_GROUPS.map(function(g){
+    return '<optgroup label="'+g.label+'">'+g.tipos.map(function(t){return '<option value="'+t+'">'+t.replace(/_/g,' ')+'</option>';}).join('')+'</optgroup>';
+  }).join('');
+
+  var html=''
+    +'<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:12px">'
+    +'  <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase">Cliente</div>'
+    +'  <div style="font-size:14px;font-weight:700;color:#1e3a5f;margin-top:2px">'+(clienteResumen||'(sin datos)')+'</div>'
+    +'  '+(MANUAL.clienteId?'<div style="font-size:11px;color:#16a34a;margin-top:2px">✓ Cliente existente · ID '+MANUAL.clienteId+'</div>':'<div style="font-size:11px;color:#2563eb;margin-top:2px">+ Cliente nuevo (se creará al guardar)</div>')
+    +'</div>';
+
+  if(!MANUAL.ots.length){
+    html+='<div style="text-align:center;padding:20px;color:var(--muted);font-style:italic">Aún no agregaste ninguna OT.</div>';
+  }
+
+  MANUAL.ots.forEach(function(ot,idx){
+    var esRep=ot.tipo_item==='REPARACION';
+    var esCD=ot.tipo_item==='CAMBIO_DOMICILIO';
+    var esBASICA=ot.tipo_item==='BASICA';
+    html+='<div style="border:1.5px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;background:#fafafa">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+        +'<div style="background:#2563eb;color:#fff;width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">'+(idx+1)+'</div>'
+        +'<span style="font-size:13px;font-weight:700;color:#1e3a5f;flex:1">OT '+(idx+1)+(ot.numero_ot?' · '+ot.numero_ot:'')+(ot.tipo_item?' · '+ot.tipo_item.replace(/_/g,' '):'')+'</span>'
+        +(MANUAL.ots.length>1?'<button onclick="manualQuitarOT('+idx+')" style="border:1.5px solid #fca5a5;background:#fef2f2;color:#dc2626;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">✕ Quitar</button>':'')
+      +'</div>'
+      +'<div class="form-2col">'
+      +'  <div class="fg"><label>Número OT *</label><input value="'+ot.numero_ot+'" placeholder="005-00302495" oninput="manualSetCampoOT('+idx+',\'numero_ot\',this.value)"/></div>'
+      +'  <div class="fg"><label>Tipo *</label>'
+      +'    <select onchange="manualSetTipoOT('+idx+',this.value)">'
+      +    tiposOptionsHTML.replace('value="'+ot.tipo_item+'"','value="'+ot.tipo_item+'" selected')
+      +'    </select>'
+      +'  </div>'
+      +'  <div class="fg"><label>Fecha emisión</label><input type="date" value="'+ot.fecha_emision+'" oninput="manualSetCampoOT('+idx+',\'fecha_emision\',this.value)"/></div>'
+      +'  <div class="fg"><label>Tag/Precinto'+(esBASICA?' (recomendado para BASICA)':'')+'</label><input value="'+ot.tag+'" placeholder="565857" oninput="manualSetCampoOT('+idx+',\'tag\',this.value)"/></div>'
+      +'  <div class="fg" style="grid-column:1/-1"><label>Obs. Gigared</label><input value="'+ot.obs_gigared+'" placeholder="Contrata Internet 100 megas..." oninput="manualSetCampoOT('+idx+',\'obs_gigared\',this.value)"/></div>'
+      +'</div>';
+
+    // Campos extra de REPARACION
+    if(esRep){
+      html+='<div style="margin-top:10px;padding:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px">'
+        +'<div style="font-size:11px;font-weight:700;color:#9a3412;text-transform:uppercase;margin-bottom:8px">🔧 Campos de Reparación</div>'
+        +'<div class="form-2col">'
+        +'  <div class="fg"><label>Síntoma / Tarea</label><input value="'+ot.sintoma_reportado+'" placeholder="INST Reubicar Acometida" oninput="manualSetCampoOT('+idx+',\'sintoma_reportado\',this.value)"/></div>'
+        +'  <div class="fg"><label>Equipo instalado</label><input value="'+ot.equipo_instalado+'" placeholder="1C60D2F96288 FIBERHOME" oninput="manualSetCampoOT('+idx+',\'equipo_instalado\',this.value)"/></div>'
+        +'  <div class="fg" style="grid-column:1/-1"><label>Obs. de trabajo</label><input value="'+ot.obs_trabajo+'" placeholder="cambiar acometida 4531676" oninput="manualSetCampoOT('+idx+',\'obs_trabajo\',this.value)"/></div>'
+        +'</div>'
+      +'</div>';
+    }
+
+    // Campos extra de CAMBIO_DOMICILIO
+    if(esCD){
+      html+='<div style="margin-top:10px;padding:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px">'
+        +'<div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;margin-bottom:4px">📍 Nuevo domicilio (queda en la OT, no toca al cliente)</div>'
+        +'<div style="font-size:11px;color:#1e3a5f;margin-bottom:8px">El cliente se actualiza recién cuando el admin valide la OT.</div>'
+        +'<div class="form-2col">'
+        +'  <div class="fg" style="grid-column:1/-1"><label>Nueva calle</label><input value="'+ot.nv_calle+'" oninput="manualSetCampoOT('+idx+',\'nv_calle\',this.value)"/></div>'
+        +'  <div class="fg"><label>Nuevo número</label><input value="'+ot.nv_numero+'" oninput="manualSetCampoOT('+idx+',\'nv_numero\',this.value)"/></div>'
+        +'  <div class="fg"><label>Nueva obs. domicilio</label><input value="'+ot.nv_obs+'" oninput="manualSetCampoOT('+idx+',\'nv_obs\',this.value)"/></div>'
+        +'  <div class="fg"><label>Nuevo barrio</label><input value="'+ot.nv_barrio+'" oninput="manualSetCampoOT('+idx+',\'nv_barrio\',this.value)"/></div>'
+        +'  <div class="fg"><label>Nueva localidad</label><input value="'+ot.nv_localidad+'" oninput="manualSetCampoOT('+idx+',\'nv_localidad\',this.value)"/></div>'
+        +'</div>'
+      +'</div>';
+    }
+
+    html+='</div>';
+  });
+
+  // Botón agregar otra OT
+  html+='<button onclick="manualAddOT()" style="width:100%;padding:12px;border-radius:10px;border:1.5px dashed #86efac;background:#f0fdf4;color:#16a34a;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">+ Agregar otra OT al mismo cliente</button>';
+
+  document.getElementById('m2-body').innerHTML=html;
+
+  document.getElementById('m2-footer').innerHTML=''
+    +'<button class="btn" onclick="manualVolverPaso1()">← Volver</button>'
+    +'<button class="btn" onclick="cerrarModal(\'manual-modal\')">Cancelar</button>'
+    +'<button class="btn btn-primary" style="flex:2" onclick="manualGuardarTodo()">💾 Guardar '+MANUAL.ots.length+' OT'+(MANUAL.ots.length!==1?'s':'')+'</button>';
+}
+
+async function manualGuardarTodo(){
+  if(!MANUAL)return;
+  var errEl=document.getElementById('m2-err');
+  var okEl=document.getElementById('m2-ok');
+  errEl.textContent='';okEl.textContent='';
+
+  // ── 1. Validación de inputs ───────────────────────────────────────────────
+  if(!MANUAL.ots.length){errEl.textContent='⚠️ Agregá al menos una OT.';return;}
+  var probs=[];
+  var nrosWizard={};
+  MANUAL.ots.forEach(function(ot,i){
+    var lbl='OT '+(i+1);
+    if(!ot.numero_ot){probs.push(lbl+': falta número');}
+    else if(nrosWizard[ot.numero_ot]){probs.push(lbl+': número repetido en este wizard ('+ot.numero_ot+')');}
+    else{nrosWizard[ot.numero_ot]=true;}
+    if(!ot.tipo_item){probs.push(lbl+': falta seleccionar tipo');}
+  });
+  if(probs.length){errEl.textContent='⛔ Corregí los errores:\n• '+probs.join('\n• ');return;}
+
+  var btnGuardar=document.querySelector('#m2-footer .btn-primary');
+  if(btnGuardar){btnGuardar.disabled=true;btnGuardar.textContent='Validando...';}
+
+  try{
+    // ── 2. Verificar duplicados en BD ─────────────────────────────────────────
+    var nros=MANUAL.ots.map(function(o){return o.numero_ot;});
+    var dupBD=await sbGet('ordenes_trabajo','?numero_ot=in.('+nros.map(encodeURIComponent).join(',')+')&eliminado=eq.false&select=numero_ot')||[];
+    if(dupBD.length){
+      var dups=dupBD.map(function(d){return d.numero_ot;}).join(', ');
+      errEl.textContent='⛔ Ya existen estas OTs en el sistema: '+dups+'\n\nSacalas o cambiá los números antes de guardar.';
+      if(btnGuardar){btnGuardar.disabled=false;btnGuardar.textContent='💾 Guardar '+MANUAL.ots.length+' OT'+(MANUAL.ots.length!==1?'s':'');}
+      return;
+    }
+
+    if(btnGuardar)btnGuardar.textContent='Guardando cliente...';
+
+    // ── 3. Crear o actualizar cliente ─────────────────────────────────────────
+    var cli=MANUAL.cliente;
+    var cliId=MANUAL.clienteId;
+    var domNew=(cli.calle?cli.calle+(cli.numero_domicilio?' '+cli.numero_domicilio:''):'');
+    var datosCli={
+      codigo_gigared:cli.codigo_gigared||null,
+      apellido:cli.apellido||'',nombre:cli.nombre||'',
+      calle:cli.calle||'',numero_domicilio:cli.numero_domicilio||'',obs_domicilio:cli.obs_domicilio||'',
+      barrio:cli.barrio||'',localidad:cli.localidad||'',provincia:'MISIONES',
+      nodo:cli.nodo||'',telefono1:cli.telefono1||'',telefono2:cli.telefono2||'',
+      domicilio:domNew||cli.calle||''
+    };
+
+    if(cliId){
+      // Cliente existente → comparar y actualizar solo lo cambiado
+      // EXCEPCIÓN: si hay alguna OT CAMBIO_DOMICILIO, NO tocar campos de domicilio del cliente
+      var hayCD=MANUAL.ots.some(function(o){return o.tipo_item==='CAMBIO_DOMICILIO';});
+      var orig=MANUAL.clienteOriginal||{};
+      var upd={};
+      var hist=[];
+      var primerOT=MANUAL.ots[0]?.numero_ot||null;
+      var camposCli=[
+        {k:'apellido',skip:false},
+        {k:'nombre',skip:false},
+        {k:'telefono1',skip:false},
+        {k:'telefono2',skip:false},
+        {k:'nodo',skip:false},
+        {k:'barrio',skip:hayCD},
+        {k:'localidad',skip:hayCD},
+        {k:'calle',skip:hayCD},
+        {k:'numero_domicilio',skip:hayCD},
+        {k:'obs_domicilio',skip:hayCD},
+        {k:'domicilio',skip:hayCD}
+      ];
+      camposCli.forEach(function(cc){
+        if(cc.skip)return;
+        var nuevo=String(datosCli[cc.k]||'').trim();
+        var actual=String(orig[cc.k]||'').trim();
+        if(nuevo!==actual){
+          upd[cc.k]=nuevo;
+          hist.push({cliente_id:cliId,campo:cc.k,valor_ant:actual||null,valor_nuevo:nuevo,origen:'MANUAL',ot_numero:primerOT});
+        }
+      });
+      if(Object.keys(upd).length){
+        await sbPatch('clientes','?id=eq.'+cliId,upd);
+        for(var hi=0;hi<hist.length;hi++){
+          sbPost('clientes_historial',hist[hi]).catch(function(e){console.warn('[clientes_historial]',e.message);});
+        }
+      }
+    }else{
+      // Cliente nuevo
+      var c=await sbPost('clientes',datosCli);
+      cliId=(Array.isArray(c)?c[0]:c)?.id;
+      if(!cliId)throw new Error('No se pudo crear el cliente.');
+    }
+
+    if(btnGuardar)btnGuardar.textContent='Creando grupo y OTs...';
+
+    // ── 4. Crear UN solo grupo ────────────────────────────────────────────────
+    var ePend=ESTADOS.find(function(e){return e.nombre==='PENDIENTE';});
+    var g=await sbPost('grupos_ot',{cliente_id:cliId,estado_id:ePend?.id});
+    var gId=(Array.isArray(g)?g[0]:g)?.id;
+    if(!gId)throw new Error('No se pudo crear el grupo.');
+
+    // ── 5. Insertar todas las OTs (con grupo_id común) ────────────────────────
+    var creadas=0,errores=[];
+    for(var oi=0;oi<MANUAL.ots.length;oi++){
+      var ot=MANUAL.ots[oi];
+      var otData={
+        numero_ot:ot.numero_ot,
+        grupo_id:gId,cliente_id:cliId,
+        tipo_item:ot.tipo_item,
+        tipo_tarea:ot.tipo_item, // mismo valor por compatibilidad con código existente
+        estado_id:ePend?.id,
+        fecha_emision:ot.fecha_emision||null,
+        obs_gigared:ot.obs_gigared||null,
+        tag:ot.tag||null,
+        stock_descontado:false
+      };
+      // Campos REPARACION
+      if(ot.tipo_item==='REPARACION'){
+        if(ot.sintoma_reportado)otData.sintoma_reportado=ot.sintoma_reportado;
+        if(ot.obs_trabajo)otData.obs_trabajo=ot.obs_trabajo;
+        if(ot.equipo_instalado)otData.equipo_instalado=ot.equipo_instalado;
+      }
+      // Campos CAMBIO_DOMICILIO → van a la OT (NO al cliente)
+      if(ot.tipo_item==='CAMBIO_DOMICILIO'){
+        if(ot.nv_calle)otData.calle=ot.nv_calle;
+        if(ot.nv_numero)otData.numero_domicilio=ot.nv_numero;
+        if(ot.nv_obs)otData.obs_domicilio=ot.nv_obs;
+        if(ot.nv_barrio)otData.barrio=ot.nv_barrio;
+        if(ot.nv_localidad)otData.localidad=ot.nv_localidad;
+        var domOT=ot.nv_calle?(ot.nv_calle+(ot.nv_numero?' '+ot.nv_numero:'')):'';
+        if(domOT)otData.domicilio=domOT;
+      }
+      try{
+        await sbPost('ordenes_trabajo',otData);
+        creadas++;
+      }catch(eOT){
+        errores.push('OT '+ot.numero_ot+': '+eOT.message);
+        console.error('[manualGuardarTodo] error insertando OT '+ot.numero_ot+':',eOT.message);
       }
     }
-    const ex=await sbGet('ordenes_trabajo',`?numero_ot=eq.${num}&eliminado=eq.false`)||[];
-    if(ex.length){err.textContent='Ya existe esa OT';return;}
-    const g=await sbPost('grupos_ot',{cliente_id:cliId,estado_id:ePend?.id});
-    const gId=(Array.isArray(g)?g[0]:g)?.id;
-    const otData={numero_ot:num,grupo_id:gId,cliente_id:cliId,tipo_tarea:tipo,tipo_item:tipo==='REPARACION'?'REPARACION':'BASICA',estado_id:ePend?.id,fecha_emision:document.getElementById('m-fecha').value||null,obs_gigared:document.getElementById('m-obs').value.trim(),tag:document.getElementById('m-tag').value.trim()||null};
-    if(tipo==='REPARACION'){
-      const sint=document.getElementById('m-sintoma').value.trim();
-      const obst=document.getElementById('m-obstrap').value.trim();
-      const eq=document.getElementById('m-equipo').value.trim();
-      if(sint)otData.sintoma_reportado=sint;
-      if(obst)otData.obs_trabajo=obst;
-      if(eq)otData.equipo_instalado=eq;
+
+    // ── 6. Resultado y cierre ─────────────────────────────────────────────────
+    if(errores.length){
+      okEl.textContent='⚠️ '+creadas+'/'+MANUAL.ots.length+' OTs creadas. Errores en '+errores.length+': '+errores.slice(0,3).join(' | ');
+      if(btnGuardar){btnGuardar.disabled=false;btnGuardar.textContent='💾 Reintentar';}
+    }else{
+      okEl.textContent='✓ '+creadas+' OT'+(creadas!==1?'s':'')+' creadas en grupo #'+gId;
+      setTimeout(function(){
+        cerrarModal('manual-modal');
+        try{irA('ots');}catch(e){}
+      },1300);
     }
-    await sbPost('ordenes_trabajo',otData);
-    document.getElementById('manual-ok').textContent='✓ Guardada';
-    setTimeout(()=>{cerrarModal('manual-modal');irA('ots');},1200);
-  }catch(e){err.textContent='Error: '+e.message;}
+  }catch(e){
+    errEl.textContent='Error: '+e.message;
+    if(btnGuardar){btnGuardar.disabled=false;btnGuardar.textContent='💾 Guardar '+MANUAL.ots.length+' OT'+(MANUAL.ots.length!==1?'s':'');}
+  }
 }
+
+// Función legacy preservada por compatibilidad — redirige al nuevo flujo
+async function guardarManual(){return manualGuardarTodo();}
 
 // ESTADO
 async function abrirCambiarEstado(otId,estAct){
