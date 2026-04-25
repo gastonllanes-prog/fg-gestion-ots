@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v225</title>
+<title>FG Gestión OTs v227</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V225</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V227</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v225</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v227</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2520,7 +2520,11 @@ async function verOT(numeroOT, otIdDirecto){
     }
     if(est==='FINALIZADA'&&(CU.rol==='superadmin'||CU.rol==='admin')){
       btns+=`<button class="btn btn-sm" style="font-size:11px;color:#2563eb;border-color:rgba(37,99,235,.3)" onclick="abrirEditarCierre(${ot.id})">✏️ Editar cierre</button>`;
+      btns+=`<button class="btn btn-sm" style="font-size:11px;color:#0891b2;border-color:rgba(8,145,178,.4)" onclick="enviarACerrarOT(${ot.id},${ot.grupo_id||'null'})">↻ Enviar a Cerrar OT</button>`;
       btns+=`<button class="btn btn-sm" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)" onclick="eliminarCierre(${ot.id},'${ot.numero_ot}',${ot.grupos_ot?.cuadrilla_id||'null'},${ot.grupo_id||'null'},'${(ot.fecha_fin||'').slice(0,10)}')">🗑️ Eliminar cierre</button>`;
+    }
+    if(est==='FINALIZADA_TECNICO'&&(CU.rol==='superadmin'||CU.rol==='admin')){
+      btns+=`<button class="btn btn-sm" style="font-size:11px;color:#0891b2;border-color:rgba(8,145,178,.4)" onclick="enviarACerrarOT(${ot.id},${ot.grupo_id||'null'})">↻ Enviar a Cerrar OT</button>`;
     }
 
     btns+=`<button class="btn btn-sm" style="margin-left:auto;font-size:11px;color:#64748b" onclick="editarTipoOT(${ot.id},'${ot.tipo_item||''}','${ot.tipo_tarea||''}')">✏️ Tipo</button>`;
@@ -5955,8 +5959,10 @@ function renderWizPaso(){
     const val=p.servs[s.id]||0;
     return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border2)">
       <span style="flex:1;font-size:12px">${s.nombre}</span>
-      <input type="number" min="0" value="${val}" style="width:52px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"
-        onchange="WIZ.pasos[${WIZ.paso}].servs[${s.id}]=parseInt(this.value)||0" data-sid="${s.id}" class="wiz-serv"/>
+      <input type="number" min="0" value="${val||''}" placeholder="0" style="width:52px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center"
+        onchange="WIZ.pasos[${WIZ.paso}].servs[${s.id}]=parseInt(this.value)||0"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();var inputs=[...document.querySelectorAll('.wiz-serv')];var idx=inputs.indexOf(this);if(idx>=0&&inputs[idx+1])inputs[idx+1].focus();}"
+        data-sid="${s.id}" class="wiz-serv"/>
     </div>`;
   }).join('');
 
@@ -12526,6 +12532,7 @@ async function verGrupoValidacion(grupoId){
         html+='<div style="position:relative;display:inline-block">'
           +'<button id="mas-acc-'+ot.id+'" style="padding:9px 13px;font-size:14px;background:#fff;border:1.5px solid #cbd5e1;border-radius:9px;color:#64748b;cursor:pointer;line-height:1" onclick="toggleMasAcciones('+ot.id+')" title="Más acciones">⋯</button>'
           +'<div id="mas-acc-menu-'+ot.id+'" style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);padding:6px;z-index:99;min-width:185px">'
+            +'<button onclick="enviarACerrarOT('+ot.id+','+grupoId+');toggleMasAcciones('+ot.id+')" style="width:100%;text-align:left;padding:8px 12px;border:none;background:transparent;font-size:13px;color:#0891b2;cursor:pointer;border-radius:7px;font-family:inherit;font-weight:600" onmouseover="this.style.background=\'#ecfeff\'" onmouseout="this.style.background=\'transparent\'">↻ Enviar a Cerrar OT</button>'
             +'<button onclick="otAGigaradAdmin('+ot.id+','+grupoId+');toggleMasAcciones('+ot.id+')" style="width:100%;text-align:left;padding:8px 12px;border:none;background:transparent;font-size:13px;color:#dc2626;cursor:pointer;border-radius:7px;font-family:inherit;font-weight:600" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'transparent\'">📤 Devolver a Gigared</button>'
           +'</div>'
         +'</div>';
@@ -12540,6 +12547,7 @@ async function verGrupoValidacion(grupoId){
         }
       }else if(esFinalizada){
         html+='<span style="font-size:13px;font-weight:700;color:#16a34a">✓ Aprobada</span>';
+        html+='<button class="btn" style="padding:9px 16px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #67e8f9;color:#0891b2;margin-left:auto" onclick="enviarACerrarOT('+ot.id+','+grupoId+')">↻ Enviar a Cerrar OT</button>';
       }
       html+='</div>';
       html+='</div>'; // fin card OT
@@ -13369,6 +13377,232 @@ async function _descontarStockRealValidacion(otId, cuadrillaId){
     console.error('[_descontarStockRealValidacion] OT '+otId+numOTStr+' tuvo '+matsError+' errores de materiales y '+sersError+' errores de seriales — stock_descontado QUEDA EN FALSE para reintentar.');
     console.error('  → ATENCIÓN: ya se descontaron parcialmente '+descuentos+' materiales y '+sersMovidos+' seriales. Un reintento completo PUEDE duplicar lo ya procesado. Revisar movimientos_stock antes de reintentar.');
     return {ok:false,reason:'partial_failure',descuentos,sersMovidos,matsError,sersError,faltantes};
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ENVIAR A CERRAR OT — limpia un cierre y devuelve la OT al flujo Cerrar OTs
+// ═══════════════════════════════════════════════════════════════════════════
+// Llamado desde:
+//   - Validación admin (botón "↻ Enviar a Cerrar OT" en cada card de OT)
+//   - Modal individual de OT (botón "↻ Enviar a Cerrar OT" para FINALIZADA y FINALIZADA_TECNICO)
+//
+// Comportamiento por estado:
+//   FINALIZADA_TECNICO + stock_descontado=false (Caso A — modelo nuevo)
+//     → soft-delete materiales + MO
+//     → liberar seriales COMPROMETIDO → CUADRILLA_X
+//     → estado → ASIGNADA
+//     → NO toca stock_cuadrillas, NO crea movimientos_stock
+//
+//   FINALIZADA + stock_descontado=true (Caso B — modelo viejo o ya descontado)
+//     → devolver materiales a stock_cuadrillas + INSERT DEVOLUCION
+//     → mover seriales CLIENTE → CUADRILLA_X (sin tocar stock — ya devuelto por cantidad)
+//     → soft-delete materiales + MO
+//     → estado → ASIGNADA
+//     → stock_descontado → false
+//
+// Idempotencia: re-llamada sobre OT ya en ASIGNADA aborta con mensaje.
+// Seguridad: si algo falla a mitad, NO se cambia el estado final.
+async function enviarACerrarOT(otId, grupoId){
+  if(!CU||!(CU.rol==='superadmin'||CU.rol==='admin')){alert('Sin permisos.');return;}
+
+  // 1. Releer OT para datos frescos
+  let ot;
+  try{
+    const otRows=await sbGet('ordenes_trabajo',
+      `?id=eq.${otId}&select=id,numero_ot,estado_id,stock_descontado,validado_admin_at,grupo_id,grupos_ot(id,cuadrilla_id)&eliminado=eq.false`)||[];
+    if(!otRows.length){alert('OT no encontrada.');return;}
+    ot=otRows[0];
+  }catch(eR){alert('Error leyendo OT: '+eR.message);return;}
+
+  // 2. Validar estado actual
+  const eActual=ESTADOS.find(e=>e.id===ot.estado_id);
+  const nombreActual=eActual?.nombre||'';
+  if(nombreActual!=='FINALIZADA_TECNICO'&&nombreActual!=='FINALIZADA'){
+    alert('⛔ Solo se pueden enviar a Cerrar OT las OTs ya cerradas.\n\nEstado actual: '+nombreActual+'\n\nLas OTs en ASIGNADA o PENDIENTE ya están en el flujo correcto.');
+    return;
+  }
+
+  // 3. Validar cuadrilla (sin cuadrilla no se puede volver a ASIGNADA)
+  const cuadId=ot.grupos_ot?.cuadrilla_id||null;
+  if(!cuadId){
+    alert('⛔ El grupo no tiene cuadrilla asignada.\n\nNo se puede enviar a Cerrar OT sin cuadrilla. Primero asigná una cuadrilla al grupo.');
+    return;
+  }
+
+  // 4. Determinar branch ANTES de pedir motivo (para mostrar info al admin)
+  const stockEraDescontado=ot.stock_descontado===true;
+
+  // 5. Pedir motivo obligatorio
+  const promptTxt='↻ Enviar OT '+numOT(ot.numero_ot)+' a Cerrar OT\n\n'
+    +'Estado actual: '+nombreActual+'\n'
+    +(stockEraDescontado
+      ?'⚠️ Stock YA fue descontado: se va a REVERTIR al bolso de la cuadrilla.\n'
+      :'Stock no fue descontado todavía: solo se libera lo comprometido.\n')
+    +'\nMotivo (obligatorio):';
+  const motivo=prompt(promptTxt);
+  if(!motivo||!motivo.trim()){alert('El motivo es obligatorio.');return;}
+
+  const eAsig=ESTADOS.find(e=>e.nombre==='ASIGNADA');
+  if(!eAsig){alert('Estado ASIGNADA no encontrado.');return;}
+
+  const adminNombre=CU.nombre||CU.email||'admin';
+
+  try{
+    // 6. Leer materiales y servicios activos (para reversión + trazabilidad)
+    const mats=await sbGet('ot_materiales_usados',
+      `?ot_id=eq.${otId}&activo=eq.true&select=id,material_id,cantidad,catalogo_materiales(nombre,serial_tipo)`)||[];
+    const servs=await sbGet('ot_servicios_realizados',
+      `?ot_id=eq.${otId}&activo=eq.true&select=id,servicio_id,cantidad,catalogo_servicios(nombre)`)||[];
+
+    // 7. CASO B: devolver materiales al stock_cuadrillas + DEVOLUCION
+    //    (NO procesamos stock acá para Caso A — modelo nuevo nunca lo bajó)
+    if(stockEraDescontado){
+      for(const m of mats){
+        if(!m.cantidad||!m.material_id)continue;
+        try{
+          const sc=await sbGet('stock_cuadrillas',
+            `?cuadrilla_id=eq.${cuadId}&material_id=eq.${m.material_id}`)||[];
+          if(sc.length){
+            await sbPatch('stock_cuadrillas',
+              `?cuadrilla_id=eq.${cuadId}&material_id=eq.${m.material_id}`,
+              {cantidad:(sc[0].cantidad||0)+m.cantidad});
+          }else{
+            await sbPost('stock_cuadrillas',{
+              cuadrilla_id:parseInt(cuadId),
+              material_id:m.material_id,
+              cantidad:m.cantidad
+            });
+          }
+          await sbPost('movimientos_stock',{
+            tipo_movimiento:'DEVOLUCION',
+            material_id:m.material_id,
+            cuadrilla_id:parseInt(cuadId),
+            cantidad:m.cantidad,
+            obs:'Enviar a Cerrar OT '+otId+' ('+(ot.numero_ot||'')+'): '+motivo.trim()
+          });
+        }catch(eMat){
+          console.error('[enviarACerrarOT] error revirtiendo material '+m.material_id+':',eMat.message);
+          throw new Error('Falló reversión del material "'+(m.catalogo_materiales?.nombre||m.material_id)+'": '+eMat.message);
+        }
+      }
+    }
+
+    // 8. Mover seriales SIEMPRE (cubre ambos casos):
+    //    - COMPROMETIDO → CUADRILLA_X (Caso A típico)
+    //    - CLIENTE → CUADRILLA_X (Caso B típico)
+    //    Solo cambia ubicacion. NO suma stock_cuadrillas (en Caso B ya se sumó por cantidad arriba).
+    let sersMovidos=0;
+    let sersCompCount=0,sersCliCount=0;
+    try{
+      const sersAll=await sbGet('stock_seriales',
+        `?ot_id=eq.${otId}&ubicacion=in.(COMPROMETIDO,CLIENTE)&select=id,serial,material_id,ubicacion`)||[];
+      for(const s of sersAll){
+        if(s.ubicacion==='COMPROMETIDO')sersCompCount++;else if(s.ubicacion==='CLIENTE')sersCliCount++;
+        await sbPatch('stock_seriales',`?id=eq.${s.id}`,{
+          ubicacion:'CUADRILLA_'+cuadId,
+          ot_id:null
+        });
+        sersMovidos++;
+      }
+    }catch(eS){
+      console.error('[enviarACerrarOT] error moviendo seriales:',eS.message);
+      throw new Error('Falló liberación de seriales: '+eS.message);
+    }
+
+    // 9. Soft-delete materiales y MO + registrar en ot_cambios
+    for(const m of mats){
+      try{
+        await sbPatch('ot_materiales_usados',`?id=eq.${m.id}`,{activo:false,cantidad:0});
+        const nomMat=m.catalogo_materiales?.nombre||String(m.material_id);
+        await _registrarCambio(otId,'material:'+nomMat,m.cantidad,0,'ADMIN');
+      }catch(eMat){
+        console.error('[enviarACerrarOT] error soft-deletando material '+m.id+':',eMat.message);
+        // no abortar — la trazabilidad ya quedó parcial
+      }
+    }
+    for(const s of servs){
+      try{
+        await sbPatch('ot_servicios_realizados',`?id=eq.${s.id}`,{activo:false,cantidad:0});
+        const nomServ=s.catalogo_servicios?.nombre||String(s.servicio_id);
+        await _registrarCambio(otId,'servicio:'+nomServ,s.cantidad,0,'ADMIN');
+      }catch(eS){
+        console.error('[enviarACerrarOT] error soft-deletando servicio '+s.id+':',eS.message);
+      }
+    }
+
+    // 10. PATCH OT → ASIGNADA + reset de campos de cierre
+    //     obs_trabajo se mantiene (decisión: info útil para el rehacer)
+    //     equipo recuperado en CAMBIO_TECNOLOGIA queda en tabla equipos (decisión)
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{
+      estado_id:eAsig.id,
+      stock_descontado:false,
+      hora_inicio_tec:null,
+      hora_fin_tec:null,
+      lat_inicio_tec:null,
+      lng_inicio_tec:null,
+      lat_fin_tec:null,
+      lng_fin_tec:null,
+      tag:null,
+      equipo_instalado:null,
+      serial_retirado:null,
+      modificada_post_cierre:false,
+      pendiente_devolucion:false,
+      validado_admin_at:null,
+      validado_admin_por:null,
+      fecha_fin:null
+    });
+
+    // 11. historial_estados_ot
+    await sbPost('historial_estados_ot',{
+      ot_id:otId,
+      estado_anterior_id:ot.estado_id,
+      estado_nuevo_id:eAsig.id,
+      observacion:'ENVIADA A CERRAR OT por '+adminNombre+': '+motivo.trim()
+        +' [modo:'+(stockEraDescontado?'reversión-stock':'sin-stock')
+        +', mats_desactivados:'+mats.length
+        +', servs_desactivados:'+servs.length
+        +', seriales_liberados:'+sersMovidos+' (COMPROMETIDO:'+sersCompCount+' / CLIENTE:'+sersCliCount+')]',
+      usuario_id:CU.id
+    });
+
+    // 12. Acumular en observaciones del grupo
+    try{
+      const gBD=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=observaciones&eliminado=eq.false`)||[];
+      const gData=gBD[0]||{};
+      const ts=new Date().toLocaleString('es-AR');
+      const entrada='['+ts+'] OT '+numOT(ot.numero_ot)+' enviada a Cerrar OT por '+adminNombre
+        +'. Modo: '+(stockEraDescontado?'con-reversión-stock':'sin-stock')
+        +'. '+mats.length+' materiales desactivados, '+servs.length+' MO desactivadas, '
+        +sersMovidos+' seriales liberados. Motivo: '+motivo.trim();
+      await sbPatch('grupos_ot',`?id=eq.${grupoId}`,{
+        observaciones:(gData.observaciones?gData.observaciones+'\n':'')+entrada
+      });
+    }catch(eObs){console.warn('[enviarACerrarOT] no se pudo actualizar observaciones del grupo:',eObs.message);}
+
+    console.log('[enviarACerrarOT] OT '+otId+' ('+(ot.numero_ot||'')+') OK · modo:'+(stockEraDescontado?'reversión-stock':'sin-stock')+' · '+mats.length+' mats, '+servs.length+' MO desactivados, '+sersMovidos+' seriales liberados → estado ASIGNADA');
+
+    // 13. Refresco UI según contexto
+    let msgFin='✅ OT '+numOT(ot.numero_ot)+' enviada a Cerrar OT.\n\n'
+      +'• '+mats.length+' material(es) desactivado(s)\n'
+      +'• '+servs.length+' MO desactivada(s)\n'
+      +'• '+sersMovidos+' serial(es) liberado(s) a la cuadrilla'
+      +(stockEraDescontado?'\n• ↩ Stock revertido al bolso':'')
+      +'\n\nLa OT ahora aparece en "Cerrar OTs" para ser cerrada de nuevo.';
+    alert(msgFin);
+
+    if(typeof verGrupoValidacion==='function'&&grupoId){
+      try{await verGrupoValidacion(grupoId);}catch(e){}
+    }
+    if(typeof renderValidacion==='function'){
+      try{renderValidacion();}catch(e){}
+    }
+    try{cerrarModal('ot-modal');}catch(e){}
+
+  }catch(err){
+    console.error('[enviarACerrarOT] ERROR — abortando, OT NO se cambia de estado:',err);
+    alert('❌ Error al enviar a Cerrar OT: '+err.message
+      +'\n\nLa OT NO se cambió de estado. Si la operación quedó parcial, revisar manualmente movimientos_stock y stock_seriales antes de reintentar.');
   }
 }
 
