@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.35</title>
+<title>FG Cuadrillas v4.36</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.35 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.36 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -404,7 +404,7 @@ async function iniciarApp(){
   document.getElementById('btn-retiro').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.35';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.36';
 
   // Cargar estados con fallback
   try{
@@ -2495,18 +2495,35 @@ async function abrirModificacion(otId){
 
   try{
     // Doble verificación: OT debe ser FINALIZADA_TECNICO y no validada
-    var otArr=await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=id,numero_ot,tipo_item,tipo_tarea,equipo_instalado,serial_retirado,validado_admin_at,estados_ot(nombre)&eliminado=eq.false')||[];
+    var otArr=await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=id,numero_ot,tipo_item,tipo_tarea,equipo_instalado,serial_retirado,validado_admin_at,stock_descontado,estados_ot(nombre)&eliminado=eq.false')||[];
     var ot=otArr[0];
     if(!ot){el.innerHTML='<div class="card"><p style="color:var(--red)">OT no encontrada.</p></div>';return;}
     if(ot.estados_ot?.nombre!=='FINALIZADA_TECNICO'||ot.validado_admin_at){
       el.innerHTML='<div class="card"><p style="color:var(--red)">Esta OT ya no puede modificarse.</p></div>';return;
     }
+    // Modelo diferido: solo permitir si stock_descontado=false (modelo nuevo)
+    // Si es true (modelo viejo), bloquear porque agregar materiales no descontaría stock
+    if(ot.stock_descontado===true){
+      el.innerHTML='<div class="card"><p style="color:var(--red)">⛔ Esta OT fue cerrada con el modelo viejo (stock ya descontado). Pedile al admin que use "Enviar a Cerrar OT".</p></div>';return;
+    }
 
-    // Cargar materiales y MO actuales
-    var [mats,servs]=await Promise.all([
+    var cuadId=CUAD.id;
+
+    // Cargar materiales/MO actuales + catálogos + seriales disponibles en paralelo
+    var [mats,servs,catMats,catServs,sersDisp]=await Promise.all([
       sbGet('ot_materiales_usados','?ot_id=eq.'+otId+'&activo=eq.true&select=id,material_id,cantidad,catalogo_materiales(id,nombre,unidad,serial_tipo)')||[],
-      sbGet('ot_servicios_realizados','?ot_id=eq.'+otId+'&activo=eq.true&select=id,servicio_id,cantidad,catalogo_servicios(id,nombre)')||[]
+      sbGet('ot_servicios_realizados','?ot_id=eq.'+otId+'&activo=eq.true&select=id,servicio_id,cantidad,catalogo_servicios(id,nombre)')||[],
+      sbGet('catalogo_materiales','?activo=eq.true&order=orden_display&select=id,nombre,unidad,serial_tipo')||[],
+      sbGet('catalogo_servicios','?activo=eq.true&order=orden_display&select=id,nombre')||[],
+      sbGet('stock_seriales','?ubicacion=eq.CUADRILLA_'+cuadId+'&select=serial,material_id&order=serial')||[]
     ]);
+
+    // Armar serialesMap: {material_id: [serial1, serial2, ...]}
+    var serialesMap={};
+    sersDisp.forEach(function(s){
+      if(!serialesMap[s.material_id])serialesMap[s.material_id]=[];
+      serialesMap[s.material_id].push(s.serial);
+    });
 
     MOD_OT={
       ot:ot,
@@ -2515,7 +2532,16 @@ async function abrirModificacion(otId){
       edMats:{},   // {id: nueva_qty}
       edServs:{},  // {id: nueva_qty}
       edEquipo:ot.equipo_instalado||'',
-      edSerial:ot.serial_retirado||''
+      edSerial:ot.serial_retirado||'',
+      // NUEVO (v4.36): permitir agregar materiales y MO
+      catalogoMats:catMats,
+      catalogoServs:catServs,
+      serialesMap:serialesMap,
+      nuevosMats:[],     // [{tempId, material_id, cantidad, nombre, unidad, serial_tipo, seriales:[]}]
+      nuevosServs:[],    // [{tempId, servicio_id, cantidad, nombre}]
+      mostrarSelMat:false,
+      mostrarSelServ:false,
+      _tempCounter:0
     };
     // Inicializar edMats y edServs con valores actuales
     mats.forEach(function(m){MOD_OT.edMats[m.id]=m.cantidad;});
@@ -2535,22 +2561,42 @@ function renderModificacion(){
   var TIPOS_CON_RETIRO=['CM_EXISTENTE','RECONEXION_EQUIPO','CAMBIO_TECNOLOGIA'];
   var tieneEquipo=TIPOS_CON_RETIRO.indexOf(ot.tipo_item||ot.tipo_tarea)>=0||ot.equipo_instalado;
 
+  // Set de material_ids y servicio_ids ya cargados (existentes activos + nuevos)
+  // → para filtrar el catálogo en los selectores y no permitir duplicados
+  var matsCargadosIds={};
+  MOD_OT.mats.forEach(function(m){
+    var matId=m.catalogo_materiales?.id||m.material_id;
+    var qty=MOD_OT.edMats[m.id]??m.cantidad;
+    if(qty>0)matsCargadosIds[matId]=true;
+  });
+  MOD_OT.nuevosMats.forEach(function(n){matsCargadosIds[n.material_id]=true;});
+
+  var servsCargadosIds={};
+  MOD_OT.servs.forEach(function(s){
+    var sid=s.catalogo_servicios?.id||s.servicio_id;
+    var qty=MOD_OT.edServs[s.id]??s.cantidad;
+    if(qty>0)servsCargadosIds[sid]=true;
+  });
+  MOD_OT.nuevosServs.forEach(function(n){servsCargadosIds[n.servicio_id]=true;});
+
   var html='<div style="padding:16px">';
   html+='<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:12px;padding:12px 16px;margin-bottom:16px">'
     +'<div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:4px">✏️ Corrigiendo OT</div>'
     +'<div style="font-size:17px;font-weight:800;color:#1e3a5f">OT '+numOT(ot.numero_ot)+'</div>'
     +'<div style="font-size:13px;color:var(--muted)">'+tipo+'</div>'
-    +'<div style="font-size:11px;color:#92400e;margin-top:6px">⚠️ Solo corregí cantidades incorrectas. Estos cambios quedan registrados.</div>'
+    +'<div style="font-size:11px;color:#92400e;margin-top:6px">⚠️ Podés modificar cantidades, eliminar o agregar items. Estos cambios quedan registrados.</div>'
   +'</div>';
 
-  // Materiales
+  // ── MATERIALES ──────────────────────────────────────────────────────────────
   html+='<div class="card" style="margin-bottom:12px">';
   html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Materiales</div>';
+
+  // Existentes
   if(MOD_OT.mats.length){
     MOD_OT.mats.forEach(function(m){
       var qty=MOD_OT.edMats[m.id]??m.cantidad;
       html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
-        +'<span style="flex:1;font-size:13px">'+( m.catalogo_materiales?.nombre||'?')+'</span>'
+        +'<span style="flex:1;font-size:13px">'+(m.catalogo_materiales?.nombre||'?')+'</span>'
         +'<button onclick="modCambiarQty(\'mat\','+m.id+',-1)" style="width:32px;height:32px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font-size:18px;cursor:pointer;color:#475569" '+(qty<=0?'disabled':'')+'>−</button>'
         +'<input type="number" inputmode="numeric" id="mod-mat-'+m.id+'" value="'+(qty||'')+'" min="0" step="1"'
           +' oninput="modSetQty(\'mat\','+m.id+',this.value)"'
@@ -2559,14 +2605,84 @@ function renderModificacion(){
         +'<span style="font-size:11px;color:var(--muted);min-width:28px">'+(m.catalogo_materiales?.unidad||'')+'</span>'
       +'</div>';
     });
+  }
+
+  // Nuevos materiales (agregados en esta sesión)
+  if(MOD_OT.nuevosMats.length){
+    html+='<div style="margin-top:8px;padding-top:8px;border-top:2px dashed #86efac">'
+      +'<div style="font-size:10px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">+ Nuevos</div>';
+    MOD_OT.nuevosMats.forEach(function(nm){
+      var sersNec=nm.serial_tipo&&nm.serial_tipo!=='NINGUNO';
+      var sersOk=!sersNec||(nm.seriales||[]).length>=nm.cantidad;
+      var bordeColor=sersOk?'var(--border)':'#fca5a5';
+      html+='<div style="border:1.5px solid '+bordeColor+';border-radius:10px;padding:8px 10px;margin-bottom:6px;background:#f0fdf4">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+          +'<span style="flex:1;font-size:13px;font-weight:600;color:#166534">'+nm.nombre+'</span>'
+          +'<button onclick="modCambiarQtyNuevo(\'mat\',\''+nm.tempId+'\',-1)" style="width:28px;height:28px;border-radius:6px;border:1.5px solid var(--border);background:#fff;font-size:16px;cursor:pointer;color:#475569" '+(nm.cantidad<=1?'disabled':'')+'>−</button>'
+          +'<input type="number" inputmode="numeric" id="mod-nmat-'+nm.tempId+'" value="'+(nm.cantidad||'')+'" min="1" step="1"'
+            +' oninput="modSetQtyNuevo(\'mat\',\''+nm.tempId+'\',this.value)"'
+            +' style="width:48px;padding:4px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>'
+          +'<button onclick="modCambiarQtyNuevo(\'mat\',\''+nm.tempId+'\',1)" style="width:28px;height:28px;border-radius:6px;border:1.5px solid var(--green);background:var(--green-l);font-size:16px;cursor:pointer;color:var(--green)">+</button>'
+          +'<span style="font-size:10px;color:var(--muted);min-width:24px">'+(nm.unidad||'')+'</span>'
+          +'<button onclick="modQuitarNuevo(\'mat\',\''+nm.tempId+'\')" style="width:28px;height:28px;border-radius:6px;border:1.5px solid #fca5a5;background:#fef2f2;font-size:14px;cursor:pointer;color:#dc2626" title="Quitar">✕</button>'
+        +'</div>';
+
+      // Bloque de seriales si corresponde
+      if(sersNec){
+        var sersDisp=MOD_OT.serialesMap[nm.material_id]||[];
+        var selSet={};(nm.seriales||[]).forEach(function(s){selSet[s]=true;});
+        var necText=nm.serial_tipo==='INDIVIDUAL'?'Seleccioná '+nm.cantidad+' MAC/serial':'Seleccioná '+nm.cantidad+' precinto'+(nm.cantidad>1?'s':'');
+        html+='<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #bbf7d0">'
+          +'<div style="font-size:10px;font-weight:700;color:'+(sersOk?'#16a34a':'#dc2626')+';margin-bottom:4px">'+necText+' · '+(nm.seriales||[]).length+'/'+nm.cantidad+(sersOk?' ✓':' ⚠')+'</div>';
+        if(sersDisp.length){
+          html+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">';
+          sersDisp.forEach(function(ser){
+            var sel=!!selSet[ser];
+            html+='<button onclick="modToggleSerialNuevo(\''+nm.tempId+'\',\''+ser+'\')" class="ser-chip'+(sel?' sel':'')+'" style="font-size:11px">'+ser+'</button>';
+          });
+          html+='</div>';
+        }
+        // Input manual
+        html+='<div style="display:flex;gap:4px">'
+          +'<input id="mod-ser-man-'+nm.tempId+'" placeholder="Serial manual..." style="flex:1;padding:6px 9px;border:1.5px solid var(--border);border-radius:7px;font-family:monospace;font-size:11px"/>'
+          +'<button onclick="modAgregarSerialManualNuevo(\''+nm.tempId+'\')" style="padding:6px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid var(--blue);background:var(--blue);color:#fff">+ Agregar</button>'
+        +'</div>'
+        +'</div>';
+      }
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+
+  // Selector "+ Agregar material"
+  if(MOD_OT.mostrarSelMat){
+    var matsDisp=(MOD_OT.catalogoMats||[]).filter(function(m){return !matsCargadosIds[m.id];});
+    html+='<div style="margin-top:10px;padding:10px;background:#f0fdf4;border:1.5px dashed #86efac;border-radius:10px">'
+      +'<select id="mod-sel-mat" style="width:100%;padding:8px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-family:inherit;margin-bottom:7px">'
+      +'<option value="">— Seleccioná material —</option>'
+      +matsDisp.map(function(m){return '<option value="'+m.id+'">'+m.nombre+(m.serial_tipo&&m.serial_tipo!=='NINGUNO'?' ['+m.serial_tipo+']':'')+'</option>';}).join('')
+      +'</select>'
+      +'<div style="display:flex;gap:7px;align-items:center">'
+        +'<input id="mod-sel-mat-qty" type="number" min="1" value="1" style="width:60px;padding:7px;border:1.5px solid #86efac;border-radius:7px;font-size:14px;font-weight:700;text-align:center;font-family:inherit">'
+        +'<button onclick="modConfirmarAddMat()" style="flex:1;padding:8px;border-radius:7px;border:none;background:#16a34a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Agregar</button>'
+        +'<button onclick="modMostrarSelectorMat(false)" style="padding:8px 12px;border-radius:7px;border:1.5px solid #cbd5e1;background:#fff;font-size:13px;cursor:pointer;color:#64748b">✕</button>'
+      +'</div>'
+      +(matsDisp.length===0?'<div style="margin-top:6px;font-size:11px;color:#92400e">⚠️ No hay materiales nuevos para agregar (todos los del catálogo ya están cargados).</div>':'')
+    +'</div>';
   }else{
-    html+='<div style="font-size:13px;color:var(--muted);font-style:italic">Sin materiales registrados.</div>';
+    html+='<button onclick="modMostrarSelectorMat(true)" style="margin-top:8px;width:100%;padding:10px;border-radius:9px;border:1.5px dashed #86efac;background:#f0fdf4;color:#16a34a;font-size:13px;font-weight:700;cursor:pointer">+ Agregar material</button>';
+  }
+
+  if(!MOD_OT.mats.length&&!MOD_OT.nuevosMats.length&&!MOD_OT.mostrarSelMat){
+    // ya cubierto por el botón de agregar arriba; no duplicar mensaje
   }
   html+='</div>';
 
-  // Mano de obra
+  // ── MANO DE OBRA ────────────────────────────────────────────────────────────
   html+='<div class="card" style="margin-bottom:12px">';
   html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Mano de obra</div>';
+
+  // Existentes
   if(MOD_OT.servs.length){
     MOD_OT.servs.forEach(function(s){
       var qty=MOD_OT.edServs[s.id]??s.cantidad;
@@ -2579,12 +2695,47 @@ function renderModificacion(){
         +'<button onclick="modCambiarQty(\'serv\','+s.id+',1)" style="width:32px;height:32px;border-radius:7px;border:1.5px solid var(--green);background:var(--green-l);font-size:18px;cursor:pointer;color:var(--green)">+</button>'
       +'</div>';
     });
+  }
+
+  // Nuevas MO (agregadas en esta sesión)
+  if(MOD_OT.nuevosServs.length){
+    html+='<div style="margin-top:8px;padding-top:8px;border-top:2px dashed #86efac">'
+      +'<div style="font-size:10px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">+ Nuevas</div>';
+    MOD_OT.nuevosServs.forEach(function(ns){
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;margin-bottom:6px;background:#f0fdf4">'
+        +'<span style="flex:1;font-size:13px;font-weight:600;color:#166534">'+ns.nombre+'</span>'
+        +'<button onclick="modCambiarQtyNuevo(\'serv\',\''+ns.tempId+'\',-1)" style="width:28px;height:28px;border-radius:6px;border:1.5px solid var(--border);background:#fff;font-size:16px;cursor:pointer;color:#475569" '+(ns.cantidad<=1?'disabled':'')+'>−</button>'
+        +'<input type="number" inputmode="numeric" id="mod-nserv-'+ns.tempId+'" value="'+(ns.cantidad||'')+'" min="1" step="1"'
+          +' oninput="modSetQtyNuevo(\'serv\',\''+ns.tempId+'\',this.value)"'
+          +' style="width:48px;padding:4px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-weight:700;text-align:center;font-family:inherit"/>'
+        +'<button onclick="modCambiarQtyNuevo(\'serv\',\''+ns.tempId+'\',1)" style="width:28px;height:28px;border-radius:6px;border:1.5px solid var(--green);background:var(--green-l);font-size:16px;cursor:pointer;color:var(--green)">+</button>'
+        +'<button onclick="modQuitarNuevo(\'serv\',\''+ns.tempId+'\')" style="width:28px;height:28px;border-radius:6px;border:1.5px solid #fca5a5;background:#fef2f2;font-size:14px;cursor:pointer;color:#dc2626" title="Quitar">✕</button>'
+      +'</div>';
+    });
+    html+='</div>';
+  }
+
+  // Selector "+ Agregar mano de obra"
+  if(MOD_OT.mostrarSelServ){
+    var servsDisp=(MOD_OT.catalogoServs||[]).filter(function(s){return !servsCargadosIds[s.id];});
+    html+='<div style="margin-top:10px;padding:10px;background:#f0fdf4;border:1.5px dashed #86efac;border-radius:10px">'
+      +'<select id="mod-sel-serv" style="width:100%;padding:8px;border:1.5px solid #86efac;border-radius:7px;font-size:13px;font-family:inherit;margin-bottom:7px">'
+      +'<option value="">— Seleccioná mano de obra —</option>'
+      +servsDisp.map(function(s){return '<option value="'+s.id+'">'+s.nombre+'</option>';}).join('')
+      +'</select>'
+      +'<div style="display:flex;gap:7px;align-items:center">'
+        +'<input id="mod-sel-serv-qty" type="number" min="1" value="1" style="width:60px;padding:7px;border:1.5px solid #86efac;border-radius:7px;font-size:14px;font-weight:700;text-align:center;font-family:inherit">'
+        +'<button onclick="modConfirmarAddServ()" style="flex:1;padding:8px;border-radius:7px;border:none;background:#16a34a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Agregar</button>'
+        +'<button onclick="modMostrarSelectorServ(false)" style="padding:8px 12px;border-radius:7px;border:1.5px solid #cbd5e1;background:#fff;font-size:13px;cursor:pointer;color:#64748b">✕</button>'
+      +'</div>'
+      +(servsDisp.length===0?'<div style="margin-top:6px;font-size:11px;color:#92400e">⚠️ No hay MO nuevas para agregar.</div>':'')
+    +'</div>';
   }else{
-    html+='<div style="font-size:13px;color:var(--muted);font-style:italic">Sin mano de obra registrada.</div>';
+    html+='<button onclick="modMostrarSelectorServ(true)" style="margin-top:8px;width:100%;padding:10px;border-radius:9px;border:1.5px dashed #86efac;background:#f0fdf4;color:#16a34a;font-size:13px;font-weight:700;cursor:pointer">+ Agregar mano de obra</button>';
   }
   html+='</div>';
 
-  // Equipo instalado y serial retirado
+  // Equipo instalado y serial retirado (sin cambios)
   if(tieneEquipo){
     html+='<div class="card" style="margin-bottom:12px">'
       +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Equipos</div>'
@@ -2634,6 +2785,163 @@ function modSetQty(tipo,id,val){
   else MOD_OT.edServs[id]=n;
 }
 
+// ── HELPERS PARA MATERIALES Y MO NUEVOS (v4.36) ─────────────────────────────
+function modMostrarSelectorMat(mostrar){
+  if(!MOD_OT)return;
+  MOD_OT.mostrarSelMat=!!mostrar;
+  renderModificacion();
+}
+
+function modMostrarSelectorServ(mostrar){
+  if(!MOD_OT)return;
+  MOD_OT.mostrarSelServ=!!mostrar;
+  renderModificacion();
+}
+
+function modConfirmarAddMat(){
+  if(!MOD_OT)return;
+  var sel=document.getElementById('mod-sel-mat');
+  var qInp=document.getElementById('mod-sel-mat-qty');
+  var matId=parseInt(sel?.value||0);
+  var cant=Math.max(1,parseInt(qInp?.value||1));
+  if(!matId){alert('Seleccioná un material.');return;}
+  // Buscar info en catálogo
+  var mat=(MOD_OT.catalogoMats||[]).find(function(m){return m.id===matId;});
+  if(!mat){alert('Material no encontrado en catálogo.');return;}
+  // Doble check anti-duplicado (la UI ya filtra pero verificamos)
+  var yaEnExist=MOD_OT.mats.some(function(m){
+    var mid=m.catalogo_materiales?.id||m.material_id;
+    var qty=MOD_OT.edMats[m.id]??m.cantidad;
+    return mid===matId&&qty>0;
+  });
+  var yaEnNuevos=MOD_OT.nuevosMats.some(function(n){return n.material_id===matId;});
+  if(yaEnExist||yaEnNuevos){
+    alert('Ese material ya está cargado. Si necesitás más, ajustá la cantidad.');
+    return;
+  }
+  MOD_OT._tempCounter++;
+  MOD_OT.nuevosMats.push({
+    tempId:'nm'+MOD_OT._tempCounter,
+    material_id:matId,
+    cantidad:cant,
+    nombre:mat.nombre,
+    unidad:mat.unidad||'',
+    serial_tipo:mat.serial_tipo||'NINGUNO',
+    seriales:[]
+  });
+  MOD_OT.mostrarSelMat=false;
+  renderModificacion();
+}
+
+function modConfirmarAddServ(){
+  if(!MOD_OT)return;
+  var sel=document.getElementById('mod-sel-serv');
+  var qInp=document.getElementById('mod-sel-serv-qty');
+  var sid=parseInt(sel?.value||0);
+  var cant=Math.max(1,parseInt(qInp?.value||1));
+  if(!sid){alert('Seleccioná una mano de obra.');return;}
+  var serv=(MOD_OT.catalogoServs||[]).find(function(s){return s.id===sid;});
+  if(!serv){alert('MO no encontrada en catálogo.');return;}
+  var yaEnExist=MOD_OT.servs.some(function(s){
+    var sId=s.catalogo_servicios?.id||s.servicio_id;
+    var qty=MOD_OT.edServs[s.id]??s.cantidad;
+    return sId===sid&&qty>0;
+  });
+  var yaEnNuevos=MOD_OT.nuevosServs.some(function(n){return n.servicio_id===sid;});
+  if(yaEnExist||yaEnNuevos){
+    alert('Esa mano de obra ya está cargada. Si necesitás más, ajustá la cantidad.');
+    return;
+  }
+  MOD_OT._tempCounter++;
+  MOD_OT.nuevosServs.push({
+    tempId:'ns'+MOD_OT._tempCounter,
+    servicio_id:sid,
+    cantidad:cant,
+    nombre:serv.nombre
+  });
+  MOD_OT.mostrarSelServ=false;
+  renderModificacion();
+}
+
+function modQuitarNuevo(tipo,tempId){
+  if(!MOD_OT)return;
+  if(tipo==='mat'){
+    MOD_OT.nuevosMats=MOD_OT.nuevosMats.filter(function(n){return n.tempId!==tempId;});
+  }else{
+    MOD_OT.nuevosServs=MOD_OT.nuevosServs.filter(function(n){return n.tempId!==tempId;});
+  }
+  renderModificacion();
+}
+
+function modCambiarQtyNuevo(tipo,tempId,delta){
+  if(!MOD_OT)return;
+  var arr=tipo==='mat'?MOD_OT.nuevosMats:MOD_OT.nuevosServs;
+  var item=arr.find(function(n){return n.tempId===tempId;});
+  if(!item)return;
+  item.cantidad=Math.max(1,(item.cantidad||1)+delta);
+  // Si hay seriales seleccionados de más respecto a la nueva cantidad, recortar
+  if(tipo==='mat'&&item.serial_tipo!=='NINGUNO'&&(item.seriales||[]).length>item.cantidad){
+    item.seriales=item.seriales.slice(0,item.cantidad);
+  }
+  // Refresh quirúrgico: input + estado de botón
+  var inp=document.getElementById((tipo==='mat'?'mod-nmat-':'mod-nserv-')+tempId);
+  if(inp){
+    inp.value=item.cantidad||'';
+    var btnMenos=inp.previousElementSibling;
+    if(btnMenos)btnMenos.disabled=(item.cantidad<=1);
+  }
+  // Si el material es serializado y cambió la cantidad, re-render para refrescar el contador de seriales
+  if(tipo==='mat'&&item.serial_tipo!=='NINGUNO')renderModificacion();
+}
+
+function modSetQtyNuevo(tipo,tempId,val){
+  if(!MOD_OT)return;
+  var n=Math.max(1,parseInt(val,10)||1);
+  var arr=tipo==='mat'?MOD_OT.nuevosMats:MOD_OT.nuevosServs;
+  var item=arr.find(function(n2){return n2.tempId===tempId;});
+  if(!item)return;
+  item.cantidad=n;
+  if(tipo==='mat'&&item.serial_tipo!=='NINGUNO'&&(item.seriales||[]).length>n){
+    item.seriales=item.seriales.slice(0,n);
+    renderModificacion();
+  }
+}
+
+function modToggleSerialNuevo(tempId,serial){
+  if(!MOD_OT)return;
+  var item=MOD_OT.nuevosMats.find(function(n){return n.tempId===tempId;});
+  if(!item)return;
+  serial=String(serial||'').trim().toUpperCase();
+  if(!item.seriales)item.seriales=[];
+  var idx=item.seriales.indexOf(serial);
+  if(idx>=0){
+    item.seriales.splice(idx,1);
+  }else{
+    if(item.seriales.length>=item.cantidad){
+      // Para INDIVIDUAL con cantidad=1, reemplazar el seleccionado
+      if(item.serial_tipo==='INDIVIDUAL'&&item.cantidad===1){
+        item.seriales=[serial];
+      }else{
+        alert('Ya seleccionaste '+item.cantidad+' serial'+(item.cantidad>1?'es':'')+'. Quitá uno antes de agregar otro.');
+        return;
+      }
+    }else{
+      item.seriales.push(serial);
+    }
+  }
+  renderModificacion();
+}
+
+function modAgregarSerialManualNuevo(tempId){
+  if(!MOD_OT)return;
+  var inp=document.getElementById('mod-ser-man-'+tempId);
+  if(!inp)return;
+  var serial=String(inp.value||'').trim().toUpperCase();
+  if(!serial){alert('Ingresá un serial.');return;}
+  modToggleSerialNuevo(tempId,serial);
+  inp.value='';
+}
+
 async function guardarModificacion(){
   if(!MOD_OT)return;
   var btn=document.getElementById('mod-btn-guardar');
@@ -2645,11 +2953,21 @@ async function guardarModificacion(){
     var cuadId=CUAD.id;
     var hayAlgo=false;
 
-    // ── MATERIALES ────────────────────────────────────────────────────────────
+    // ── VALIDACIÓN PREVIA: nuevos materiales con seriales requeridos ──────────
+    var sinSerial=(MOD_OT.nuevosMats||[]).filter(function(nm){
+      return nm.serial_tipo&&nm.serial_tipo!=='NINGUNO'&&(nm.seriales||[]).length<nm.cantidad;
+    });
+    if(sinSerial.length){
+      var listaSinSer=sinSerial.map(function(nm){return '• '+nm.nombre+': '+(nm.seriales||[]).length+'/'+nm.cantidad+' seriales';}).join('\n');
+      if(errEl){errEl.textContent='⚠️ Faltan seriales para los nuevos materiales:\n'+listaSinSer;errEl.style.display='block';}
+      if(btn){btn.disabled=false;btn.textContent='💾 Guardar cambios';}
+      return;
+    }
+
+    // ── MATERIALES EXISTENTES (modificación o eliminación) ────────────────────
     // MODELO DIFERIDO (Etapa 2.1): la corrección post-cierre solo modifica
     // ot_materiales_usados (cantidad / activo). NO toca stock_cuadrillas ni
-    // movimientos_stock. El descuento real lo hace la validación admin (Etapa 2.2)
-    // sobre los valores corregidos.
+    // movimientos_stock. El descuento real lo hace la validación admin (Etapa 2.2).
     for(var i=0;i<MOD_OT.mats.length;i++){
       var m=MOD_OT.mats[i];
       var cantVieja=m.cantidad;
@@ -2669,7 +2987,7 @@ async function guardarModificacion(){
       await _registrarCambioTec(otId,'material:'+nomMat,cantVieja,cantNueva);
     }
 
-    // ── MANO DE OBRA ──────────────────────────────────────────────────────────
+    // ── MO EXISTENTES (modificación o eliminación) ────────────────────────────
     for(var j=0;j<MOD_OT.servs.length;j++){
       var s=MOD_OT.servs[j];
       var sqVieja=s.cantidad;
@@ -2683,6 +3001,72 @@ async function guardarModificacion(){
         await sbPatch('ot_servicios_realizados','?id=eq.'+s.id,{cantidad:sqNueva});
       }
       await _registrarCambioTec(otId,'servicio:'+nomServ,sqVieja,sqNueva);
+    }
+
+    // ── MATERIALES NUEVOS (v4.36): INSERT + seriales COMPROMETIDO ─────────────
+    // Igual que confirmarWizard v4.35: NO toca stock_cuadrillas, NO crea movimientos.
+    // Seriales pasan a COMPROMETIDO (el admin los validará en Etapa 2.2).
+    var sersError=[];
+    for(var ni=0;ni<(MOD_OT.nuevosMats||[]).length;ni++){
+      var nm=MOD_OT.nuevosMats[ni];
+      hayAlgo=true;
+      try{
+        // INSERT en ot_materiales_usados
+        await sbPost('ot_materiales_usados',{
+          ot_id:otId,
+          material_id:nm.material_id,
+          cantidad:nm.cantidad,
+          activo:true
+        });
+        // Para serializados: marcar seriales como COMPROMETIDO
+        if(nm.serial_tipo&&nm.serial_tipo!=='NINGUNO'&&(nm.seriales||[]).length){
+          for(var si=0;si<nm.seriales.length;si++){
+            var ser=String(nm.seriales[si]||'').trim().toUpperCase();
+            if(!ser)continue;
+            try{
+              await sbPatch('stock_seriales',
+                '?material_id=eq.'+nm.material_id+'&serial=eq.'+encodeURIComponent(ser),
+                {ubicacion:'COMPROMETIDO',ot_id:otId});
+              // Historial best-effort
+              try{
+                await sbPost('equipo_historial',{
+                  serial:ser,material_id:parseInt(nm.material_id),
+                  evento:'COMPROMETIDO_OT',origen:'STOCK',
+                  cuadrilla_id:parseInt(cuadId),
+                  cliente_id:GRUPO_ACTIVO?.ordenes_trabajo?.[0]?.clientes?.id||null,
+                  ot_id:otId,usuario:CUAD.nombre,
+                  obs:'Agregado en corrección post-cierre'
+                });
+              }catch(eh){console.warn('[historial-nuevo]',eh.message);}
+            }catch(eS){
+              sersError.push(nm.nombre+': '+ser+' ('+eS.message+')');
+              console.warn('[guardarModificacion] error PATCH serial '+ser+':',eS.message);
+            }
+          }
+        }
+        await _registrarCambioTec(otId,'material+:'+nm.nombre,'0',String(nm.cantidad));
+      }catch(eM){
+        console.error('[guardarModificacion] error agregando material nuevo '+nm.nombre+':',eM.message);
+        throw new Error('Error agregando material "'+nm.nombre+'": '+eM.message);
+      }
+    }
+
+    // ── MO NUEVAS (v4.36): solo INSERT ────────────────────────────────────────
+    for(var nj=0;nj<(MOD_OT.nuevosServs||[]).length;nj++){
+      var ns=MOD_OT.nuevosServs[nj];
+      hayAlgo=true;
+      try{
+        await sbPost('ot_servicios_realizados',{
+          ot_id:otId,
+          servicio_id:ns.servicio_id,
+          cantidad:ns.cantidad,
+          activo:true
+        });
+        await _registrarCambioTec(otId,'servicio+:'+ns.nombre,'0',String(ns.cantidad));
+      }catch(eS){
+        console.error('[guardarModificacion] error agregando MO nueva '+ns.nombre+':',eS.message);
+        throw new Error('Error agregando MO "'+ns.nombre+'": '+eS.message);
+      }
     }
 
     // ── EQUIPO INSTALADO y SERIAL RETIRADO ────────────────────────────────────
@@ -2708,6 +3092,11 @@ async function guardarModificacion(){
     await cargarGrupos();
     cerrarModificacion();
     var msgMod='✅ Cambios guardados correctamente.';
+    if(sersError.length){
+      msgMod+='\n\n⚠️ Algunos seriales no se pudieron actualizar:\n• '+sersError.slice(0,5).join('\n• ');
+      if(sersError.length>5)msgMod+='\n• … y '+(sersError.length-5)+' más';
+      msgMod+='\n\nProbablemente otro técnico ya los usó. El admin puede ajustar al validar.';
+    }
     alert(msgMod);
 
   }catch(e){
