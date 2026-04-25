@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v224</title>
+<title>FG Gestión OTs v225</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V224</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V225</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v224</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v225</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -12827,14 +12827,29 @@ async function aprobarGrupo(grupoId){
   const eFin=ESTADOS.find(e=>e.nombre==='FINALIZADA');
   if(!eFin){alert('Estado FINALIZADA no encontrado.');return;}
 
+  // Leer cuadrilla del grupo (necesario para descuento real Etapa 2.2)
+  let cuadrillaId=null;
+  try{
+    const grupoData=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=cuadrilla_id`)||[];
+    cuadrillaId=grupoData[0]?.cuadrilla_id||null;
+  }catch(eG){console.warn('[aprobarGrupo] no se pudo leer cuadrilla del grupo:',eG.message);}
+
   try{
     const now=new Date().toISOString();
     const adminNombre=CU.nombre||CU.email||'admin';
+    const faltantesGlobal=[]; // acumulado para mostrar al final
+    let descontadosOk=0,descontadosErr=0;
     for(const ot of (ots||[])){
       const est=ot.estados_ot?.nombre||'';
       if(est==='FINALIZADA_TECNICO'){
         await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{estado_id:eFin.id,fecha_fin:fechaHoyLocal(),validado_admin_at:now,validado_admin_por:adminNombre});
         await sbPost('historial_estados_ot',{ot_id:ot.id,estado_nuevo_id:eFin.id,observacion:'APROBADO POR ADMIN (grupal): '+adminNombre,usuario_id:CU.id});
+        // ETAPA 2.2: descuento real de stock (idempotente: skip si ya stock_descontado=true)
+        const resStock=await _descontarStockRealValidacion(ot.id,cuadrillaId);
+        if(resStock.ok)descontadosOk++;else descontadosErr++;
+        if(resStock.faltantes&&resStock.faltantes.length){
+          resStock.faltantes.forEach(f=>faltantesGlobal.push({otId:ot.id,numOT:ot.numero_ot,...f}));
+        }
         // Al validar CAMBIO_DOMICILIO: actualizar domicilio del cliente con historial
         if(ot.tipo_item==='CAMBIO_DOMICILIO'||ot.tipo_tarea==='CAMBIO_DOMICILIO'){
           await _actualizarDomicilioEnValidacion(ot.id,grupoId,adminNombre);
@@ -12846,7 +12861,14 @@ async function aprobarGrupo(grupoId){
     }
     await verGrupoValidacion(grupoId);
     renderValidacion();
-    alert('✅ Grupo aprobado correctamente.');
+    // Mensaje final con resumen de stock + faltantes
+    let msgFin='✅ Grupo aprobado correctamente.';
+    if(descontadosErr>0)msgFin+='\n\n⚠️ '+descontadosErr+' OT(s) tuvieron errores en el descuento de stock — quedaron como pendientes de reintentar (ver consola).';
+    if(faltantesGlobal.length){
+      msgFin+='\n\n📉 '+faltantesGlobal.length+' faltante(s) detectado(s) al descontar:\n• '+faltantesGlobal.slice(0,5).map(f=>'OT '+numOT(f.numOT)+': "'+f.material+'" faltan '+f.faltante+' (usó '+f.usado+', tenía '+f.disponible+')').join('\n• ');
+      if(faltantesGlobal.length>5)msgFin+='\n• … y '+(faltantesGlobal.length-5)+' más (ver consola)';
+    }
+    alert(msgFin);
   }catch(e){alert('Error: '+e.message);}
 }
 
@@ -12892,9 +12914,18 @@ async function aprobarSoloFinalizadas(grupoId){
   const eFin=ESTADOS.find(e=>e.nombre==='FINALIZADA');
   if(!eFin){alert('Estado FINALIZADA no encontrado.');return;}
 
+  // Leer cuadrilla del grupo (necesario para descuento real Etapa 2.2)
+  let cuadrillaId=null;
+  try{
+    const grupoData=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=cuadrilla_id`)||[];
+    cuadrillaId=grupoData[0]?.cuadrilla_id||null;
+  }catch(eG){console.warn('[aprobarSoloFinalizadas] no se pudo leer cuadrilla del grupo:',eG.message);}
+
   try{
     const now=new Date().toISOString();
     const adminNombre=CU.nombre||CU.email||'admin';
+    const faltantesGlobal=[];
+    let descontadosOk=0,descontadosErr=0;
     for(const ot of aAprobar){
       await sbPatch('ordenes_trabajo',`?id=eq.${ot.id}`,{
         estado_id:eFin.id,
@@ -12908,6 +12939,12 @@ async function aprobarSoloFinalizadas(grupoId){
         observacion:'APROBADO POR ADMIN (parcial): '+adminNombre,
         usuario_id:CU.id
       });
+      // ETAPA 2.2: descuento real de stock (idempotente: skip si ya stock_descontado=true)
+      const resStock=await _descontarStockRealValidacion(ot.id,cuadrillaId);
+      if(resStock.ok)descontadosOk++;else descontadosErr++;
+      if(resStock.faltantes&&resStock.faltantes.length){
+        resStock.faltantes.forEach(f=>faltantesGlobal.push({otId:ot.id,numOT:ot.numero_ot,...f}));
+      }
       // Al validar CAMBIO_DOMICILIO: actualizar domicilio del cliente con historial
       if(ot.tipo_item==='CAMBIO_DOMICILIO'||ot.tipo_tarea==='CAMBIO_DOMICILIO'){
         await _actualizarDomicilioEnValidacion(ot.id,grupoId,adminNombre);
@@ -12915,7 +12952,14 @@ async function aprobarSoloFinalizadas(grupoId){
     }
     await verGrupoValidacion(grupoId);
     renderValidacion();
-    alert(`✅ ${aAprobar.length} OT${aAprobar.length!==1?'s':''} aprobadas correctamente.\n${noTocadas.length>0?'Las demás OTs del grupo quedan sin cambios.':''}`);
+    let msgFin=`✅ ${aAprobar.length} OT${aAprobar.length!==1?'s':''} aprobadas correctamente.`;
+    if(noTocadas.length>0)msgFin+='\nLas demás OTs del grupo quedan sin cambios.';
+    if(descontadosErr>0)msgFin+='\n\n⚠️ '+descontadosErr+' OT(s) tuvieron errores en el descuento de stock — quedaron como pendientes de reintentar (ver consola).';
+    if(faltantesGlobal.length){
+      msgFin+='\n\n📉 '+faltantesGlobal.length+' faltante(s) detectado(s) al descontar:\n• '+faltantesGlobal.slice(0,5).map(f=>'OT '+numOT(f.numOT)+': "'+f.material+'" faltan '+f.faltante+' (usó '+f.usado+', tenía '+f.disponible+')').join('\n• ');
+      if(faltantesGlobal.length>5)msgFin+='\n• … y '+(faltantesGlobal.length-5)+' más (ver consola)';
+    }
+    alert(msgFin);
   }catch(e){alert('Error: '+e.message);}
 }
 
@@ -13173,6 +13217,161 @@ async function _registrarCambio(otId, campo, anterior, nuevo, origen){
 }
 
 // Helper: ajustar stock de cuadrilla por diferencia + registrar movimiento
+// ═══════════════════════════════════════════════════════════════════════════
+// ETAPA 2.2 — Descuento real de stock al validar admin (modelo diferido)
+// ═══════════════════════════════════════════════════════════════════════════
+// Helper único llamado desde aprobarGrupo() y aprobarSoloFinalizadas().
+// Idempotente: si stock_descontado=true, no hace nada (skip).
+// Si stock_descontado=false, ejecuta:
+//   1. Lee ot_materiales_usados activo=true (set FINAL post-edición admin)
+//   2. Por cada material: PATCH stock_cuadrillas -cantidad + INSERT CONSUMO_OT
+//   3. Si queda negativo: INSERT FALTANTE (no bloquea)
+//   4. Mueve seriales COMPROMETIDO → CLIENTE (solo los de esta OT)
+//   5. Solo si todo OK: PATCH ordenes_trabajo stock_descontado=true
+//   6. Si hay errores: stock_descontado queda en false → permite reintento
+// Devuelve { ok, descuentos, sersMovidos, faltantes, [reason, error] }.
+// NO lanza excepciones — captura todo y loggea.
+async function _descontarStockRealValidacion(otId, cuadrillaId){
+  if(!otId){
+    console.warn('[_descontarStockRealValidacion] otId requerido');
+    return {ok:false,reason:'no_ot_id',descuentos:0,sersMovidos:0,faltantes:[]};
+  }
+
+  // 1. Releer OT para verificar stock_descontado actual (idempotencia)
+  let ot;
+  try{
+    const otRows=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=stock_descontado,numero_ot`)||[];
+    if(!otRows.length){
+      console.warn('[_descontarStockRealValidacion] OT no encontrada:',otId);
+      return {ok:false,reason:'ot_not_found',descuentos:0,sersMovidos:0,faltantes:[]};
+    }
+    ot=otRows[0];
+  }catch(eRead){
+    console.error('[_descontarStockRealValidacion] error leyendo OT '+otId+':',eRead.message);
+    return {ok:false,reason:'read_failed',error:eRead.message,descuentos:0,sersMovidos:0,faltantes:[]};
+  }
+
+  const numOTStr=ot.numero_ot?' ('+ot.numero_ot+')':'';
+
+  // 2. Skip si ya descontó (modelo viejo backfilled, o ya procesada antes)
+  if(ot.stock_descontado===true){
+    console.log('[_descontarStockRealValidacion] OT '+otId+numOTStr+' ya tiene stock_descontado=true — skip (modelo viejo o ya procesada).');
+    return {ok:true,reason:'already_discounted',descuentos:0,sersMovidos:0,faltantes:[]};
+  }
+
+  // 3. Si no hay cuadrilla asignada, no podemos descontar de ningún stock
+  //    pero sí debemos marcar la OT como descontada para no reintentar.
+  if(!cuadrillaId){
+    console.warn('[_descontarStockRealValidacion] OT '+otId+numOTStr+' sin cuadrilla_id — marco stock_descontado=true sin tocar stock.');
+    try{
+      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{stock_descontado:true});
+      return {ok:true,reason:'no_cuadrilla',descuentos:0,sersMovidos:0,faltantes:[]};
+    }catch(eF){
+      console.error('[_descontarStockRealValidacion] no se pudo marcar stock_descontado=true para OT '+otId+':',eF.message);
+      return {ok:false,reason:'flag_set_failed',error:eF.message,descuentos:0,sersMovidos:0,faltantes:[]};
+    }
+  }
+
+  // 4. Mover seriales COMPROMETIDO → CLIENTE (cheap, idempotente: si ya están
+  //    en CLIENTE el query devuelve 0 filas y no hace nada)
+  let sersMovidos=0;
+  let sersError=0;
+  try{
+    const sersComp=await sbGet('stock_seriales',`?ot_id=eq.${otId}&ubicacion=eq.COMPROMETIDO&select=id,serial`)||[];
+    for(const s of sersComp){
+      try{
+        await sbPatch('stock_seriales',`?id=eq.${s.id}`,{ubicacion:'CLIENTE'});
+        sersMovidos++;
+      }catch(eS){
+        sersError++;
+        console.error('[_descontarStockRealValidacion] error moviendo serial '+s.serial+' (id '+s.id+') a CLIENTE:',eS.message);
+      }
+    }
+  }catch(eSL){
+    console.error('[_descontarStockRealValidacion] error leyendo seriales COMPROMETIDO de OT '+otId+':',eSL.message);
+    sersError++;
+  }
+
+  // 5. Leer materiales activos (set FINAL post-edición admin)
+  let mats=[];
+  try{
+    mats=await sbGet('ot_materiales_usados',`?ot_id=eq.${otId}&activo=eq.true&select=material_id,cantidad,catalogo_materiales(nombre)`)||[];
+  }catch(eM){
+    console.error('[_descontarStockRealValidacion] error leyendo ot_materiales_usados de OT '+otId+':',eM.message);
+    return {ok:false,reason:'mats_read_failed',error:eM.message,descuentos:0,sersMovidos,faltantes:[]};
+  }
+
+  // 6. Descontar stock_cuadrillas + insertar CONSUMO_OT por material (try/catch por item)
+  let descuentos=0;
+  let matsError=0;
+  const faltantes=[];
+
+  for(const m of mats){
+    if(!m.material_id||!m.cantidad)continue;
+    const nomMat=m.catalogo_materiales?.nombre||String(m.material_id);
+    try{
+      const sc=await sbGet('stock_cuadrillas',`?cuadrilla_id=eq.${cuadrillaId}&material_id=eq.${m.material_id}`)||[];
+      const stockActual=sc.length?(sc[0].cantidad||0):0;
+      const resultado=stockActual-m.cantidad;
+      const nueva=Math.max(0,resultado);
+
+      if(sc.length){
+        await sbPatch('stock_cuadrillas',`?cuadrilla_id=eq.${cuadrillaId}&material_id=eq.${m.material_id}`,{cantidad:nueva});
+      }
+      // Si no hay registro de stock_cuadrillas, no creamos uno — el faltante captura el problema.
+
+      // INSERT CONSUMO_OT (siempre, aunque haya faltante)
+      await sbPost('movimientos_stock',{
+        tipo_movimiento:'CONSUMO_OT',
+        material_id:m.material_id,
+        cuadrilla_id:parseInt(cuadrillaId),
+        cantidad:-m.cantidad,
+        obs:'Validación admin OT '+otId+numOTStr
+      });
+
+      descuentos++;
+
+      // INSERT FALTANTE si quedó negativo (no bloquea)
+      if(resultado<0){
+        const faltanteQty=Math.abs(resultado);
+        try{
+          await sbPost('movimientos_stock',{
+            tipo_movimiento:'FALTANTE',
+            material_id:m.material_id,
+            cuadrilla_id:parseInt(cuadrillaId),
+            cantidad:faltanteQty,
+            obs:'Faltante validación OT '+otId+numOTStr+' cuadrilla '+cuadrillaId+' material "'+nomMat+'": usó '+m.cantidad+', tenía '+stockActual+', faltan '+faltanteQty
+          });
+          faltantes.push({material:nomMat,materialId:m.material_id,faltante:faltanteQty,usado:m.cantidad,disponible:stockActual});
+          console.warn('[_descontarStockRealValidacion] FALTANTE OT '+otId+numOTStr+' cuadrilla '+cuadrillaId+': "'+nomMat+'" faltan '+faltanteQty+' (usó '+m.cantidad+', tenía '+stockActual+')');
+        }catch(eF){
+          console.warn('[_descontarStockRealValidacion] no se pudo registrar FALTANTE para "'+nomMat+'":',eF.message);
+        }
+      }
+    }catch(eMat){
+      matsError++;
+      console.error('[_descontarStockRealValidacion] error procesando material "'+nomMat+'" (id '+m.material_id+') OT '+otId+':',eMat.message);
+    }
+  }
+
+  // 7. Marcar stock_descontado=true SOLO si no hubo errores duros
+  if(matsError===0&&sersError===0){
+    try{
+      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{stock_descontado:true});
+      console.log('[_descontarStockRealValidacion] OT '+otId+numOTStr+' OK · '+descuentos+' materiales descontados · '+sersMovidos+' seriales→CLIENTE · '+faltantes.length+' faltantes');
+      return {ok:true,descuentos,sersMovidos,faltantes};
+    }catch(eFlag){
+      console.error('[_descontarStockRealValidacion] ERROR seteando stock_descontado=true OT '+otId+numOTStr+':',eFlag.message);
+      console.error('  → Stock YA fue descontado pero el flag no se pudo marcar. Próxima validación PUEDE duplicar el descuento. ATENCIÓN MANUAL.');
+      return {ok:false,reason:'flag_set_failed',error:eFlag.message,descuentos,sersMovidos,faltantes};
+    }
+  }else{
+    console.error('[_descontarStockRealValidacion] OT '+otId+numOTStr+' tuvo '+matsError+' errores de materiales y '+sersError+' errores de seriales — stock_descontado QUEDA EN FALSE para reintentar.');
+    console.error('  → ATENCIÓN: ya se descontaron parcialmente '+descuentos+' materiales y '+sersMovidos+' seriales. Un reintento completo PUEDE duplicar lo ya procesado. Revisar movimientos_stock antes de reintentar.');
+    return {ok:false,reason:'partial_failure',descuentos,sersMovidos,matsError,sersError,faltantes};
+  }
+}
+
 async function _ajustarStock(cuadId, materialId, diferencia, obs, otId){
   if(!cuadId||!materialId||!diferencia)return;
 
