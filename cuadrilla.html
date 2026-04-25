@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.36</title>
+<title>FG Cuadrillas v4.37</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.36 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.37 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -192,6 +192,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
   <!-- LISTA DE GRUPOS -->
   <div class="page" id="s-lista">
     <div id="lista-int" class="integrantes"></div>
+    <div id="prod-card"></div>
     <div id="aviso-estados"></div>
     <div class="filtros">
       <div class="chip active" onclick="setFiltro('',this)">Todas</div>
@@ -404,7 +405,7 @@ async function iniciarApp(){
   document.getElementById('btn-retiro').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.36';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.37';
 
   // Cargar estados con fallback
   try{
@@ -445,9 +446,82 @@ async function cargarDatos(){
       return Object.assign({},g,{ordenes_trabajo:ots});
     });
     renderGrupos();
+    renderProductividad(); // v4.37: panel resumen del día (no bloquea)
   }catch(e){
     document.getElementById('lista-grupos').innerHTML='<div class="card"><p style="color:var(--red)">Error: '+e.message+'</p></div>';
   }
+}
+
+// ── PANEL DE PRODUCTIVIDAD (v4.37) ───────────────────────────────────────────
+// Resumen del día para la cuadrilla logueada. Una sola query independiente.
+// NO modifica cargarDatos ni queries existentes. NO toca stock ni validación.
+// Filtra estrictamente por cuadrilla_id=CUAD.id (no expone otras cuadrillas).
+async function getResumenProductividad(cuadrillaId){
+  if(!cuadrillaId)return {total:0,completadas:0,pendientes:0,otras:0,porcentaje:0};
+  try{
+    // Una sola query usando el mismo patrón que cargarDatos: embedding desde grupos_ot.
+    // Filtra por cuadrilla_id + fecha_trabajo del día. Trae solo el estado de cada OT.
+    var grupos=await sbGet('grupos_ot',
+      '?fecha_trabajo=eq.'+hoy()
+      +'&cuadrilla_id=eq.'+cuadrillaId
+      +'&eliminado=eq.false'
+      +'&select=ordenes_trabajo(id,eliminado,estados_ot(nombre))'
+    )||[];
+
+    var completadas=0,pendientes=0,otras=0,total=0;
+    grupos.forEach(function(g){
+      (g.ordenes_trabajo||[]).forEach(function(o){
+        if(o.eliminado)return; // exclusión: OTs eliminadas
+        total++;
+        var est=o.estados_ot?.nombre||'';
+        if(est==='FINALIZADA_TECNICO'||est==='FINALIZADA')completadas++;
+        else if(est==='PENDIENTE'||est==='ASIGNADA'||est==='EN_PROCESO')pendientes++;
+        else otras++; // RECHAZADA_TECNICO, NO_REALIZADA, DEVUELTA_GIGARED, ELIMINADA_SISTEMA
+      });
+    });
+    var porcentaje=total>0?Math.round((completadas/total)*100):0;
+    return {total:total,completadas:completadas,pendientes:pendientes,otras:otras,porcentaje:porcentaje};
+  }catch(e){
+    console.warn('[getResumenProductividad]',e.message);
+    return {total:0,completadas:0,pendientes:0,otras:0,porcentaje:0,error:e.message};
+  }
+}
+
+async function renderProductividad(){
+  var el=document.getElementById('prod-card');
+  if(!el||!CUAD)return;
+  var r=await getResumenProductividad(CUAD.id);
+  if(r.error){
+    el.innerHTML=''; // silencioso si falla; no rompe la home
+    return;
+  }
+  if(r.total===0){
+    el.innerHTML='<div style="background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px;text-align:center">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">📊 Productividad del día</div>'
+      +'<div style="font-size:13px;color:var(--muted);font-style:italic">Sin OTs asignadas para hoy.</div>'
+    +'</div>';
+    return;
+  }
+  // Color de la barra según avance
+  var barColor=r.porcentaje>=80?'#16a34a':(r.porcentaje>=50?'#2563eb':'#f59e0b');
+  el.innerHTML='<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'
+    +'<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">📊 Productividad del día</div>'
+      +'<div style="font-size:18px;font-weight:800;color:#1e3a5f">'+r.total+' <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase">tareas</span></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:13px">'
+      +'<span style="color:#16a34a;font-weight:700">✓ '+r.completadas+' completadas</span>'
+      +'<span style="color:#94a3b8">·</span>'
+      +'<span style="color:#f59e0b;font-weight:700">⏳ '+r.pendientes+' pendientes</span>'
+      +(r.otras>0?'<span style="color:#94a3b8">·</span><span style="color:#64748b;font-weight:600">⊘ '+r.otras+' otras</span>':'')
+    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<div style="flex:1;height:10px;background:#f1f5f9;border-radius:5px;overflow:hidden">'
+        +'<div style="height:100%;width:'+r.porcentaje+'%;background:'+barColor+';transition:width .3s"></div>'
+      +'</div>'
+      +'<div style="font-size:14px;font-weight:800;color:'+barColor+';min-width:42px;text-align:right">'+r.porcentaje+'%</div>'
+    +'</div>'
+  +'</div>';
 }
 
 // ── RENDER INTEGRANTES ────────────────────────────────────────────────────────
