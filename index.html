@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v235</title>
+<title>FG Gestión OTs v236</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -155,6 +155,9 @@ tr:hover td{background:rgba(37,99,235,.02)}
 .ptable tr.pnew td{background:#f0fdf4}
 .ptable tr.pexist td{background:#fefce8}
 .ptable tr.pgroup td{background:#eff6ff;font-weight:700;color:#2563eb;font-size:11px;padding:5px 10px}
+/* v236 — Storage drag&drop */
+#ea-dropzone:hover{background:#eff6ff;border-color:#3b82f6}
+#ea-dropzone.drop-hover{background:#dbeafe!important;border-color:#1e40af!important;border-style:solid!important;transform:scale(1.01)}
 </style>
 </head>
 <body>
@@ -170,7 +173,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V235</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V236</div>
   </div>
 </div>
 
@@ -180,7 +183,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v235</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v236</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2535,7 +2538,7 @@ async function verOT(numeroOT, otIdDirecto){
           '?edificio_id=eq.'+ot.edificio_id
           +'&eliminado=eq.false'
           +'&or=(ot_id.is.null,ot_id.eq.'+ot.id+')'
-          +'&select=id,tipo_archivo,nombre,descripcion,url,origen,visible_pwa,ot_id,jornada_id,created_at'
+          +'&select=id,tipo_archivo,nombre,descripcion,url,storage_path,mime_type,size_bytes,origen,visible_pwa,ot_id,jornada_id,created_at'
           +'&order=ot_id.desc.nullslast,created_at.desc'
         )||[];
       }catch(e){console.warn('No se pudieron cargar archivos del edificio:',e.message);}
@@ -2600,16 +2603,36 @@ async function verOT(numeroOT, otIdDirecto){
           ${bloqueado&&ed.motivo_bloqueo?`<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;margin-top:.5rem;font-size:13px;color:#991b1b"><strong>Motivo del ${cab==='BLOQUEADO'?'bloqueo':'no autorización'}:</strong> ${ed.motivo_bloqueo}</div>`:''}
           ${ed.observaciones_tecnicas?`<details style="margin-top:.5rem"><summary style="font-size:11px;font-weight:700;color:#475569;cursor:pointer">📝 Observaciones técnicas</summary><div style="font-size:12px;color:#475569;margin-top:6px;white-space:pre-wrap;line-height:1.5">${ed.observaciones_tecnicas}</div></details>`:''}
           ${edificioArchivos.length?`<details style="margin-top:.5rem" open><summary style="font-size:11px;font-weight:700;color:#475569;cursor:pointer">📎 Documentación del edificio (${edificioArchivos.length})</summary><div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
-            ${archEsta.length?`<div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Específicos de esta OT (${archEsta.length})</div>${archEsta.map(a=>`
+            ${archEsta.length?`<div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Específicos de esta OT (${archEsta.length})</div>${archEsta.map(a=>{
+              const sp=(a.storage_path||'').replace(/'/g,"\\'");
+              const nm=(a.nombre||'').replace(/'/g,"\\'");
+              const btn=a.storage_path
+                ? (a.mime_type&&a.mime_type.indexOf('image/')===0
+                    ? `<button class="btn btn-sm" onclick="abrirImagenStorage('${sp}','${nm}')" style="font-size:10px;color:#7c3aed;border-color:rgba(124,58,237,.3)">👁</button>`
+                    : `<button class="btn btn-sm" onclick="abrirArchivoStorage('${sp}','${nm}')" style="font-size:10px;color:#0891b2;border-color:rgba(8,145,178,.3)">↗</button>`)
+                : (a.url ? `<a href="${a.url}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:10px;text-decoration:none">↗</a>` : '');
+              const fuente=a.storage_path?'<span title="Storage" style="font-size:10px;color:#7c3aed;margin-left:4px">📦</span>':(a.url?'<span title="URL externa" style="font-size:10px;color:#2563eb;margin-left:4px">🔗</span>':'');
+              return `
               <div style="background:rgba(255,255,255,.7);border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px">
-                <div style="flex:1;min-width:0;font-size:12px"><span style="font-weight:600">${iconoTipoArchivo(a.tipo_archivo)} ${a.nombre}</span>${a.descripcion?`<div style="font-size:11px;color:#64748b">${a.descripcion}</div>`:''}</div>
-                ${a.url?`<a href="${a.url}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:10px;text-decoration:none">↗</a>`:''}
-              </div>`).join('')}`:''}
-            ${archGen.length?`<div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Generales del edificio (${archGen.length})</div>${archGen.map(a=>`
+                <div style="flex:1;min-width:0;font-size:12px"><span style="font-weight:600">${iconoTipoArchivo(a.tipo_archivo)} ${a.nombre}</span>${fuente}${a.descripcion?`<div style="font-size:11px;color:#64748b">${a.descripcion}</div>`:''}</div>
+                ${btn}
+              </div>`;
+            }).join('')}`:''}
+            ${archGen.length?`<div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Generales del edificio (${archGen.length})</div>${archGen.map(a=>{
+              const sp=(a.storage_path||'').replace(/'/g,"\\'");
+              const nm=(a.nombre||'').replace(/'/g,"\\'");
+              const btn=a.storage_path
+                ? (a.mime_type&&a.mime_type.indexOf('image/')===0
+                    ? `<button class="btn btn-sm" onclick="abrirImagenStorage('${sp}','${nm}')" style="font-size:10px;color:#7c3aed;border-color:rgba(124,58,237,.3)">👁</button>`
+                    : `<button class="btn btn-sm" onclick="abrirArchivoStorage('${sp}','${nm}')" style="font-size:10px;color:#0891b2;border-color:rgba(8,145,178,.3)">↗</button>`)
+                : (a.url ? `<a href="${a.url}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:10px;text-decoration:none">↗</a>` : '');
+              const fuente=a.storage_path?'<span title="Storage" style="font-size:10px;color:#7c3aed;margin-left:4px">📦</span>':(a.url?'<span title="URL externa" style="font-size:10px;color:#2563eb;margin-left:4px">🔗</span>':'');
+              return `
               <div style="background:rgba(255,255,255,.7);border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px">
-                <div style="flex:1;min-width:0;font-size:12px"><span style="font-weight:600">${iconoTipoArchivo(a.tipo_archivo)} ${a.nombre}</span>${a.descripcion?`<div style="font-size:11px;color:#64748b">${a.descripcion}</div>`:''}</div>
-                ${a.url?`<a href="${a.url}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:10px;text-decoration:none">↗</a>`:''}
-              </div>`).join('')}`:''}
+                <div style="flex:1;min-width:0;font-size:12px"><span style="font-weight:600">${iconoTipoArchivo(a.tipo_archivo)} ${a.nombre}</span>${fuente}${a.descripcion?`<div style="font-size:11px;color:#64748b">${a.descripcion}</div>`:''}</div>
+                ${btn}
+              </div>`;
+            }).join('')}`:''}
           </div></details>`:''}
           <div style="margin-top:.6rem;display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-sm" onclick="adjuntarArchivoAOT(${ot.id},${ed.id})" style="font-size:11px">+ Adjuntar archivo a esta OT</button>
@@ -7086,6 +7109,192 @@ var EDIF_FORM_ID=null;      // id del edificio en edición (null = nuevo)
 var EDIF_TAREA_FORM_ID=null;// id de tarea en edición (null = nueva)
 var EDIF_TECNICOS_CACHE=[]; // cache de técnicos para el selector de tareas
 
+// ═══════════════════════════════════════════════════════════════════════════
+// v236 — Helpers de Supabase Storage para archivos de edificios
+// ═══════════════════════════════════════════════════════════════════════════
+const _EDIF_BUCKET = 'edificios-docs';
+const _EDIF_MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
+const _EDIF_SIGNED_URL_TTL = 3600;             // 1 h
+const _EDIF_TIPOS_PERMITIDOS = {
+  // mime → { ext, cat (image/pdf/doc) }
+  'application/pdf':                                                            { ext:'pdf',  cat:'pdf'   },
+  'image/jpeg':                                                                 { ext:'jpg',  cat:'image' },
+  'image/png':                                                                  { ext:'png',  cat:'image' },
+  'image/webp':                                                                 { ext:'webp', cat:'image' },
+  'image/heic':                                                                 { ext:'heic', cat:'image' },
+  'image/heif':                                                                 { ext:'heif', cat:'image' },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':          { ext:'xlsx', cat:'doc'   },
+  'application/vnd.ms-excel':                                                   { ext:'xls',  cat:'doc'   },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':    { ext:'docx', cat:'doc'   },
+  'application/msword':                                                         { ext:'doc',  cat:'doc'   }
+};
+
+// Estado del formulario de archivos (modo file vs url + archivo pendiente)
+var EDIF_DOC_MODO='file';   // 'file' (subir) | 'url' (link externo)
+var _EDIF_PENDING_FILE=null;// File object listo para subir (todavía no en Storage)
+
+// Cache de signed URLs en memoria para reducir round-trips
+var _edifSignedUrlCache={}; // path → { url, expiresAt (ms epoch) }
+
+// Validar archivo antes de subir
+function _validarArchivoSubida(file){
+  if(!file)return {ok:false,error:'No hay archivo'};
+  const cfg=_EDIF_TIPOS_PERMITIDOS[file.type];
+  if(!cfg)return {ok:false,error:'Tipo de archivo no permitido: '+(file.type||'desconocido')+'. Usá PDF, JPG, PNG, WEBP, HEIC, XLSX o DOCX.'};
+  if(file.size>_EDIF_MAX_SIZE_BYTES)return {ok:false,error:'Archivo demasiado grande ('+_formatBytes(file.size)+'). Máximo 25 MB.'};
+  if(file.size===0)return {ok:false,error:'El archivo está vacío.'};
+  return {ok:true,cfg:cfg};
+}
+
+// Slug-ificar un filename (sin espacios, sin chars raros)
+function _slugFilename(name){
+  return (name||'archivo')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')  // sacar tildes
+    .replace(/[^a-z0-9._-]+/g,'-')                    // chars seguros
+    .replace(/^-+|-+$/g,'')                           // trim guiones
+    .slice(0,80) || 'archivo';
+}
+
+// Construir path en Storage según contexto
+function _buildStoragePath(edifId,otId,slug,ext){
+  const ts=Date.now();
+  if(otId)return edifId+'/ots/ot_'+otId+'/'+ts+'_'+slug+'.'+ext;
+  return edifId+'/docs/'+ts+'_'+slug+'.'+ext;
+}
+
+// Format bytes legible
+function _formatBytes(b){
+  if(!b||b<0)return'—';
+  if(b<1024)return b+' B';
+  if(b<1024*1024)return (b/1024).toFixed(1)+' KB';
+  return (b/(1024*1024)).toFixed(1)+' MB';
+}
+
+// Subir un File a Storage. Devuelve la respuesta JSON o lanza error.
+async function _sbStorageUpload(bucket,path,file,mimeType){
+  const r=await fetch(`${SB_URL}/storage/v1/object/${bucket}/${path}`,{
+    method:'POST',
+    headers:{
+      'apikey':SB_KEY,
+      'Authorization':'Bearer '+SB_KEY,
+      'Content-Type':mimeType||'application/octet-stream',
+      'x-upsert':'false'
+    },
+    body:file
+  });
+  const t=await r.text();
+  if(!r.ok)throw new Error('Storage upload falló: '+t);
+  return t?JSON.parse(t):{};
+}
+
+// Pedir signed URL de un objeto privado. Cache en memoria con TTL 50min.
+async function _sbStorageSignedUrl(bucket,path,expiresIn){
+  expiresIn=expiresIn||_EDIF_SIGNED_URL_TTL;
+  const cacheKey=bucket+':'+path;
+  const cached=_edifSignedUrlCache[cacheKey];
+  // Reusar cache si tiene >5 min de vida restante (guard de seguridad)
+  if(cached&&cached.expiresAt-Date.now()>5*60*1000)return cached.url;
+
+  const r=await fetch(`${SB_URL}/storage/v1/object/sign/${bucket}/${path}`,{
+    method:'POST',
+    headers:{
+      'apikey':SB_KEY,
+      'Authorization':'Bearer '+SB_KEY,
+      'Content-Type':'application/json'
+    },
+    body:JSON.stringify({expiresIn:expiresIn})
+  });
+  const t=await r.text();
+  if(!r.ok)throw new Error('Signed URL falló: '+t);
+  const j=JSON.parse(t);
+  // signedURL viene como "/object/sign/{bucket}/{path}?token=..."
+  const fullUrl=SB_URL+'/storage/v1'+j.signedURL;
+  _edifSignedUrlCache[cacheKey]={url:fullUrl,expiresAt:Date.now()+expiresIn*1000};
+  return fullUrl;
+}
+
+// Abrir un archivo de Storage en nueva pestaña (signed URL on-demand)
+async function abrirArchivoStorage(storagePath,nombre){
+  try{
+    const url=await _sbStorageSignedUrl(_EDIF_BUCKET,storagePath);
+    window.open(url,'_blank','noopener');
+  }catch(e){
+    alert('No se pudo abrir el archivo "'+(nombre||storagePath)+'":\n'+e.message);
+  }
+}
+
+// Mostrar imagen de Storage en lightbox modal
+async function abrirImagenStorage(storagePath,nombre){
+  try{
+    const url=await _sbStorageSignedUrl(_EDIF_BUCKET,storagePath);
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out';
+    ov.onclick=function(){ov.remove();};
+    ov.innerHTML='<div style="max-width:95vw;max-height:95vh;display:flex;flex-direction:column;align-items:center;gap:10px"><img src="'+url+'" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:8px;background:#fff" alt="'+(nombre||'')+'"/><div style="color:#fff;font-size:13px;text-align:center">'+(nombre||'')+' · click fuera para cerrar</div></div>';
+    document.body.appendChild(ov);
+  }catch(e){
+    alert('No se pudo abrir la imagen "'+(nombre||storagePath)+'":\n'+e.message);
+  }
+}
+
+// Manejo de drag & drop sobre la zona drop del form
+function _edifDropPrevent(ev){ev.preventDefault();ev.stopPropagation();}
+function _edifDropEnter(ev){_edifDropPrevent(ev);const z=document.getElementById('ea-dropzone');if(z)z.classList.add('drop-hover');}
+function _edifDropLeave(ev){_edifDropPrevent(ev);const z=document.getElementById('ea-dropzone');if(z)z.classList.remove('drop-hover');}
+function _edifDrop(ev){
+  _edifDropPrevent(ev);
+  const z=document.getElementById('ea-dropzone');if(z)z.classList.remove('drop-hover');
+  const dt=ev.dataTransfer;
+  if(!dt||!dt.files||!dt.files.length)return;
+  if(dt.files.length>1){alert('Subí los archivos de a uno por vez.');return;}
+  _edifSelectFile(dt.files[0]);
+}
+
+// Cuando el admin elige un archivo (input o drop)
+function _edifSelectFile(file){
+  const v=_validarArchivoSubida(file);
+  if(!v.ok){alert('⛔ '+v.error);return;}
+  _EDIF_PENDING_FILE=file;
+  // Pre-llenar nombre si está vacío
+  const nomInp=document.getElementById('ea-nombre');
+  if(nomInp&&!nomInp.value.trim()){
+    nomInp.value=file.name.replace(/\.[^.]+$/,''); // sin extensión
+  }
+  _renderPendingFile();
+}
+
+function _edifQuitarPending(){
+  _EDIF_PENDING_FILE=null;
+  const inp=document.getElementById('ea-fileinput');
+  if(inp)inp.value='';
+  _renderPendingFile();
+}
+
+function _renderPendingFile(){
+  const cont=document.getElementById('ea-pending');
+  if(!cont)return;
+  if(!_EDIF_PENDING_FILE){cont.innerHTML='';return;}
+  const f=_EDIF_PENDING_FILE;
+  cont.innerHTML=
+    '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:8px 12px;margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">'
+    +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:#166534">📎 '+f.name+'</div>'
+    +'<div style="font-size:11px;color:#16a34a">'+(f.type||'tipo desconocido')+' · '+_formatBytes(f.size)+'</div></div>'
+    +'<button class="btn btn-sm" onclick="_edifQuitarPending()" style="font-size:10px;color:#dc2626;border-color:rgba(220,38,38,.3)">Quitar</button>'
+    +'</div>';
+}
+
+function _edifCambiarModo(modo){
+  EDIF_DOC_MODO=modo;
+  document.getElementById('ea-modo-file').style.display=modo==='file'?'block':'none';
+  document.getElementById('ea-modo-url').style.display=modo==='url'?'block':'none';
+  // Marcar radio activo
+  const rf=document.getElementById('ea-modo-r-file');if(rf)rf.checked=(modo==='file');
+  const ru=document.getElementById('ea-modo-r-url');if(ru)ru.checked=(modo==='url');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+
 // ── Helpers visuales ────────────────────────────────────────────────────────
 function badgeEstadoCableado(est){
   var cfg={
@@ -7672,7 +7881,7 @@ async function renderEdifDocs(){
       sbGet('edificio_archivos',
         '?edificio_id=eq.'+EDIF_DETALLE.id
         +'&eliminado=eq.false'
-        +'&select=id,tipo_archivo,nombre,descripcion,url,storage_path,origen,visible_pwa,ot_id,jornada_id,created_at,created_by,usuarios:created_by(nombre,email),ordenes_trabajo:ot_id(numero_ot)'
+        +'&select=id,tipo_archivo,nombre,descripcion,url,storage_path,mime_type,size_bytes,origen,visible_pwa,ot_id,jornada_id,created_at,created_by,usuarios:created_by(nombre,email),ordenes_trabajo:ot_id(numero_ot)'
         +'&order=created_at.desc'
       ),
       sbGet('edificio_ots',
@@ -7729,7 +7938,42 @@ async function renderEdifDocs(){
       +(otsVinc.map(function(v){var ot=v.ordenes_trabajo;if(!ot)return'';var cl=ot.clientes||{};return '<option value="ot:'+v.ot_id+'">OT '+(ot.numero_ot||v.ot_id)+(cl.apellido?' — '+cl.apellido:'')+'</option>';}).join(''))
       +'    </select>'
       +'  </div>'
-      +'  <div class="fg" style="grid-column:1/-1"><label>URL (link a Drive, imgur, etc.)</label><input id="ea-url" placeholder="https://drive.google.com/..."/></div>'
+      // ── v236: selector de modo (Subir archivo vs URL externa) ────────────
+      +'  <div class="fg" style="grid-column:1/-1">'
+      +'    <label style="margin-bottom:6px">¿Cómo cargar el archivo? *</label>'
+      +'    <div style="display:flex;gap:14px;flex-wrap:wrap">'
+      +'      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;font-size:13px">'
+      +'        <input type="radio" name="ea-modo" id="ea-modo-r-file" '+(EDIF_DOC_MODO==='file'?'checked':'')+' onchange="_edifCambiarModo(\'file\')"/> 📤 Subir archivo'
+      +'      </label>'
+      +'      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;font-size:13px">'
+      +'        <input type="radio" name="ea-modo" id="ea-modo-r-url" '+(EDIF_DOC_MODO==='url'?'checked':'')+' onchange="_edifCambiarModo(\'url\')"/> 🔗 URL externa (Drive, etc.)'
+      +'      </label>'
+      +'    </div>'
+      +'  </div>'
+      // ── modo "subir archivo": drag&drop + input file ──
+      +'  <div class="fg" id="ea-modo-file" style="grid-column:1/-1;display:'+(EDIF_DOC_MODO==='file'?'block':'none')+'">'
+      +'    <div id="ea-dropzone" '
+      +      'ondragenter="_edifDropEnter(event)" '
+      +      'ondragover="_edifDropPrevent(event)" '
+      +      'ondragleave="_edifDropLeave(event)" '
+      +      'ondrop="_edifDrop(event)" '
+      +      'onclick="document.getElementById(\'ea-fileinput\').click()" '
+      +      'style="border:2px dashed #93c5fd;border-radius:10px;padding:24px;text-align:center;cursor:pointer;background:#fff;transition:all .15s">'
+      +'      <div style="font-size:32px;margin-bottom:6px">📥</div>'
+      +'      <div style="font-size:13px;font-weight:700;color:#1e40af">Arrastrá un archivo acá o tocá para seleccionar</div>'
+      +'      <div style="font-size:11px;color:#64748b;margin-top:4px">PDF, JPG, PNG, WEBP, HEIC, XLSX, DOCX · máx 25 MB</div>'
+      +'    </div>'
+      +'    <input type="file" id="ea-fileinput" '
+      +      'accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.xlsx,.xls,.docx,.doc,application/pdf,image/*,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document" '
+      +      'style="display:none" '
+      +      'onchange="if(this.files&&this.files[0])_edifSelectFile(this.files[0])"/>'
+      +'    <div id="ea-pending"></div>'
+      +'  </div>'
+      // ── modo "URL externa" ──
+      +'  <div class="fg" id="ea-modo-url" style="grid-column:1/-1;display:'+(EDIF_DOC_MODO==='url'?'block':'none')+'">'
+      +'    <label>URL (link a Drive, imgur, etc.)</label>'
+      +'    <input id="ea-url" placeholder="https://drive.google.com/..."/>'
+      +'  </div>'
       +'  <div class="fg" style="grid-column:1/-1"><label>Descripción / observaciones</label><textarea id="ea-desc" rows="2" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical"></textarea></div>'
       +'  <div class="fg" style="grid-column:1/-1"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500"><input type="checkbox" id="ea-visible-pwa" checked/> 👷 Visible para técnicos en PWA</label><div style="font-size:11px;color:#64748b;margin-top:2px">Desmarcar solo si es información interna que no debe ver la cuadrilla.</div></div>'
       +'</div>'
@@ -7765,6 +8009,7 @@ async function renderEdifDocs(){
         listaHTML+='<div style="margin-bottom:1rem"><div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+iconoTipoArchivo(t)+' '+labelTipoArchivo(t)+' ('+porTipo[t].length+')</div>';
         porTipo[t].forEach(function(d){
           var hasUrl=d.url&&d.url.trim();
+          var hasStorage=d.storage_path&&d.storage_path.trim();
           var fechaStr=d.created_at?fmtFechaCorta(d.created_at):'';
           var autor=d.usuarios?.nombre||d.usuarios?.email||'—';
           var origenCfg={
@@ -7776,16 +8021,49 @@ async function renderEdifDocs(){
           var otBadge=d.ordenes_trabajo?'<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:5px">📋 OT '+d.ordenes_trabajo.numero_ot+'</span>':'';
           var jornadaBadge=d.jornada_id?'<span style="background:#f3e8ff;color:#7c3aed;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:5px">⏱ Jornada #'+d.jornada_id+'</span>':'';
           var noVisibleIcon=!d.visible_pwa?'<span title="Solo visible para admin" style="font-size:14px;margin-left:5px">🔒</span>':'';
+          // v236: badge de origen del archivo (Storage vs URL)
+          var fuenteBadge='';
+          if(hasStorage){
+            fuenteBadge='<span title="Archivo subido a Storage" style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:5px">📦 '+(_formatBytes(d.size_bytes||0))+'</span>';
+          }else if(hasUrl){
+            fuenteBadge='<span title="URL externa (Drive, etc.)" style="background:#dbeafe;color:#1e40af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:5px">🔗 URL externa</span>';
+          }
+          // v236: botones de visualización según el tipo de archivo
+          var btnsAbrir='';
+          if(hasStorage){
+            // Determinar si es imagen, pdf u otro a partir del mime_type
+            var mime=d.mime_type||'';
+            var spJsEsc=d.storage_path.replace(/'/g,"\\'");
+            var nomJsEsc=(d.nombre||'').replace(/'/g,"\\'");
+            if(mime.indexOf('image/')===0){
+              btnsAbrir='<button class="btn btn-sm" onclick="abrirImagenStorage(\''+spJsEsc+'\',\''+nomJsEsc+'\')" style="font-size:11px;color:#7c3aed;border-color:rgba(124,58,237,.3)">👁 Ver imagen</button>';
+            }else if(mime==='application/pdf'){
+              btnsAbrir='<button class="btn btn-sm" onclick="abrirArchivoStorage(\''+spJsEsc+'\',\''+nomJsEsc+'\')" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)">📄 Ver PDF</button>';
+            }else{
+              btnsAbrir='<button class="btn btn-sm" onclick="abrirArchivoStorage(\''+spJsEsc+'\',\''+nomJsEsc+'\')" style="font-size:11px;color:#0891b2;border-color:rgba(8,145,178,.3)">↓ Descargar</button>';
+            }
+          }else if(hasUrl){
+            btnsAbrir='<a href="'+d.url+'" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:11px;text-decoration:none;text-align:center;color:#2563eb;border-color:rgba(37,99,235,.3)">↗ Abrir</a>';
+          }
+          // Mostrar URL solo si es modo URL externa (no exponer storage_path)
+          var fuenteDisplay='';
+          if(hasUrl){
+            fuenteDisplay='<div style="margin-top:6px"><a href="'+d.url+'" target="_blank" rel="noopener" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600;word-break:break-all">🔗 '+d.url+'</a></div>';
+          }else if(hasStorage){
+            fuenteDisplay='<div style="margin-top:6px;font-size:11px;color:#7c3aed;font-family:monospace">📦 '+d.storage_path+(d.mime_type?' · '+d.mime_type:'')+'</div>';
+          }else{
+            fuenteDisplay='<div style="margin-top:6px;font-size:11px;color:#94a3b8;font-style:italic">Sin archivo ni URL</div>';
+          }
           listaHTML+='<div class="card" style="margin-bottom:6px;display:flex;gap:12px;align-items:flex-start;padding:12px">'
             +'<div style="flex:1;min-width:0">'
             +'<div style="font-size:14px;font-weight:600;color:#1e3a5f;word-break:break-word">'+d.nombre+noVisibleIcon+'</div>'
-            +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px"><span style="background:'+oc[0]+';color:'+oc[1]+';font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px">'+oc[2]+'</span>'+otBadge+jornadaBadge+'</div>'
+            +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px"><span style="background:'+oc[0]+';color:'+oc[1]+';font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px">'+oc[2]+'</span>'+fuenteBadge+otBadge+jornadaBadge+'</div>'
             +(d.descripcion?'<div style="font-size:12px;color:#64748b;margin-top:4px;white-space:pre-wrap">'+d.descripcion+'</div>':'')
-            +(hasUrl?'<div style="margin-top:6px"><a href="'+d.url+'" target="_blank" rel="noopener" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600;word-break:break-all">🔗 '+d.url+'</a></div>':'<div style="margin-top:6px;font-size:11px;color:#94a3b8;font-style:italic">Sin URL</div>')
+            +fuenteDisplay
             +'<div style="margin-top:6px;font-size:11px;color:#94a3b8">'+fechaStr+(autor!=='—'?' · '+autor:'')+'</div>'
             +'</div>'
             +'<div style="display:flex;flex-direction:column;gap:4px">'
-            +(hasUrl?'<a href="'+d.url+'" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:11px;text-decoration:none;text-align:center;color:#2563eb;border-color:rgba(37,99,235,.3)">↗ Abrir</a>':'')
+            +btnsAbrir
             +'<button class="btn btn-sm" onclick="abrirEditarArchivo('+d.id+')" style="font-size:11px">✏️</button>'
             +'<button class="btn btn-sm" onclick="eliminarArchivoEdificio('+d.id+')" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)">🗑️</button>'
             +'</div>'
@@ -7804,17 +8082,35 @@ async function renderEdifDocs(){
         document.getElementById('ea-tipo').value=doc.tipo_archivo||'OTRO';
         document.getElementById('ea-origen').value=doc.origen||'ADMIN';
         document.getElementById('ea-nombre').value=doc.nombre||'';
-        document.getElementById('ea-url').value=doc.url||'';
         document.getElementById('ea-desc').value=doc.descripcion||'';
         document.getElementById('ea-visible-pwa').checked=doc.visible_pwa!==false;
         var asocSel=document.getElementById('ea-asociar');
         if(doc.ot_id){asocSel.value='ot:'+doc.ot_id;}
+        // v236: detectar modo del archivo existente y bloquear cambio de modo
+        if(doc.storage_path){
+          _edifCambiarModo('file');
+          // El archivo binario no se puede cambiar al editar — solo metadatos
+          var dz=document.getElementById('ea-dropzone');
+          if(dz){
+            dz.style.display='none';
+            var pend=document.getElementById('ea-pending');
+            if(pend){
+              pend.innerHTML='<div style="background:#f1f5f9;border:1.5px solid #cbd5e1;border-radius:8px;padding:10px;font-size:12px;color:#475569"><strong>📦 Archivo en Storage:</strong> '+doc.storage_path+'<div style="font-size:11px;color:#64748b;margin-top:4px">Para reemplazar el binario, eliminá este registro y subí uno nuevo. Acá solo se editan los metadatos (nombre, tipo, descripción, etc.).</div></div>';
+            }
+          }
+        }else{
+          _edifCambiarModo('url');
+          var urlInp=document.getElementById('ea-url');
+          if(urlInp)urlInp.value=doc.url||'';
+        }
       }
     }else if(EDIF_PRESEL_OT_ID){
       // Pre-seleccionar OT si vinimos desde el modal de OT
-      var asocSel=document.getElementById('ea-asociar');
-      if(asocSel){asocSel.value='ot:'+EDIF_PRESEL_OT_ID;}
+      var asocSel2=document.getElementById('ea-asociar');
+      if(asocSel2){asocSel2.value='ot:'+EDIF_PRESEL_OT_ID;}
     }
+    // Re-render del file pendiente si lo hay (caso: re-render mientras hay archivo elegido)
+    if(_EDIF_PENDING_FILE&&!EDIF_ARCHIVO_FORM_ID)_renderPendingFile();
   }catch(e){
     cont.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';
   }
@@ -7822,6 +8118,9 @@ async function renderEdifDocs(){
 
 function cancelarFormArchivo(){
   EDIF_ARCHIVO_FORM_ID=null;
+  // v236: limpiar file pendiente y modo
+  _EDIF_PENDING_FILE=null;
+  EDIF_DOC_MODO='file';
   renderEdifDocs();
 }
 
@@ -7837,46 +8136,110 @@ async function guardarArchivoEdificio(){
   var nombre=document.getElementById('ea-nombre').value.trim();
   var tipo=document.getElementById('ea-tipo').value;
   var origen=document.getElementById('ea-origen')?.value||'ADMIN';
-  var url=document.getElementById('ea-url').value.trim();
   var desc=document.getElementById('ea-desc').value.trim();
   var visiblePwa=document.getElementById('ea-visible-pwa')?.checked!==false;
   var asocVal=document.getElementById('ea-asociar')?.value||'';
   var otId=null;
   if(asocVal&&asocVal.indexOf('ot:')===0){otId=parseInt(asocVal.slice(3))||null;}
 
+  // v236: tomar URL solo en modo url (en modo file lo dejamos null)
+  var urlInp=document.getElementById('ea-url');
+  var url=(EDIF_DOC_MODO==='url'&&urlInp)?urlInp.value.trim():'';
+
   // Validaciones frontend
   var probs=[];
   if(!nombre)probs.push('• El nombre es obligatorio');
   if(!tipo)probs.push('• El tipo es obligatorio');
   if(!origen)probs.push('• El origen es obligatorio');
-  if(url&&!/^https?:\/\//i.test(url))probs.push('• La URL debe empezar con http:// o https://');
+  if(EDIF_DOC_MODO==='url'){
+    if(url&&!/^https?:\/\//i.test(url))probs.push('• La URL debe empezar con http:// o https://');
+  }
+  // En modo file (alta): exigir archivo elegido
+  if(EDIF_DOC_MODO==='file'&&!EDIF_ARCHIVO_FORM_ID&&!_EDIF_PENDING_FILE){
+    probs.push('• Tenés que seleccionar (o arrastrar) un archivo');
+  }
   // Permiso superadmin para origen TECNICO
   if(origen==='TECNICO'&&CU&&CU.rol!=='superadmin')probs.push('• Solo superadmin puede crear archivos con origen TECNICO desde admin');
   if(probs.length){if(errEl)errEl.textContent='⛔ Corregir:\n'+probs.join('\n');return;}
 
-  var data={
-    tipo_archivo:tipo,
-    origen:origen,
-    nombre:nombre,
-    descripcion:desc||null,
-    url:url||null,
-    visible_pwa:visiblePwa,
-    ot_id:otId
-  };
+  var btn=document.querySelector('#edif-det-cont .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Subiendo…';}
+
   try{
     if(EDIF_ARCHIVO_FORM_ID){
-      await sbPatch('edificio_archivos','?id=eq.'+EDIF_ARCHIVO_FORM_ID,data);
+      // ── EDICIÓN: solo metadatos. NO se cambia el binario ni la URL existente.
+      var dataEdit={
+        tipo_archivo:tipo,
+        origen:origen,
+        nombre:nombre,
+        descripcion:desc||null,
+        visible_pwa:visiblePwa,
+        ot_id:otId
+      };
+      // Si el archivo era URL externa, permitir editar la URL
+      var docExist=null;
+      try{
+        var rEx=await sbGet('edificio_archivos','?id=eq.'+EDIF_ARCHIVO_FORM_ID+'&select=storage_path,url');
+        docExist=(rEx&&rEx[0])||null;
+      }catch(_){}
+      if(docExist&&!docExist.storage_path&&EDIF_DOC_MODO==='url'){
+        dataEdit.url=url||null;
+      }
+      await sbPatch('edificio_archivos','?id=eq.'+EDIF_ARCHIVO_FORM_ID,dataEdit);
     }else{
-      data.edificio_id=EDIF_DETALLE.id;
-      data.created_by=CU.id||null;
-      await sbPost('edificio_archivos',data);
+      // ── ALTA ──
+      var data={
+        tipo_archivo:tipo,
+        origen:origen,
+        nombre:nombre,
+        descripcion:desc||null,
+        visible_pwa:visiblePwa,
+        ot_id:otId,
+        edificio_id:EDIF_DETALLE.id,
+        created_by:CU.id||null
+      };
+
+      if(EDIF_DOC_MODO==='file'){
+        // Validar nuevamente (defensivo)
+        var v=_validarArchivoSubida(_EDIF_PENDING_FILE);
+        if(!v.ok)throw new Error(v.error);
+        var ext=v.cfg.ext;
+        var slug=_slugFilename(nombre||_EDIF_PENDING_FILE.name.replace(/\.[^.]+$/,''));
+        var path=_buildStoragePath(EDIF_DETALLE.id,otId,slug,ext);
+
+        // Subir el binario primero
+        if(btn)btn.textContent='⏳ Subiendo archivo…';
+        await _sbStorageUpload(_EDIF_BUCKET,path,_EDIF_PENDING_FILE,_EDIF_PENDING_FILE.type);
+
+        // Insertar registro en BD
+        data.storage_path=path;
+        data.mime_type=_EDIF_PENDING_FILE.type;
+        data.size_bytes=_EDIF_PENDING_FILE.size;
+        if(btn)btn.textContent='⏳ Guardando registro…';
+        try{
+          await sbPost('edificio_archivos',data);
+        }catch(eIns){
+          // El binario quedó en Storage. Loggear para limpieza manual posterior.
+          console.error('[guardarArchivoEdificio] Storage OK pero INSERT falló — archivo huérfano en Storage:',path,'| error:',eIns.message);
+          throw new Error('El archivo se subió pero no se pudo registrar en BD: '+eIns.message+'\n\nAvisá al administrador (path huérfano: '+path+')');
+        }
+      }else{
+        // modo URL externa
+        data.url=url||null;
+        await sbPost('edificio_archivos',data);
+      }
     }
+
+    // Reset y refresh
     EDIF_ARCHIVO_FORM_ID=null;
     EDIF_PRESEL_OT_ID=null;
     EDIF_PRESEL_OT_LABEL='';
+    _EDIF_PENDING_FILE=null;
+    EDIF_DOC_MODO='file';
     renderEdifDocs();
   }catch(e){
     if(errEl)errEl.textContent='Error: '+e.message;
+    if(btn){btn.disabled=false;btn.textContent=EDIF_ARCHIVO_FORM_ID?'💾 Guardar cambios':'+ Agregar archivo';}
   }
 }
 
