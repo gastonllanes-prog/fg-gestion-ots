@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v240</title>
+<title>FG Gestión OTs v242</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -81,7 +81,7 @@ body.app-ready #main-content{display:flex}
 /* Tabla OTs */
 .ot-table-wrap{overflow-x:auto;border-radius:14px;border:1px solid var(--border);background:#fff;box-shadow:var(--card-shadow)}
 .ot-table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
-.ot-table th{padding:10px 14px;color:#94a3b8;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;background:#f8fafc;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+.ot-table th{padding:10px 14px;color:#94a3b8;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;background:#f8fafc;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;z-index:5}
 .ot-table th:hover{background:#f1f5f9;color:#64748b}
 .ot-table th .sort-icon{margin-left:4px;opacity:.4}
 .ot-table th.sorted .sort-icon{opacity:1}
@@ -173,7 +173,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V240</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V242</div>
   </div>
 </div>
 
@@ -183,7 +183,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v240</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v242</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -516,11 +516,22 @@ tr:hover td{background:rgba(37,99,235,.02)}
     </select>
     <select class="filter-select" id="ot-fil-cuad" onchange="buscarOTs()"><option value="">Todas las cuadrillas</option></select>
   </div>
+  <!-- v242: filtro por rango F. Fin (cualquiera de los 2 puede quedar vacío) -->
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap;font-size:13px;color:#64748b">
+    <span style="font-weight:600">📅 F. Fin:</span>
+    <span>desde</span>
+    <input type="date" id="ot-fil-ffin-desde" onchange="buscarOTs()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px"/>
+    <span>hasta</span>
+    <input type="date" id="ot-fil-ffin-hasta" onchange="buscarOTs()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px"/>
+    <button class="btn btn-sm" style="font-size:11px;padding:5px 10px" onclick="document.getElementById('ot-fil-ffin-desde').value='';document.getElementById('ot-fil-ffin-hasta').value='';buscarOTs()">✕ Limpiar fechas</button>
+    <button class="btn btn-sm" style="font-size:11px;padding:5px 10px;color:#2563eb;border-color:rgba(37,99,235,.3)" onclick="filtrarFFinHoy()">📌 Hoy</button>
+  </div>
   <!-- Barra de selección fija — aparece cuando hay checkboxes tildados -->
   <div id="ot-sel-bar" style="display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:12px;padding:.75rem 1.25rem;margin-bottom:1rem;color:#fff">
     <div style="font-weight:700;font-size:14px">📋 <span id="ot-sel-count">0 clientes seleccionados</span></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="limpiarSeleccion()">✕ Limpiar</button>
+      <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border-color:#7c3aed;font-size:13px;font-weight:700;padding:7px 18px" onclick="cambiarFechaFinMasivo()">📅 Cambiar fecha de finalización</button>
       <button class="btn btn-sm" style="background:#d97706;color:#fff;border-color:#d97706;font-size:13px;font-weight:700;padding:7px 18px" onclick="volverAPendienteMasivo()">↩ Volver a pendiente</button>
       <button class="btn btn-sm" style="background:#dc2626;color:#fff;border-color:#dc2626;font-size:13px;font-weight:700;padding:7px 18px" onclick="abrirDevolucionMasiva()">↩️ Devolver a Gigared</button>
       <button class="btn btn-sm" style="background:#16a34a;color:#fff;border-color:#16a34a;font-size:13px;font-weight:700;padding:7px 18px" onclick="asignarSeleccionados()">📍 Asignar seleccionados</button>
@@ -2193,6 +2204,8 @@ function buscarOTs(){
 async function renderOTs(){
   const el=document.getElementById('ot-lista');
   el.innerHTML='<div class="loading"><span class="spinner"></span>Cargando...</div>';
+  // v242: limpiar selección al cambiar filtros/refrescar (selecciones quedan obsoletas)
+  try{limpiarSeleccion();}catch(e){}
   try{
     const tipo=document.getElementById('ot-fil-tipo').value;
     const estFil=document.getElementById('ot-fil-estado').value;
@@ -2222,7 +2235,13 @@ async function renderOTs(){
       let f='';
       if(tipo) f+=`&tipo_tarea=eq.${tipo}`;
       else if(tipoItem) f+=`&tipo_item=eq.${tipoItem}`;
-      if(OT_FILTRO_FECHA) f+=`&fecha_fin=gte.${OT_FILTRO_FECHA}T00:00:00&fecha_fin=lte.${OT_FILTRO_FECHA}T23:59:59`;
+      // v242: filtro F.Fin con rango desde/hasta (cualquiera puede estar vacío)
+      const fDesde=document.getElementById('ot-fil-ffin-desde')?.value||'';
+      const fHasta=document.getElementById('ot-fil-ffin-hasta')?.value||'';
+      if(fDesde) f+=`&fecha_fin=gte.${fDesde}T00:00:00`;
+      if(fHasta) f+=`&fecha_fin=lte.${fHasta}T23:59:59`;
+      // Mantener compatibilidad con OT_FILTRO_FECHA (filtro legacy de fecha exacta)
+      if(OT_FILTRO_FECHA && !fDesde && !fHasta) f+=`&fecha_fin=gte.${OT_FILTRO_FECHA}T00:00:00&fecha_fin=lte.${OT_FILTRO_FECHA}T23:59:59`;
       if(estFil){const eObj=ESTADOS.find(e=>e.nombre===estFil);if(eObj)f+=`&estado_id=eq.${eObj.id}`;}
       else{const eElim=ESTADOS.find(e=>e.nombre==='ELIMINADA_SISTEMA');if(eElim)f+=`&estado_id=neq.${eElim.id}`;}
       if(grupoIdsFiltro) f+=`&grupo_id=in.(${grupoIdsFiltro.join(',')})`;
@@ -2329,8 +2348,11 @@ async function renderOTs(){
     const cliMap={};
     ots.forEach(o=>{
       const k=o.clientes?.codigo_gigared||('_'+o.id);
-      if(!cliMap[k]){cliMap[k]={cl:o.clientes||{},ots:[],primerFecha:o.fecha_impresion,primerAsig:o.fecha_asignacion_giga,primerCreado:o.created_at};}
+      if(!cliMap[k]){cliMap[k]={cl:o.clientes||{},ots:[],primerFecha:o.fecha_impresion,primerAsig:o.fecha_asignacion_giga,primerCreado:o.created_at,primerFin:null};}
       cliMap[k].ots.push(o);
+      // v242: trackear la fecha_fin más reciente del grupo (la más alta) para sort
+      const ff=(o.fecha_fin||o.hora_fin_tec||'').slice(0,10);
+      if(ff && (!cliMap[k].primerFin || ff>cliMap[k].primerFin)) cliMap[k].primerFin=ff;
     });
     // Ordenar OTs dentro de cada grupo por jerarquía (BASICA primero)
     Object.values(cliMap).forEach(entry=>{
@@ -2350,12 +2372,13 @@ async function renderOTs(){
       if(sortKey==='fecha_impresion') return entry.primerFecha||'';
       if(sortKey==='fecha_asignacion_giga') return entry.primerAsig||'';
       if(sortKey==='created_at') return entry.primerCreado||'';
+      if(sortKey==='fecha_fin') return entry.primerFin||''; // v242
       if(sortKey==='clientes.apellido') return (cl.apellido||'').toLowerCase();
       return '';
     };
 
     // Los sorts de cliente se hacen en memoria
-    const clienteSorts=['calle','calle_num','nodo'];
+    const clienteSorts=['calle','calle_num','nodo','fecha_fin']; // v242: agregado fecha_fin (también va a memoria)
     let grupos=Object.values(cliMap);
     if(clienteSorts.includes(OT_SORT)||clienteSorts.includes(OT_SORT2)){
       grupos.sort((a,b)=>{
@@ -2655,7 +2678,7 @@ async function verOT(numeroOT, otIdDirecto){
         ${ot.grupos_ot?.cuadrillas?`
           <div class="ot-info-item"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val">🔧 ${ot.grupos_ot.cuadrillas.nombre}</div></div>
           <div class="ot-info-item"><div class="ot-info-label">Fecha trabajo</div><div class="ot-info-val">${fmtF(ot.grupos_ot.fecha_trabajo)}</div></div>
-          <div class="ot-info-item"><div class="ot-info-label">Finalización</div><div class="ot-info-val">${fmtF(ot.fecha_fin?.slice(0,10))}${(esFinalizada&&ot.validado_admin_at)?` <button onclick="editarFechaFinOT(${ot.id},'${(ot.fecha_fin||'').slice(0,10)}','${(ot.numero_ot||'').replace(/'/g,'')}')" title="Editar fecha de finalización" style="background:none;border:none;cursor:pointer;font-size:13px;padding:1px 4px;margin-left:4px;color:#2563eb;border-radius:4px" onmouseover="this.style.background='rgba(37,99,235,.1)'" onmouseout="this.style.background='none'">✏️</button>`:''}</div></div>
+          <div class="ot-info-item"><div class="ot-info-label">Finalización</div><div class="ot-info-val">${fmtF(ot.fecha_fin?.slice(0,10))}${esFinalizada?` <button onclick="editarFechaFinOT(${ot.id},'${(ot.fecha_fin||'').slice(0,10)}','${(ot.numero_ot||'').replace(/'/g,'')}')" title="Editar fecha de finalización" style="background:none;border:none;cursor:pointer;font-size:13px;padding:1px 4px;margin-left:4px;color:#2563eb;border-radius:4px" onmouseover="this.style.background='rgba(37,99,235,.1)'" onmouseout="this.style.background='none'">✏️</button>`:''}</div></div>
         `:`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val" style="color:#94a3b8">Sin asignar</div></div>`}
       </div>
       ${(ot.lat_inicio_tec||ot.lat_fin_tec)?`
@@ -2942,10 +2965,8 @@ async function editarFechaFinOT(otId, fechaActual, numOT){
     alert('Solo se puede editar la fecha de OTs FINALIZADAS. Estado actual: '+(otBd.estados_ot?.nombre||'desconocido'));
     return;
   }
-  if(!otBd.validado_admin_at){
-    alert('Esta OT todavía no fue validada por un admin. Validala primero desde "Validación".');
-    return;
-  }
+  // v241: ya no se exige validado_admin_at — algunas OTs son cerradas directo por admin
+  // (wizard cierre admin) y nunca pasan por validación. Igual deben poder editarse.
 
   const fechaPrev=(otBd.fecha_fin||fechaActual||'').slice(0,10);
   const hoy=fechaHoyLocal();
@@ -2988,9 +3009,17 @@ async function editarFechaFinOT(otId, fechaActual, numOT){
       });
     }catch(eH){console.warn('[editarFechaFinOT] no se pudo registrar historial:',eH.message);}
     showToast('Fecha actualizada a '+fmtAR(nuevaTrim),'success');
-    // Refrescar el modal con los datos nuevos
-    cerrarModal('ot-modal');
-    setTimeout(()=>verOT(null,otId),200);
+    // v241: refresco contextual — solo reabrir el modal de OT si estaba abierto;
+    // refrescar la pantalla de cliente si está visible.
+    const otModalAbierto=!document.getElementById('ot-modal').classList.contains('hidden');
+    const cliDetVisible=document.getElementById('cli-det-view').style.display!=='none'&&CLI_DET_ID;
+    if(otModalAbierto){
+      cerrarModal('ot-modal');
+      setTimeout(()=>verOT(null,otId),200);
+    }
+    if(cliDetVisible){
+      try{abrirDetalleCli(CLI_DET_ID);}catch(e){console.warn('refresh cli:',e.message);}
+    }
     try{renderOTs();}catch(e){}
   }catch(e){
     alert('Error al actualizar la fecha: '+e.message);
@@ -5391,6 +5420,127 @@ async function volverAPendienteMasivo(){
   renderOTs();
   alert(`✅ ${ok} grupo(s) vueltos a PENDIENTE.`+(err?`\n⚠️ ${err} grupo(s) con error — revisá la consola.`:''));
 }
+// ─── v242: BULK CAMBIAR FECHA DE FINALIZACIÓN ────────────────────────────────
+// Helper rápido para filtrar por F.Fin = hoy desde la barra
+function filtrarFFinHoy(){
+  const hoy=fechaHoyLocal();
+  const dDesde=document.getElementById('ot-fil-ffin-desde');
+  const dHasta=document.getElementById('ot-fil-ffin-hasta');
+  if(dDesde) dDesde.value=hoy;
+  if(dHasta) dHasta.value=hoy;
+  // Defaultear estado a FINALIZADA para que sea más útil
+  const eSel=document.getElementById('ot-fil-estado');
+  if(eSel && !eSel.value) eSel.value='FINALIZADA';
+  buscarOTs();
+}
+
+// Cambia fecha_fin de TODAS las OTs FINALIZADAS de los grupos seleccionados.
+// Las OTs en otros estados se ignoran y se reportan al final.
+async function cambiarFechaFinMasivo(){
+  const sels=[...document.querySelectorAll('.ot-sel-cb:checked')];
+  if(!sels.length){alert('No hay grupos seleccionados.');return;}
+  const grupoIds=[...new Set(sels.map(c=>parseInt(c.dataset.grupo)).filter(Boolean))];
+  if(!grupoIds.length){alert('Los grupos seleccionados no son válidos.');return;}
+
+  // Traer TODAS las OTs de los grupos seleccionados con su estado
+  let todasOTs=[];
+  try{
+    todasOTs=await sbGet('ordenes_trabajo',
+      '?grupo_id=in.('+grupoIds.join(',')+')'+
+      '&select=id,numero_ot,fecha_fin,estado_id,estados_ot(nombre)'+
+      '&eliminado=eq.false'
+    )||[];
+  }catch(e){alert('No se pudieron cargar las OTs: '+e.message);return;}
+
+  if(!todasOTs.length){alert('No se encontraron OTs en los grupos seleccionados.');return;}
+
+  const finalizadas=todasOTs.filter(o=>o.estados_ot?.nombre==='FINALIZADA');
+  const omitidas=todasOTs.length-finalizadas.length;
+
+  if(!finalizadas.length){
+    alert('Ninguna de las OTs seleccionadas está FINALIZADA.\n\n'+
+          'Total: '+todasOTs.length+'\n'+
+          'Solo se puede cambiar fecha_fin de OTs FINALIZADAS.');
+    return;
+  }
+
+  // Pedir nueva fecha
+  const hoy=fechaHoyLocal();
+  // Default: si todas tienen la misma fecha, mostrarla; si no, hoy
+  const fechasUnicas=[...new Set(finalizadas.map(o=>(o.fecha_fin||'').slice(0,10)).filter(Boolean))];
+  const defaultFecha=fechasUnicas.length===1?fechasUnicas[0]:hoy;
+
+  const nueva=prompt(
+    '📅 Cambiar fecha de finalización masiva\n\n'+
+    'OTs FINALIZADAS a modificar: '+finalizadas.length+
+    (omitidas>0?'\nOTs omitidas (no FINALIZADAS): '+omitidas:'')+'\n\n'+
+    'Ingresá la nueva fecha (formato YYYY-MM-DD).\n'+
+    'No puede ser futura.',
+    defaultFecha
+  );
+  if(nueva===null) return;
+  const nuevaTrim=(nueva||'').trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(nuevaTrim)){
+    alert('⚠️ Formato inválido. Usá YYYY-MM-DD (ej: 2026-04-25).');
+    return;
+  }
+  if(nuevaTrim>hoy){
+    alert('⚠️ La fecha no puede ser futura.');
+    return;
+  }
+
+  const fmtAR=s=>{const p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
+
+  if(!confirm(
+    '¿Cambiar fecha de finalización?\n\n'+
+    '  Nueva fecha: '+fmtAR(nuevaTrim)+'\n'+
+    '  OTs a modificar: '+finalizadas.length+
+    (omitidas>0?'\n  OTs omitidas: '+omitidas+' (no FINALIZADAS)':'')+'\n\n'+
+    'Queda registro en el historial. ¿Confirmar?'
+  )) return;
+
+  // Ejecutar PATCHes con concurrencia limitada (4 en paralelo)
+  const CONCURRENCIA=4;
+  let okCount=0, errCount=0;
+  const errores=[];
+  const usuario=CU.nombre||CU.email||'?';
+
+  async function procesarOne(ot){
+    const fechaPrev=(ot.fecha_fin||'').slice(0,10);
+    if(fechaPrev===nuevaTrim) return; // sin cambios reales
+    try{
+      await sbPatch('ordenes_trabajo','?id=eq.'+ot.id,{fecha_fin:nuevaTrim});
+      try{
+        await sbPost('historial_estados_ot',{
+          ot_id:ot.id,
+          estado_anterior_id:ot.estado_id,
+          estado_nuevo_id:ot.estado_id,
+          usuario_id:CU.id,
+          observacion:'FECHA_FIN MODIFICADA (MASIVO): '+(fechaPrev||'(vacía)')+' → '+nuevaTrim+' (por '+usuario+')'
+        });
+      }catch(eH){console.warn('historial OT '+ot.id+':',eH.message);}
+      okCount++;
+    }catch(e){
+      errCount++;
+      errores.push('OT '+ot.numero_ot+': '+e.message);
+    }
+  }
+
+  // Procesar en lotes de CONCURRENCIA
+  for(let i=0;i<finalizadas.length;i+=CONCURRENCIA){
+    const lote=finalizadas.slice(i,i+CONCURRENCIA);
+    await Promise.all(lote.map(procesarOne));
+  }
+
+  limpiarSeleccion();
+  renderOTs();
+  alert(
+    '✅ '+okCount+' OT'+(okCount!==1?'s':'')+' actualizada'+(okCount!==1?'s':'')+' a '+fmtAR(nuevaTrim)+'.'+
+    (omitidas>0?'\n⚠️ '+omitidas+' OT'+(omitidas!==1?'s':'')+' omitida'+(omitidas!==1?'s':'')+' (no FINALIZADAS).':'')+
+    (errCount>0?'\n❌ '+errCount+' error'+(errCount!==1?'es':'')+':\n'+errores.slice(0,3).join('\n'):'')
+  );
+}
+
 async function asignarSeleccionados(){
   const sels=[...document.querySelectorAll('.ot-sel-cb:checked')];
   if(!sels.length)return;
@@ -8888,7 +9038,7 @@ async function abrirDetalleCli(cliId){
   try{
     const [cArr,ots]=await Promise.all([
       sbGet('clientes',`?id=eq.${cliId}&eliminado=eq.false`),
-      sbGet('ordenes_trabajo',`?cliente_id=eq.${cliId}&select=id,numero_ot,tipo_tarea,tipo_item,tag,fecha_emision,fecha_impresion,hora_inicio_tec,hora_fin_tec,lat_inicio_tec,lng_inicio_tec,lat_fin_tec,lng_fin_tec,estados_ot(nombre),grupos_ot(cuadrillas(nombre))&order=fecha_impresion.desc.nullslast&limit=200&eliminado=eq.false`)
+      sbGet('ordenes_trabajo',`?cliente_id=eq.${cliId}&select=id,numero_ot,tipo_tarea,tipo_item,tag,fecha_emision,fecha_impresion,fecha_fin,hora_inicio_tec,hora_fin_tec,lat_inicio_tec,lng_inicio_tec,lat_fin_tec,lng_fin_tec,estados_ot(nombre),grupos_ot(cuadrillas(nombre))&order=fecha_impresion.desc.nullslast&limit=200&eliminado=eq.false`)
     ]);
     const c=(cArr||[])[0];if(!c)return;
     const otsArr=ots||[];
@@ -8971,6 +9121,12 @@ function cliDetTab(filtro,el){
   cont.innerHTML=lista.map(o=>{
     const est=o.estados_ot?.nombre||'';
     const cuad=o.grupos_ot?.cuadrillas?.nombre;
+    // v241: mostrar fecha_fin con botón editar si está FINALIZADA
+    const esFin=est==='FINALIZADA';
+    const fechaFinShort=esFin&&o.fecha_fin?fmtF(o.fecha_fin.slice(0,10)):null;
+    const btnFechaFin=esFin?
+      `<span style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:#16a34a;font-weight:600">📅 ${fechaFinShort||'sin fecha'} <button onclick="event.stopPropagation();editarFechaFinOT(${o.id},'${(o.fecha_fin||'').slice(0,10)}','${(o.numero_ot||'').replace(/'/g,'')}')" title="Editar fecha de finalización" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;color:#2563eb;border-radius:3px" onmouseover="this.style.background='rgba(37,99,235,.1)'" onmouseout="this.style.background='none'">✏️</button></span>`
+      :'';
     return `<div class="ot-card" onclick="verOT('${o.numero_ot}')">
       <div class="ot-card-num" style="color:${o.tipo_tarea==='REPARACION'?'#ea580c':'#2563eb'}">${numOT(o.numero_ot)}</div>
       <div class="ot-card-body">
@@ -8978,6 +9134,7 @@ function cliDetTab(filtro,el){
           ${badgeItem(o.tipo_item,o.tipo_tarea)}
           ${badgeE(est)}
           ${cuad?`<span style="font-size:11px;color:#64748b">🔧 ${cuad}</span>`:''}
+          ${btnFechaFin}
         </div>
         <div style="font-size:11px;color:#94a3b8;margin-top:3px">${o.tag?'Precinto: '+o.tag+' · ':''}${fmtF(o.fecha_emision)}</div>
       </div>
