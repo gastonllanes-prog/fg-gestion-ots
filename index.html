@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v238</title>
+<title>FG Gestión OTs v239</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -173,7 +173,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V238</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V239</div>
   </div>
 </div>
 
@@ -183,7 +183,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v238</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v239</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -6402,6 +6402,19 @@ function renderWizPaso(){
         <div style="font-size:12px;color:#64748b;margin-top:2px">Seleccioná sin escribir — hacé clic en el serial correcto</div>
       </div>
 
+      <!-- v239: Fecha de finalización editable -->
+      <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:11px;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">📅 Fecha de finalización</div>
+          <div style="font-size:11px;color:#78350f">Si las OTs se hicieron otro día, cambialo. Default: hoy.</div>
+        </div>
+        <input type="date" id="wiz-fecha-fin"
+          value="${WIZ.fechaFin||fechaHoyLocal()}"
+          max="${fechaHoyLocal()}"
+          onchange="WIZ.fechaFin=this.value"
+          style="padding:8px 12px;border:1px solid #fdba74;border-radius:8px;background:#fff;font-size:14px;font-weight:600;color:#1e3a5f;min-width:160px"/>
+      </div>
+
       ${!hayAlgo?`<div style="background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center;color:#64748b">
         Sin seriales pendientes de asignación.
       </div>`:''}
@@ -7136,7 +7149,28 @@ async function confirmarWizardCierre(){
   // P8: Confirmar antes de cerrar
   const otsCerrar=WIZ.pasos.filter(p=>p.accion==='CERRAR'&&p.ot).length;
   const otsDevueltas=WIZ.pasos.filter(p=>p.accion==='DEVUELTA'&&p.ot).length;
+
+  // v239: capturar fecha de finalización elegida
+  // - Si hay input visible (paso final), tomar su valor
+  // - Si no, usar el de WIZ.fechaFin (cambiado vía onchange) o fechaHoyLocal() como fallback
+  const inpFecha=document.getElementById('wiz-fecha-fin');
+  let fechaFinElegida=(inpFecha&&inpFecha.value)||WIZ.fechaFin||fechaHoyLocal();
+  // Defensa: no permitir fecha futura
+  const hoy=fechaHoyLocal();
+  if(fechaFinElegida>hoy){
+    document.getElementById('wiz-err').textContent='⚠️ La fecha de finalización no puede ser futura. Corregila en el paso final.';
+    return;
+  }
+  // Defensa: formato esperado YYYY-MM-DD
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fechaFinElegida)){
+    fechaFinElegida=fechaHoyLocal();
+  }
+  WIZ.fechaFin=fechaFinElegida;
+
   let msg='¿Confirmar el cierre de '+otsCerrar+' OT'+(otsCerrar!==1?'s':'')+' de '+WIZ.cuadNombre+'?';
+  if(fechaFinElegida!==hoy){
+    msg+='\n\n📅 Fecha de finalización: '+fechaFinElegida+' (no es hoy)';
+  }
   if(otsDevueltas) msg+='\n'+otsDevueltas+' OT'+(otsDevueltas!==1?'s':'')+' serán devueltas a Gigared.';
   msg+='\n\nEsta acción no se puede deshacer fácilmente.';
   if(!confirm(msg)) return;
@@ -7256,9 +7290,9 @@ async function confirmarWizardCierre(){
         histLines.push(`[${ts}] OT ${numOT(p.ot.numero_ot)} DEVUELTA A GIGARED. Motivo: ${p.obs}`);
       }
 
-      // Cambiar estado de la OT
+      // Cambiar estado de la OT — v239: usar fecha elegida (default = hoy)
       const otAntes=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=estado_id&eliminado=eq.false`).then(d=>d?.[0]);
-      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eNuevo?.id,fecha_fin:fechaHoyLocal(),observaciones:p.obs||null});
+      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{estado_id:eNuevo?.id,fecha_fin:fechaFinElegida,observaciones:p.obs||null});
       try{await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:otAntes?.estado_id,estado_nuevo_id:eNuevo?.id,usuario_id:CU.id,observacion:p.obs||null});}catch(e){}
     }
 
