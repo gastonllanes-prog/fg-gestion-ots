@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v243</title>
+<title>FG Gestión OTs v244</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -78,8 +78,11 @@ body.app-ready #main-content{display:flex}
 .tipo-stat .ts-lbl{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
 @media(max-width:900px){.tipo-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:600px){.tipo-grid{grid-template-columns:1fr 1fr}}
-/* Tabla OTs */
-.ot-table-wrap{overflow:auto;max-height:calc(100vh - 240px);border-radius:14px;border:1px solid var(--border);background:#fff;box-shadow:var(--card-shadow)}
+/* Tabla OTs — v244: scroll natural del body para evitar lag.
+   En desktop el wrap no tiene overflow, así el sticky del thead se ancla al body.
+   En móvil sí hay overflow-x para no romper layout (y el sticky vertical se sacrifica). */
+.ot-table-wrap{border-radius:14px;border:1px solid var(--border);background:#fff;box-shadow:var(--card-shadow);overflow-x:auto}
+@media(min-width:1100px){.ot-table-wrap{overflow:visible}}
 .ot-table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
 .ot-table thead th{position:sticky;top:0;z-index:5;background:#f8fafc}
 .ot-table th{padding:10px 14px;color:#94a3b8;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;background:#f8fafc;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
@@ -174,7 +177,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V243</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V244</div>
   </div>
 </div>
 
@@ -184,7 +187,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v243</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v244</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -504,7 +507,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
     </div>
   </div>
   <div class="search-bar">
-    <input class="search-input" id="ot-search" placeholder="Buscar número, cliente, nodo, teléfono..." oninput="buscarOTs()"/>
+    <input class="search-input" id="ot-search" placeholder="Buscar OT, cliente, código, dirección, barrio, nodo, teléfono, precinto..." oninput="buscarOTs()"/>
     <select class="filter-select" id="ot-fil-estado" onchange="buscarOTs()"><option value="">Todos los estados</option></select>
     <input type="hidden" id="ot-fil-item" value="">
     <select class="filter-select" id="ot-fil-tipo" onchange="document.getElementById('ot-fil-item').value='';buscarOTs()">
@@ -2280,56 +2283,50 @@ async function renderOTs(){
 
     let ots=[];
     if(q){
-      // Búsqueda server-side: 1) por numero_ot  2) por clientes que matcheen
+      // v244: búsqueda universal — busca en TODOS los campos relevantes
+      // OT: numero_ot, tag (precinto)
+      // Cliente: codigo_gigared, telefono1, telefono2, apellido, nombre, nodo, calle, domicilio, barrio, localidad
       const qNum=q.replace(/^0+/,'');
       const esNumero=/^\d+$/.test(qNum);
+      const qe=encodeURIComponent(q);
       const promesas=[];
 
-      // Siempre buscar por numero_ot (ilike)
+      // 1. Número OT (siempre)
       promesas.push(sbGet('ordenes_trabajo',`?${SELECT_OTS}&numero_ot=ilike.*${q}*&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`));
 
+      // 2. Precinto/tag de la OT (siempre)
+      promesas.push(sbGet('ordenes_trabajo',`?${SELECT_OTS}&tag=ilike.*${qe}*&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`));
+
+      // 3. Buscar clientes en múltiples campos en paralelo y agrupar IDs
+      // Solo numéricos: codigo_gigared, telefono1, telefono2 (son numéricos)
+      // Texto: apellido, nombre, nodo, calle, domicilio, barrio, localidad
+      const cliQueries=[];
       if(esNumero){
-        // Buscar clientes por código gigared (contiene el número buscado)
-        promesas.push(
-          sbGet('clientes',`?codigo_gigared=ilike.*${qNum}*&select=id&limit=100&eliminado=eq.false`)
-            .then(clis=>{
-              if(!clis?.length)return[];
-              const ids=clis.map(c=>c.id).join(',');
-              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`);
-            })
-        );
-        // Buscar por telefono
-        promesas.push(
-          sbGet('clientes',`?telefono1=ilike.*${qNum}*&select=id&limit=100&eliminado=eq.false`)
-            .then(clis=>{
-              if(!clis?.length)return[];
-              const ids=clis.map(c=>c.id).join(',');
-              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`);
-            })
-        );
+        cliQueries.push(sbGet('clientes',`?codigo_gigared=ilike.*${qNum}*&select=id&limit=100&eliminado=eq.false`));
+        cliQueries.push(sbGet('clientes',`?telefono1=ilike.*${qNum}*&select=id&limit=100&eliminado=eq.false`));
+        cliQueries.push(sbGet('clientes',`?telefono2=ilike.*${qNum}*&select=id&limit=100&eliminado=eq.false`));
+        // Domicilio puede tener números — también buscarlo
+        cliQueries.push(sbGet('clientes',`?numero_domicilio=ilike.*${qNum}*&select=id&limit=100&eliminado=eq.false`));
       } else {
-        // Buscar clientes por apellido o nombre
-        promesas.push(
-          Promise.all([
-            sbGet('clientes',`?apellido=ilike.*${encodeURIComponent(q)}*&select=id&limit=100&eliminado=eq.false`),
-            sbGet('clientes',`?nombre=ilike.*${encodeURIComponent(q)}*&select=id&limit=100&eliminado=eq.false`)
-          ]).then(([a,b])=>{
-            const ids=[...(a||[]),...(b||[])].map(c=>c.id);
-            const uniq=[...new Set(ids)];
-            if(!uniq.length)return[];
-            return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${uniq.join(',')})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`);
-          })
-        );
-        // Buscar por nodo
-        promesas.push(
-          sbGet('clientes',`?nodo=ilike.*${encodeURIComponent(q)}*&select=id&limit=100&eliminado=eq.false`)
-            .then(clis=>{
-              if(!clis?.length)return[];
-              const ids=clis.map(c=>c.id).join(',');
-              return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${ids})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`);
-            })
-        );
+        cliQueries.push(sbGet('clientes',`?apellido=ilike.*${qe}*&select=id&limit=100&eliminado=eq.false`));
+        cliQueries.push(sbGet('clientes',`?nombre=ilike.*${qe}*&select=id&limit=100&eliminado=eq.false`));
+        cliQueries.push(sbGet('clientes',`?nodo=ilike.*${qe}*&select=id&limit=100&eliminado=eq.false`));
+        cliQueries.push(sbGet('clientes',`?calle=ilike.*${qe}*&select=id&limit=100&eliminado=eq.false`));
+        cliQueries.push(sbGet('clientes',`?domicilio=ilike.*${qe}*&select=id&limit=100&eliminado=eq.false`));
+        cliQueries.push(sbGet('clientes',`?barrio=ilike.*${qe}*&select=id&limit=100&eliminado=eq.false`));
+        cliQueries.push(sbGet('clientes',`?localidad=ilike.*${qe}*&select=id&limit=100&eliminado=eq.false`));
       }
+
+      promesas.push(
+        Promise.all(cliQueries).then(arrs=>{
+          const ids=arrs.flat().map(c=>c?.id).filter(Boolean);
+          const uniq=[...new Set(ids)];
+          if(!uniq.length)return[];
+          // Limitar a primeros 500 IDs para no romper la URL de PostgREST
+          const idsLimitados=uniq.slice(0,500);
+          return sbGet('ordenes_trabajo',`?${SELECT_OTS}&cliente_id=in.(${idsLimitados.join(',')})&order=${orderCol}.${OT_SORT_DIR}.nullslast&limit=200${extraFiltros}&eliminado=eq.false`);
+        })
+      );
 
       const resultados=await Promise.all(promesas);
       const seen=new Set();
