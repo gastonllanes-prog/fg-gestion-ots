@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v229</title>
+<title>FG Gestión OTs v230</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V229</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V230</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v229</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v230</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -723,6 +723,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div class="ntab active" onclick="edifTab('info',this)">📋 Info</div>
       <div class="ntab" onclick="edifTab('jornadas',this)">⏱️ Jornadas</div>
       <div class="ntab" onclick="edifTab('tareas',this)">✅ Tareas internas</div>
+      <div class="ntab" onclick="edifTab('docs',this)">📎 Documentación</div>
     </div>
     <div id="edif-det-cont"></div>
   </div>
@@ -7279,6 +7280,7 @@ function edifTab(tab,el){
   if(tab==='info')renderEdifInfo();
   else if(tab==='jornadas')renderEdifJornadas();
   else if(tab==='tareas')renderEdifTareas();
+  else if(tab==='docs')renderEdifDocs();
 }
 
 function renderEdifInfo(){
@@ -7499,6 +7501,175 @@ async function eliminarTareaInterna(id){
   try{
     await sbFetch('edificio_tareas','DELETE',null,'?id=eq.'+id);
     renderEdifTareas();
+  }catch(e){
+    alert('Error: '+e.message);
+  }
+}
+
+// ── DOCUMENTACIÓN (v230) ────────────────────────────────────────────────────
+// CRUD de archivos del edificio (URL externa, sin upload físico).
+// El upload directo a Supabase Storage queda diferido a v240.
+var EDIF_ARCHIVO_FORM_ID=null; // null=nuevo, id=editar
+
+// Helper: ícono por tipo
+function iconoTipoArchivo(t){
+  return ({
+    PLANO:'📐',FOTO_REFERENCIA:'📷',PROCEDIMIENTO:'📋',
+    CAPTURA:'🖼️',CONTACTO:'📞',OBS_PREVIA:'📝',OTRO:'📎'
+  })[t]||'📎';
+}
+
+function labelTipoArchivo(t){
+  return ({
+    PLANO:'Plano',FOTO_REFERENCIA:'Foto de referencia',PROCEDIMIENTO:'Procedimiento',
+    CAPTURA:'Captura',CONTACTO:'Contacto',OBS_PREVIA:'Obs. previa',OTRO:'Otro'
+  })[t]||t;
+}
+
+async function renderEdifDocs(){
+  if(!EDIF_DETALLE)return;
+  var cont=document.getElementById('edif-det-cont');
+  cont.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    var docs=await sbGet('edificio_archivos',
+      '?edificio_id=eq.'+EDIF_DETALLE.id
+      +'&eliminado=eq.false'
+      +'&select=id,tipo_archivo,nombre,descripcion,url,storage_path,created_at,created_by,usuarios:created_by(nombre,email)'
+      +'&order=created_at.desc'
+    )||[];
+
+    // Form de alta/edición (siempre visible arriba)
+    var titForm=EDIF_ARCHIVO_FORM_ID?'Editar archivo':'+ Agregar archivo';
+    var formHTML='<div class="card" style="margin-bottom:1rem;background:#eff6ff;border:1.5px dashed #93c5fd">'
+      +'<div class="card-title" style="color:#2563eb">'+titForm+'</div>'
+      +'<div class="form-2col">'
+      +'  <div class="fg"><label>Tipo *</label>'
+      +'    <select id="ea-tipo">'
+      +'      <option value="PLANO">📐 Plano</option>'
+      +'      <option value="FOTO_REFERENCIA">📷 Foto de referencia</option>'
+      +'      <option value="PROCEDIMIENTO">📋 Procedimiento</option>'
+      +'      <option value="CAPTURA">🖼️ Captura</option>'
+      +'      <option value="CONTACTO">📞 Contacto</option>'
+      +'      <option value="OBS_PREVIA">📝 Observación previa</option>'
+      +'      <option value="OTRO">📎 Otro</option>'
+      +'    </select>'
+      +'  </div>'
+      +'  <div class="fg"><label>Nombre *</label><input id="ea-nombre" placeholder="Ej: Plano piso 4"/></div>'
+      +'  <div class="fg" style="grid-column:1/-1"><label>URL (link a Drive, imgur, etc.)</label><input id="ea-url" placeholder="https://drive.google.com/..."/></div>'
+      +'  <div class="fg" style="grid-column:1/-1"><label>Descripción / observaciones</label><textarea id="ea-desc" rows="2" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical"></textarea></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:.75rem">'
+      +(EDIF_ARCHIVO_FORM_ID?'<button class="btn" onclick="cancelarFormArchivo()">Cancelar</button>':'')
+      +'<button class="btn btn-primary" onclick="guardarArchivoEdificio()" style="flex:1">'+(EDIF_ARCHIVO_FORM_ID?'💾 Guardar cambios':'+ Agregar archivo')+'</button>'
+      +'</div>'
+      +'<p class="err-msg" id="ea-err" style="margin-top:.5rem"></p>'
+      +'</div>';
+
+    var listaHTML='';
+    if(!docs.length){
+      listaHTML='<div class="empty-state"><div class="empty-state-icon">📎</div><div>Sin documentación cargada todavía.</div><div style="font-size:12px;color:#94a3b8;margin-top:8px">Agregá planos, procedimientos, fotos de referencia o contactos del encargado.<br>La cuadrilla los va a ver en la PWA cuando se le asigne el edificio.</div></div>';
+    }else{
+      // Agrupar por tipo (todos los tipos que tengan al menos un archivo)
+      var porTipo={};
+      docs.forEach(function(d){if(!porTipo[d.tipo_archivo])porTipo[d.tipo_archivo]=[];porTipo[d.tipo_archivo].push(d);});
+      var ordenTipos=['PLANO','PROCEDIMIENTO','FOTO_REFERENCIA','CAPTURA','CONTACTO','OBS_PREVIA','OTRO'];
+      listaHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.5rem">'+docs.length+' archivo'+(docs.length!==1?'s':'')+' cargado'+(docs.length!==1?'s':'')+'</div>';
+      ordenTipos.forEach(function(t){
+        if(!porTipo[t])return;
+        listaHTML+='<div style="margin-bottom:1rem"><div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+iconoTipoArchivo(t)+' '+labelTipoArchivo(t)+' ('+porTipo[t].length+')</div>';
+        porTipo[t].forEach(function(d){
+          var hasUrl=d.url&&d.url.trim();
+          var fechaStr=d.created_at?fmtFechaCorta(d.created_at):'';
+          var autor=d.usuarios?.nombre||d.usuarios?.email||'—';
+          listaHTML+='<div class="card" style="margin-bottom:6px;display:flex;gap:12px;align-items:flex-start;padding:12px">'
+            +'<div style="flex:1;min-width:0">'
+            +'<div style="font-size:14px;font-weight:600;color:#1e3a5f;word-break:break-word">'+d.nombre+'</div>'
+            +(d.descripcion?'<div style="font-size:12px;color:#64748b;margin-top:4px;white-space:pre-wrap">'+d.descripcion+'</div>':'')
+            +(hasUrl?'<div style="margin-top:6px"><a href="'+d.url+'" target="_blank" rel="noopener" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600;word-break:break-all">🔗 '+d.url+'</a></div>':'<div style="margin-top:6px;font-size:11px;color:#94a3b8;font-style:italic">Sin URL</div>')
+            +'<div style="margin-top:6px;font-size:11px;color:#94a3b8">'+fechaStr+(autor!=='—'?' · '+autor:'')+'</div>'
+            +'</div>'
+            +'<div style="display:flex;flex-direction:column;gap:4px">'
+            +(hasUrl?'<a href="'+d.url+'" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:11px;text-decoration:none;text-align:center;color:#2563eb;border-color:rgba(37,99,235,.3)">↗ Abrir</a>':'')
+            +'<button class="btn btn-sm" onclick="abrirEditarArchivo('+d.id+')" style="font-size:11px">✏️</button>'
+            +'<button class="btn btn-sm" onclick="eliminarArchivoEdificio('+d.id+')" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)">🗑️</button>'
+            +'</div>'
+          +'</div>';
+        });
+        listaHTML+='</div>';
+      });
+    }
+
+    cont.innerHTML=formHTML+listaHTML;
+
+    // Si estamos editando, precargar valores
+    if(EDIF_ARCHIVO_FORM_ID){
+      var doc=docs.find(function(x){return x.id===EDIF_ARCHIVO_FORM_ID;});
+      if(doc){
+        document.getElementById('ea-tipo').value=doc.tipo_archivo||'OTRO';
+        document.getElementById('ea-nombre').value=doc.nombre||'';
+        document.getElementById('ea-url').value=doc.url||'';
+        document.getElementById('ea-desc').value=doc.descripcion||'';
+      }
+    }
+  }catch(e){
+    cont.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';
+  }
+}
+
+function cancelarFormArchivo(){
+  EDIF_ARCHIVO_FORM_ID=null;
+  renderEdifDocs();
+}
+
+function abrirEditarArchivo(id){
+  EDIF_ARCHIVO_FORM_ID=id;
+  renderEdifDocs();
+}
+
+async function guardarArchivoEdificio(){
+  if(!EDIF_DETALLE)return;
+  var errEl=document.getElementById('ea-err');
+  if(errEl)errEl.textContent='';
+  var nombre=document.getElementById('ea-nombre').value.trim();
+  var tipo=document.getElementById('ea-tipo').value;
+  var url=document.getElementById('ea-url').value.trim();
+  var desc=document.getElementById('ea-desc').value.trim();
+
+  // Validaciones frontend
+  var probs=[];
+  if(!nombre)probs.push('• El nombre es obligatorio');
+  if(!tipo)probs.push('• El tipo es obligatorio');
+  // URL opcional, pero si viene debe parecer URL
+  if(url&&!/^https?:\/\//i.test(url))probs.push('• La URL debe empezar con http:// o https://');
+  if(probs.length){if(errEl)errEl.textContent='⛔ Corregir:\n'+probs.join('\n');return;}
+
+  var data={
+    tipo_archivo:tipo,
+    nombre:nombre,
+    descripcion:desc||null,
+    url:url||null
+  };
+  try{
+    if(EDIF_ARCHIVO_FORM_ID){
+      await sbPatch('edificio_archivos','?id=eq.'+EDIF_ARCHIVO_FORM_ID,data);
+    }else{
+      data.edificio_id=EDIF_DETALLE.id;
+      data.created_by=CU.id||null;
+      await sbPost('edificio_archivos',data);
+    }
+    EDIF_ARCHIVO_FORM_ID=null;
+    renderEdifDocs();
+  }catch(e){
+    if(errEl)errEl.textContent='Error: '+e.message;
+  }
+}
+
+async function eliminarArchivoEdificio(id){
+  if(!confirm('¿Eliminar este archivo? Quedará marcado como eliminado pero el registro se conserva.'))return;
+  try{
+    // Soft-delete (consistente con el resto del módulo)
+    await sbPatch('edificio_archivos','?id=eq.'+id,{eliminado:true});
+    renderEdifDocs();
   }catch(e){
     alert('Error: '+e.message);
   }
