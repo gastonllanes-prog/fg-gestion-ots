@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v237</title>
+<title>FG Gestión OTs v238</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -173,7 +173,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V237</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V238</div>
   </div>
 </div>
 
@@ -183,7 +183,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v237</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v238</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -3776,8 +3776,13 @@ function manualPasarPaso2(){
   if(!MANUAL)return;
   var c=MANUAL.cliente;
   var errEl=document.getElementById('m2-err');
-  if(!c.codigo_gigared&&!c.apellido){
-    errEl.textContent='⚠️ Cargá al menos código de cliente o apellido.';return;
+  // v238 fix: validar codigo_gigared. Es NOT NULL en BD.
+  // Si es cliente nuevo (no se encontró en buscar), exigir el código.
+  if(!c.codigo_gigared||!c.codigo_gigared.trim()){
+    errEl.textContent='⚠️ El código Gigared es obligatorio. Cargálo y, si el cliente ya existe, presioná Buscar.';return;
+  }
+  if(!MANUAL.clienteId&&!c.apellido){
+    errEl.textContent='⚠️ Cliente nuevo: cargá al menos el apellido.';return;
   }
   // Si no hay OTs todavía, agregar una vacía
   if(!MANUAL.ots.length)manualAddOT();
@@ -3909,8 +3914,29 @@ async function manualGuardarTodo(){
   var okEl=document.getElementById('m2-ok');
   errEl.textContent='';okEl.textContent='';
 
+  // v238: mapeo tipo_item → tipo_tarea según constraints reales de BD
+  // tipo_item válidos (constraint): BASICA, CABLEMODEM, ONU, DECODIFICADOR, DECODIFICADOR_ADJ,
+  //   BOCA_ADICIONAL, DESCONEXION, REPARACION, TV_BOX, SMART_CARD, CAMBIO_TECNOLOGIA, AGREGA_TV,
+  //   REUBICACION, RECONEXION, RECONEXION_EQUIPO, CM_EXISTENTE, GIGACAM
+  // tipo_tarea válidos (constraint): INSTALAR, DESCONECTAR, SERVICE, CAMBIO_DOMICILIO, REPARACION
+  // Caso especial: CAMBIO_DOMICILIO no es tipo_item válido → se guarda como tipo_item='BASICA'
+  var TIPO_ITEM_A_TAREA={
+    'BASICA':'INSTALAR','CABLEMODEM':'INSTALAR','ONU':'INSTALAR',
+    'CM_EXISTENTE':'INSTALAR','DECODIFICADOR':'INSTALAR','DECODIFICADOR_ADJ':'INSTALAR',
+    'SMART_CARD':'INSTALAR','TV_BOX':'INSTALAR','BOCA_ADICIONAL':'INSTALAR',
+    'AGREGA_TV':'INSTALAR','GIGACAM':'INSTALAR','CAMBIO_TECNOLOGIA':'INSTALAR',
+    'REUBICACION':'INSTALAR','RECONEXION':'INSTALAR','RECONEXION_EQUIPO':'INSTALAR',
+    'DESCONEXION':'DESCONECTAR',
+    'REPARACION':'REPARACION',
+    'CAMBIO_DOMICILIO':'CAMBIO_DOMICILIO'
+  };
+
   // ── 1. Validación de inputs ───────────────────────────────────────────────
   if(!MANUAL.ots.length){errEl.textContent='⚠️ Agregá al menos una OT.';return;}
+  // v238 defensivo: validar codigo_gigared (NOT NULL en BD) para clientes nuevos
+  if(!MANUAL.clienteId&&(!MANUAL.cliente.codigo_gigared||!MANUAL.cliente.codigo_gigared.trim())){
+    errEl.textContent='⚠️ Volvé al paso 1: el código Gigared es obligatorio para clientes nuevos.';return;
+  }
   var probs=[];
   var nrosWizard={};
   MANUAL.ots.forEach(function(ot,i){
@@ -3919,6 +3945,7 @@ async function manualGuardarTodo(){
     else if(nrosWizard[ot.numero_ot]){probs.push(lbl+': número repetido en este wizard ('+ot.numero_ot+')');}
     else{nrosWizard[ot.numero_ot]=true;}
     if(!ot.tipo_item){probs.push(lbl+': falta seleccionar tipo');}
+    else if(!TIPO_ITEM_A_TAREA[ot.tipo_item]){probs.push(lbl+': tipo "'+ot.tipo_item+'" no es válido');}
   });
   if(probs.length){errEl.textContent='⛔ Corregí los errores:\n• '+probs.join('\n• ');return;}
 
@@ -4006,11 +4033,20 @@ async function manualGuardarTodo(){
     var creadas=0,errores=[];
     for(var oi=0;oi<MANUAL.ots.length;oi++){
       var ot=MANUAL.ots[oi];
+      // v238: mapeo correcto según constraints de BD
+      var tipoItemBD=ot.tipo_item;
+      var tipoTareaBD=TIPO_ITEM_A_TAREA[ot.tipo_item]||'INSTALAR';
+      // Caso especial: CAMBIO_DOMICILIO no es tipo_item válido en BD
+      // Se guarda como tipo_item='BASICA' + tipo_tarea='CAMBIO_DOMICILIO' (patrón histórico confirmado)
+      if(ot.tipo_item==='CAMBIO_DOMICILIO'){
+        tipoItemBD='BASICA';
+        tipoTareaBD='CAMBIO_DOMICILIO';
+      }
       var otData={
         numero_ot:ot.numero_ot,
         grupo_id:gId,cliente_id:cliId,
-        tipo_item:ot.tipo_item,
-        tipo_tarea:ot.tipo_item, // mismo valor por compatibilidad con código existente
+        tipo_item:tipoItemBD,
+        tipo_tarea:tipoTareaBD,
         estado_id:ePend?.id,
         fecha_emision:ot.fecha_emision||null,
         obs_gigared:ot.obs_gigared||null,
