@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v230</title>
+<title>FG Gestión OTs v231</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V230</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V231</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v230</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v231</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -724,6 +724,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <div class="ntab" onclick="edifTab('jornadas',this)">⏱️ Jornadas</div>
       <div class="ntab" onclick="edifTab('tareas',this)">✅ Tareas internas</div>
       <div class="ntab" onclick="edifTab('docs',this)">📎 Documentación</div>
+      <div class="ntab" onclick="edifTab('ots',this)">📋 OTs vinculadas</div>
     </div>
     <div id="edif-det-cont"></div>
   </div>
@@ -2197,7 +2198,7 @@ async function renderOTs(){
     const sortMap={'fecha_impresion':'fecha_impresion','fecha_asignacion_giga':'fecha_asignacion_giga','fecha_fin':'fecha_fin','created_at':'created_at','clientes.apellido':'clientes(apellido)','numero_ot':'numero_ot'};
     const orderCol=sortMap[OT_SORT]||'fecha_impresion';
     // El orden secundario y los campos cliente (calle, nodo) se ordenan en memoria
-    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,fecha_fin,hora_fin_tec,created_at,estado_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1,telefono2)`;
+    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,fecha_fin,hora_fin_tec,created_at,estado_id,edificio_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1,telefono2),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
     const cuadFil=document.getElementById('ot-fil-cuad')?.value||'';
 
@@ -2408,6 +2409,16 @@ async function renderOTs(){
             <div>${tipos}</div>
             <div style="margin-top:3px">${badges}</div>
             ${cuadNombre?`<div style="font-size:10px;color:#2563eb;margin-top:2px">🔧 ${cuadNombre}</div>`:''}
+            ${(()=>{
+              const oCEd=cOts.find(o=>o.edificios);
+              if(!oCEd)return'';
+              const ed=oCEd.edificios;
+              const cab=ed.estado_cableado;
+              const colorBg=cab==='BLOQUEADO'||cab==='NO_AUTORIZADO'?'#fee2e2':cab==='NO_CABLEADO'?'#fef3c7':cab==='CABLEADO'?'#dcfce7':'#dbeafe';
+              const colorTxt=cab==='BLOQUEADO'||cab==='NO_AUTORIZADO'?'#991b1b':cab==='NO_CABLEADO'?'#92400e':cab==='CABLEADO'?'#166534':'#1e40af';
+              const ico=cab==='BLOQUEADO'||cab==='NO_AUTORIZADO'?'⛔':'🏢';
+              return `<div style="font-size:10px;margin-top:2px"><span style="background:${colorBg};color:${colorTxt};font-weight:700;padding:1px 6px;border-radius:5px">${ico} Edif: ${(ed.nombre||'').slice(0,28)}</span></div>`;
+            })()}
             ${fechaCoord?`<div style="font-size:10px;color:#0891b2;margin-top:2px">📅 ${new Date(fechaCoord+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}${cOts.find(o=>o.hora_coordinada)?.hora_coordinada?' '+cOts.find(o=>o.hora_coordinada).hora_coordinada:''}</div>`:''}
             ${cOts.length>1?`<div style="font-size:10px;color:#94a3b8;margin-top:2px">${cOts.length} OTs · ${cOts.map(o=>`<span style="cursor:pointer;color:#2563eb" onclick="event.stopPropagation();verOT('${o.numero_ot}')">${numOT(o.numero_ot)}</span>`).join(', ')}</div>`:''}
 
@@ -2481,10 +2492,10 @@ async function verOT(numeroOT, otIdDirecto){
   try{
     let ot;
     if(otIdDirecto){
-      const r=await sbGet('ordenes_trabajo',`?id=eq.${otIdDirecto}&select=*,fecha_coordinada,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
+      const r=await sbGet('ordenes_trabajo',`?id=eq.${otIdDirecto}&select=*,fecha_coordinada,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo,observaciones_tecnicas,direccion,numero_domicilio,localidad,nodo,cantidad_pisos,cantidad_unidades,gigatracer_codigo)&eliminado=eq.false`)||[];
       ot=r[0];
     } else {
-      const r=await sbGet('ordenes_trabajo',`?numero_ot=eq.${numeroOT}&select=*,fecha_coordinada,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*)&eliminado=eq.false`)||[];
+      const r=await sbGet('ordenes_trabajo',`?numero_ot=eq.${numeroOT}&select=*,fecha_coordinada,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo,observaciones_tecnicas,direccion,numero_domicilio,localidad,nodo,cantidad_pisos,cantidad_unidades,gigatracer_codigo)&eliminado=eq.false`)||[];
       ot=r[0];
     }
     if(!ot){body.innerHTML='<p style="color:#dc2626;padding:1rem">OT no encontrada.</p>';return;}
@@ -2513,6 +2524,20 @@ async function verOT(numeroOT, otIdDirecto){
       if(matsUsados.length){
         serialesCliente=await sbGet('stock_seriales',`?ot_id=eq.${ot.id}&select=serial,material_id,catalogo_materiales(nombre)`)||[];
       }
+    }
+
+    // ── v231: Cargar archivos del edificio (si la OT tiene edificio vinculado) ──
+    let edificioArchivos=[];
+    if(ot.edificio_id){
+      try{
+        edificioArchivos=await sbGet('edificio_archivos',
+          '?edificio_id=eq.'+ot.edificio_id
+          +'&eliminado=eq.false'
+          +'&or=(ot_id.is.null,ot_id.eq.'+ot.id+')'
+          +'&select=id,tipo_archivo,nombre,descripcion,url,origen,visible_pwa,ot_id,jornada_id,created_at'
+          +'&order=ot_id.desc.nullslast,created_at.desc'
+        )||[];
+      }catch(e){console.warn('No se pudieron cargar archivos del edificio:',e.message);}
     }
 
     const dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'—');
@@ -2547,6 +2572,49 @@ async function verOT(numeroOT, otIdDirecto){
           ${ot.equipo_instalado?`<div><div style="font-size:10px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📱 Equipo instalado</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#1d4ed8">${ot.equipo_instalado}</div></div>`:''}
           ${ot.serial_retirado?`<div><div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📦 Equipo retirado</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#b91c1c">${ot.serial_retirado}</div></div>`:''}
         </div>`:''}
+      ${ot.edificios?(()=>{
+        const ed=ot.edificios;
+        const cab=ed.estado_cableado;
+        const bloqueado=cab==='BLOQUEADO'||cab==='NO_AUTORIZADO';
+        const cabBg=bloqueado?'#fef2f2':cab==='NO_CABLEADO'?'#fffbeb':cab==='CABLEADO'?'#f0fdf4':'#eff6ff';
+        const cabBorder=bloqueado?'#fca5a5':cab==='NO_CABLEADO'?'#fde68a':cab==='CABLEADO'?'#86efac':'#bfdbfe';
+        const cabBadgeBg=bloqueado?'#fee2e2':cab==='NO_CABLEADO'?'#fef3c7':cab==='CABLEADO'?'#dcfce7':'#dbeafe';
+        const cabBadgeTxt=bloqueado?'#991b1b':cab==='NO_CABLEADO'?'#92400e':cab==='CABLEADO'?'#166534':'#1e40af';
+        const cabLabel=cab==='NO_CABLEADO'?'⚠ No cableado':cab==='EN_PROCESO'?'◐ En proceso':cab==='CABLEADO'?'✓ Cableado':cab==='BLOQUEADO'?'⛔ Bloqueado':cab==='NO_AUTORIZADO'?'⛔ No autorizado':cab||'—';
+        const archGen=edificioArchivos.filter(a=>!a.ot_id);
+        const archEsta=edificioArchivos.filter(a=>a.ot_id===ot.id);
+        return `
+        <div style="background:${cabBg};border:1.5px solid ${cabBorder};border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:.5rem">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em">🏢 Edificio vinculado</div>
+              <div style="font-size:18px;font-weight:800;color:#1e3a5f;margin-top:2px">${ed.nombre||'—'}</div>
+              <div style="font-size:12px;color:#64748b;margin-top:2px">${(ed.direccion||'')}${ed.numero_domicilio?' '+ed.numero_domicilio:''}${ed.localidad?' · '+ed.localidad:''}${ed.cantidad_pisos?' · '+ed.cantidad_pisos+' pisos':''}${ed.cantidad_unidades?' · '+ed.cantidad_unidades+' unid.':''}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+              <span style="background:${cabBadgeBg};color:${cabBadgeTxt};font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;white-space:nowrap">${cabLabel}</span>
+              <button class="btn btn-sm" onclick="cerrarModal('ot-modal');setTimeout(()=>{irA('edificios');setTimeout(()=>abrirDetalleEdificio(${ed.id}),200);},150)" style="font-size:11px;white-space:nowrap">→ Ver edificio</button>
+            </div>
+          </div>
+          ${bloqueado&&ed.motivo_bloqueo?`<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;margin-top:.5rem;font-size:13px;color:#991b1b"><strong>Motivo del ${cab==='BLOQUEADO'?'bloqueo':'no autorización'}:</strong> ${ed.motivo_bloqueo}</div>`:''}
+          ${ed.observaciones_tecnicas?`<details style="margin-top:.5rem"><summary style="font-size:11px;font-weight:700;color:#475569;cursor:pointer">📝 Observaciones técnicas</summary><div style="font-size:12px;color:#475569;margin-top:6px;white-space:pre-wrap;line-height:1.5">${ed.observaciones_tecnicas}</div></details>`:''}
+          ${edificioArchivos.length?`<details style="margin-top:.5rem" open><summary style="font-size:11px;font-weight:700;color:#475569;cursor:pointer">📎 Documentación del edificio (${edificioArchivos.length})</summary><div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
+            ${archEsta.length?`<div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Específicos de esta OT (${archEsta.length})</div>${archEsta.map(a=>`
+              <div style="background:rgba(255,255,255,.7);border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+                <div style="flex:1;min-width:0;font-size:12px"><span style="font-weight:600">${iconoTipoArchivo(a.tipo_archivo)} ${a.nombre}</span>${a.descripcion?`<div style="font-size:11px;color:#64748b">${a.descripcion}</div>`:''}</div>
+                ${a.url?`<a href="${a.url}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:10px;text-decoration:none">↗</a>`:''}
+              </div>`).join('')}`:''}
+            ${archGen.length?`<div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Generales del edificio (${archGen.length})</div>${archGen.map(a=>`
+              <div style="background:rgba(255,255,255,.7);border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+                <div style="flex:1;min-width:0;font-size:12px"><span style="font-weight:600">${iconoTipoArchivo(a.tipo_archivo)} ${a.nombre}</span>${a.descripcion?`<div style="font-size:11px;color:#64748b">${a.descripcion}</div>`:''}</div>
+                ${a.url?`<a href="${a.url}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:10px;text-decoration:none">↗</a>`:''}
+              </div>`).join('')}`:''}
+          </div></details>`:''}
+          <div style="margin-top:.6rem;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="adjuntarArchivoAOT(${ot.id},${ed.id})" style="font-size:11px">+ Adjuntar archivo a esta OT</button>
+          </div>
+        </div>`;
+      })():''}
       <div class="ot-info-grid">
         <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Domicilio</div><div class="ot-info-val">${domHtml}</div></div>
         <div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Teléfonos</div><div class="ot-info-val">${renderTelefonos(cl.telefono1,cl.telefono2,ot.obs_gigared,ot,cl)}</div></div>
@@ -5391,6 +5459,25 @@ async function guardarAsignacion(){
 
   err.textContent='Guardando...';err.style.color='#64748b';
   try{
+    // ── v231: Verificar edificios BLOQUEADO/NO_AUTORIZADO antes de asignar ──
+    try{
+      const gids=grupos.map(g=>g.gid);
+      const otsConEdif=await sbGet('ordenes_trabajo',
+        '?grupo_id=in.('+gids.join(',')+')'
+        +'&edificio_id=not.is.null'
+        +'&select=id,numero_ot,edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo)'
+        +'&eliminado=eq.false'
+      )||[];
+      const conflictos=otsConEdif.filter(o=>o.edificios&&(o.edificios.estado_cableado==='BLOQUEADO'||o.edificios.estado_cableado==='NO_AUTORIZADO'));
+      if(conflictos.length){
+        const lineas=conflictos.map(o=>'• '+(o.numero_ot||'?')+' — '+o.edificios.nombre+' ('+o.edificios.estado_cableado+(o.edificios.motivo_bloqueo?': '+o.edificios.motivo_bloqueo:'')+')').join('\n');
+        if(!confirm('⛔ ATENCIÓN: las siguientes OTs pertenecen a edificios BLOQUEADO o NO_AUTORIZADO:\n\n'+lineas+'\n\n¿Asignar de todas formas?')){
+          err.textContent='Cancelado por edificios bloqueados.';err.style.color='#dc2626';
+          return;
+        }
+      }
+    }catch(e){console.warn('No se pudo verificar edificios bloqueados:',e.message);}
+
     const eAsig=ESTADOS.find(e=>e.nombre==='ASIGNADA');
     for(const g of grupos){
       await sbPatch('grupos_ot',`?id=eq.${g.gid}`,{
@@ -7281,6 +7368,7 @@ function edifTab(tab,el){
   else if(tab==='jornadas')renderEdifJornadas();
   else if(tab==='tareas')renderEdifTareas();
   else if(tab==='docs')renderEdifDocs();
+  else if(tab==='ots')renderEdifOTs();
 }
 
 function renderEdifInfo(){
@@ -7526,22 +7614,48 @@ function labelTipoArchivo(t){
   })[t]||t;
 }
 
+var EDIF_DOC_FIL_ORIGEN=''; // filtro de origen en el tab docs
+
 async function renderEdifDocs(){
   if(!EDIF_DETALLE)return;
   var cont=document.getElementById('edif-det-cont');
   cont.innerHTML='<div class="loading"><span class="spinner"></span></div>';
   try{
-    var docs=await sbGet('edificio_archivos',
-      '?edificio_id=eq.'+EDIF_DETALLE.id
-      +'&eliminado=eq.false'
-      +'&select=id,tipo_archivo,nombre,descripcion,url,storage_path,created_at,created_by,usuarios:created_by(nombre,email)'
-      +'&order=created_at.desc'
-    )||[];
+    // Cargar archivos + OTs vinculadas (para selector "Asociar a OT") en paralelo
+    var promesas=[
+      sbGet('edificio_archivos',
+        '?edificio_id=eq.'+EDIF_DETALLE.id
+        +'&eliminado=eq.false'
+        +'&select=id,tipo_archivo,nombre,descripcion,url,storage_path,origen,visible_pwa,ot_id,jornada_id,created_at,created_by,usuarios:created_by(nombre,email),ordenes_trabajo:ot_id(numero_ot)'
+        +'&order=created_at.desc'
+      ),
+      sbGet('edificio_ots',
+        '?edificio_id=eq.'+EDIF_DETALLE.id
+        +'&select=ot_id,ordenes_trabajo:ot_id(numero_ot,tipo_item,clientes(codigo_gigared,apellido))'
+        +'&order=fecha_vinculo.desc'
+      )
+    ];
+    var res=await Promise.all(promesas);
+    var docsAll=res[0]||[];
+    var otsVinc=res[1]||[];
 
-    // Form de alta/edición (siempre visible arriba)
+    // Aplicar filtro de origen
+    var docs=EDIF_DOC_FIL_ORIGEN
+      ? docsAll.filter(function(d){return d.origen===EDIF_DOC_FIL_ORIGEN;})
+      : docsAll;
+
+    // Permiso para origen TECNICO/EVIDENCIA: solo superadmin
+    var esSuperadmin=CU&&CU.rol==='superadmin';
+
+    // Form de alta/edición
     var titForm=EDIF_ARCHIVO_FORM_ID?'Editar archivo':'+ Agregar archivo';
+    var presOTBanner=EDIF_PRESEL_OT_ID
+      ? '<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:6px 10px;font-size:12px;color:#92400e;margin-bottom:.5rem">📌 Este archivo se asociará a la OT <strong>'+EDIF_PRESEL_OT_LABEL+'</strong>. <button class="btn btn-sm" onclick="EDIF_PRESEL_OT_ID=null;EDIF_PRESEL_OT_LABEL=\'\';renderEdifDocs()" style="font-size:10px;margin-left:6px">Quitar</button></div>'
+      : '';
+
     var formHTML='<div class="card" style="margin-bottom:1rem;background:#eff6ff;border:1.5px dashed #93c5fd">'
       +'<div class="card-title" style="color:#2563eb">'+titForm+'</div>'
+      +presOTBanner
       +'<div class="form-2col">'
       +'  <div class="fg"><label>Tipo *</label>'
       +'    <select id="ea-tipo">'
@@ -7552,11 +7666,26 @@ async function renderEdifDocs(){
       +'      <option value="CONTACTO">📞 Contacto</option>'
       +'      <option value="OBS_PREVIA">📝 Observación previa</option>'
       +'      <option value="OTRO">📎 Otro</option>'
+      +'      <option value="EVIDENCIA">🔧 Evidencia técnica (avanzado)</option>'
+      +'    </select>'
+      +'  </div>'
+      +'  <div class="fg"><label>Origen *</label>'
+      +'    <select id="ea-origen">'
+      +'      <option value="ADMIN">🏢 Admin (interno nuestro)</option>'
+      +'      <option value="GIGARED">📨 Gigared (oficial)</option>'
+      +(esSuperadmin?'      <option value="TECNICO">🔧 Técnico (carga manual)</option>':'')
       +'    </select>'
       +'  </div>'
       +'  <div class="fg"><label>Nombre *</label><input id="ea-nombre" placeholder="Ej: Plano piso 4"/></div>'
+      +'  <div class="fg"><label>Asociar a:</label>'
+      +'    <select id="ea-asociar">'
+      +'      <option value="">— Edificio general (default) —</option>'
+      +(otsVinc.map(function(v){var ot=v.ordenes_trabajo;if(!ot)return'';var cl=ot.clientes||{};return '<option value="ot:'+v.ot_id+'">OT '+(ot.numero_ot||v.ot_id)+(cl.apellido?' — '+cl.apellido:'')+'</option>';}).join(''))
+      +'    </select>'
+      +'  </div>'
       +'  <div class="fg" style="grid-column:1/-1"><label>URL (link a Drive, imgur, etc.)</label><input id="ea-url" placeholder="https://drive.google.com/..."/></div>'
       +'  <div class="fg" style="grid-column:1/-1"><label>Descripción / observaciones</label><textarea id="ea-desc" rows="2" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical"></textarea></div>'
+      +'  <div class="fg" style="grid-column:1/-1"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500"><input type="checkbox" id="ea-visible-pwa" checked/> 👷 Visible para técnicos en PWA</label><div style="font-size:11px;color:#64748b;margin-top:2px">Desmarcar solo si es información interna que no debe ver la cuadrilla.</div></div>'
       +'</div>'
       +'<div style="display:flex;gap:8px;margin-top:.75rem">'
       +(EDIF_ARCHIVO_FORM_ID?'<button class="btn" onclick="cancelarFormArchivo()">Cancelar</button>':'')
@@ -7565,15 +7694,26 @@ async function renderEdifDocs(){
       +'<p class="err-msg" id="ea-err" style="margin-top:.5rem"></p>'
       +'</div>';
 
+    // Filtro por origen
+    var filtroHTML='<div style="display:flex;gap:8px;align-items:center;margin-bottom:.75rem;flex-wrap:wrap">'
+      +'<span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase">Filtrar:</span>'
+      +'<select onchange="EDIF_DOC_FIL_ORIGEN=this.value;renderEdifDocs()" style="font-size:12px;padding:5px 10px;border:1.5px solid var(--border);border-radius:8px">'
+      +'  <option value=""'+(EDIF_DOC_FIL_ORIGEN===''?' selected':'')+'>Todos los orígenes ('+docsAll.length+')</option>'
+      +'  <option value="ADMIN"'+(EDIF_DOC_FIL_ORIGEN==='ADMIN'?' selected':'')+'>🏢 Admin ('+docsAll.filter(function(d){return d.origen==='ADMIN';}).length+')</option>'
+      +'  <option value="GIGARED"'+(EDIF_DOC_FIL_ORIGEN==='GIGARED'?' selected':'')+'>📨 Gigared ('+docsAll.filter(function(d){return d.origen==='GIGARED';}).length+')</option>'
+      +'  <option value="TECNICO"'+(EDIF_DOC_FIL_ORIGEN==='TECNICO'?' selected':'')+'>🔧 Técnico ('+docsAll.filter(function(d){return d.origen==='TECNICO';}).length+')</option>'
+      +'</select>'
+      +'<span style="font-size:11px;color:#64748b">'+docs.length+' visible'+(docs.length!==1?'s':'')+' de '+docsAll.length+'</span>'
+      +'</div>';
+
     var listaHTML='';
     if(!docs.length){
-      listaHTML='<div class="empty-state"><div class="empty-state-icon">📎</div><div>Sin documentación cargada todavía.</div><div style="font-size:12px;color:#94a3b8;margin-top:8px">Agregá planos, procedimientos, fotos de referencia o contactos del encargado.<br>La cuadrilla los va a ver en la PWA cuando se le asigne el edificio.</div></div>';
+      listaHTML='<div class="empty-state"><div class="empty-state-icon">📎</div><div>'+(EDIF_DOC_FIL_ORIGEN?'Sin archivos para el filtro seleccionado.':'Sin documentación cargada todavía.')+'</div><div style="font-size:12px;color:#94a3b8;margin-top:8px">Agregá planos, procedimientos, fotos de referencia o contactos del encargado.<br>La cuadrilla los va a ver en la PWA cuando se le asigne el edificio.</div></div>';
     }else{
-      // Agrupar por tipo (todos los tipos que tengan al menos un archivo)
+      // Agrupar por tipo
       var porTipo={};
       docs.forEach(function(d){if(!porTipo[d.tipo_archivo])porTipo[d.tipo_archivo]=[];porTipo[d.tipo_archivo].push(d);});
-      var ordenTipos=['PLANO','PROCEDIMIENTO','FOTO_REFERENCIA','CAPTURA','CONTACTO','OBS_PREVIA','OTRO'];
-      listaHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.5rem">'+docs.length+' archivo'+(docs.length!==1?'s':'')+' cargado'+(docs.length!==1?'s':'')+'</div>';
+      var ordenTipos=['PLANO','PROCEDIMIENTO','FOTO_REFERENCIA','EVIDENCIA','CAPTURA','CONTACTO','OBS_PREVIA','OTRO'];
       ordenTipos.forEach(function(t){
         if(!porTipo[t])return;
         listaHTML+='<div style="margin-bottom:1rem"><div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+iconoTipoArchivo(t)+' '+labelTipoArchivo(t)+' ('+porTipo[t].length+')</div>';
@@ -7581,9 +7721,19 @@ async function renderEdifDocs(){
           var hasUrl=d.url&&d.url.trim();
           var fechaStr=d.created_at?fmtFechaCorta(d.created_at):'';
           var autor=d.usuarios?.nombre||d.usuarios?.email||'—';
+          var origenCfg={
+            ADMIN:['#f1f5f9','#475569','🏢 Admin'],
+            GIGARED:['#dbeafe','#1e40af','📨 Gigared'],
+            TECNICO:['#dcfce7','#166534','🔧 Técnico']
+          };
+          var oc=origenCfg[d.origen]||['#f1f5f9','#475569',d.origen||'?'];
+          var otBadge=d.ordenes_trabajo?'<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:5px">📋 OT '+d.ordenes_trabajo.numero_ot+'</span>':'';
+          var jornadaBadge=d.jornada_id?'<span style="background:#f3e8ff;color:#7c3aed;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:5px">⏱ Jornada #'+d.jornada_id+'</span>':'';
+          var noVisibleIcon=!d.visible_pwa?'<span title="Solo visible para admin" style="font-size:14px;margin-left:5px">🔒</span>':'';
           listaHTML+='<div class="card" style="margin-bottom:6px;display:flex;gap:12px;align-items:flex-start;padding:12px">'
             +'<div style="flex:1;min-width:0">'
-            +'<div style="font-size:14px;font-weight:600;color:#1e3a5f;word-break:break-word">'+d.nombre+'</div>'
+            +'<div style="font-size:14px;font-weight:600;color:#1e3a5f;word-break:break-word">'+d.nombre+noVisibleIcon+'</div>'
+            +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px"><span style="background:'+oc[0]+';color:'+oc[1]+';font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px">'+oc[2]+'</span>'+otBadge+jornadaBadge+'</div>'
             +(d.descripcion?'<div style="font-size:12px;color:#64748b;margin-top:4px;white-space:pre-wrap">'+d.descripcion+'</div>':'')
             +(hasUrl?'<div style="margin-top:6px"><a href="'+d.url+'" target="_blank" rel="noopener" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600;word-break:break-all">🔗 '+d.url+'</a></div>':'<div style="margin-top:6px;font-size:11px;color:#94a3b8;font-style:italic">Sin URL</div>')
             +'<div style="margin-top:6px;font-size:11px;color:#94a3b8">'+fechaStr+(autor!=='—'?' · '+autor:'')+'</div>'
@@ -7599,17 +7749,25 @@ async function renderEdifDocs(){
       });
     }
 
-    cont.innerHTML=formHTML+listaHTML;
+    cont.innerHTML=formHTML+filtroHTML+listaHTML;
 
     // Si estamos editando, precargar valores
     if(EDIF_ARCHIVO_FORM_ID){
-      var doc=docs.find(function(x){return x.id===EDIF_ARCHIVO_FORM_ID;});
+      var doc=docsAll.find(function(x){return x.id===EDIF_ARCHIVO_FORM_ID;});
       if(doc){
         document.getElementById('ea-tipo').value=doc.tipo_archivo||'OTRO';
+        document.getElementById('ea-origen').value=doc.origen||'ADMIN';
         document.getElementById('ea-nombre').value=doc.nombre||'';
         document.getElementById('ea-url').value=doc.url||'';
         document.getElementById('ea-desc').value=doc.descripcion||'';
+        document.getElementById('ea-visible-pwa').checked=doc.visible_pwa!==false;
+        var asocSel=document.getElementById('ea-asociar');
+        if(doc.ot_id){asocSel.value='ot:'+doc.ot_id;}
       }
+    }else if(EDIF_PRESEL_OT_ID){
+      // Pre-seleccionar OT si vinimos desde el modal de OT
+      var asocSel=document.getElementById('ea-asociar');
+      if(asocSel){asocSel.value='ot:'+EDIF_PRESEL_OT_ID;}
     }
   }catch(e){
     cont.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';
@@ -7632,22 +7790,32 @@ async function guardarArchivoEdificio(){
   if(errEl)errEl.textContent='';
   var nombre=document.getElementById('ea-nombre').value.trim();
   var tipo=document.getElementById('ea-tipo').value;
+  var origen=document.getElementById('ea-origen')?.value||'ADMIN';
   var url=document.getElementById('ea-url').value.trim();
   var desc=document.getElementById('ea-desc').value.trim();
+  var visiblePwa=document.getElementById('ea-visible-pwa')?.checked!==false;
+  var asocVal=document.getElementById('ea-asociar')?.value||'';
+  var otId=null;
+  if(asocVal&&asocVal.indexOf('ot:')===0){otId=parseInt(asocVal.slice(3))||null;}
 
   // Validaciones frontend
   var probs=[];
   if(!nombre)probs.push('• El nombre es obligatorio');
   if(!tipo)probs.push('• El tipo es obligatorio');
-  // URL opcional, pero si viene debe parecer URL
+  if(!origen)probs.push('• El origen es obligatorio');
   if(url&&!/^https?:\/\//i.test(url))probs.push('• La URL debe empezar con http:// o https://');
+  // Permiso superadmin para origen TECNICO
+  if(origen==='TECNICO'&&CU&&CU.rol!=='superadmin')probs.push('• Solo superadmin puede crear archivos con origen TECNICO desde admin');
   if(probs.length){if(errEl)errEl.textContent='⛔ Corregir:\n'+probs.join('\n');return;}
 
   var data={
     tipo_archivo:tipo,
+    origen:origen,
     nombre:nombre,
     descripcion:desc||null,
-    url:url||null
+    url:url||null,
+    visible_pwa:visiblePwa,
+    ot_id:otId
   };
   try{
     if(EDIF_ARCHIVO_FORM_ID){
@@ -7658,6 +7826,8 @@ async function guardarArchivoEdificio(){
       await sbPost('edificio_archivos',data);
     }
     EDIF_ARCHIVO_FORM_ID=null;
+    EDIF_PRESEL_OT_ID=null;
+    EDIF_PRESEL_OT_LABEL='';
     renderEdifDocs();
   }catch(e){
     if(errEl)errEl.textContent='Error: '+e.message;
@@ -7672,6 +7842,243 @@ async function eliminarArchivoEdificio(id){
     renderEdifDocs();
   }catch(e){
     alert('Error: '+e.message);
+  }
+}
+
+// ── v231: Adjuntar archivo desde modal OT (navega al detalle del edificio
+//        y abre el tab docs con el OT preseleccionado) ─────────────────────
+var EDIF_PRESEL_OT_ID=null;     // ot_id que se asignará al próximo archivo cargado
+var EDIF_PRESEL_OT_LABEL='';    // label visual del OT preseleccionado (numero_ot)
+
+async function adjuntarArchivoAOT(otId, edificioId){
+  if(!otId||!edificioId)return;
+  // Buscar nro de OT para mostrarlo en el form
+  try{
+    var r=await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=numero_ot');
+    EDIF_PRESEL_OT_ID=otId;
+    EDIF_PRESEL_OT_LABEL=(r&&r[0]&&r[0].numero_ot)||('OT '+otId);
+  }catch(e){
+    EDIF_PRESEL_OT_ID=otId;
+    EDIF_PRESEL_OT_LABEL='OT '+otId;
+  }
+  // Cerrar modal OT y navegar
+  cerrarModal('ot-modal');
+  setTimeout(async function(){
+    irA('edificios');
+    setTimeout(async function(){
+      await abrirDetalleEdificio(edificioId);
+      // Cambiar al tab docs explícitamente (abrirDetalleEdificio carga 'info' por defecto)
+      var tabs=document.querySelectorAll('#edif-det-tabs .ntab');
+      tabs.forEach(function(t,i){t.classList.toggle('active',i===3);});
+      EDIF_DET_TAB='docs';
+      // El render lee EDIF_PRESEL_OT_ID y lo aplica al form
+      EDIF_ARCHIVO_FORM_ID=null; // asegurar modo "nuevo"
+      await renderEdifDocs();
+    },200);
+  },150);
+}
+
+// ── v231: Tab "📋 OTs vinculadas" ──────────────────────────────────────────
+var EDIF_OTS_DATA=[];        // OTs ya vinculadas al edificio actual
+var EDIF_OTS_BUSQ='';        // texto del buscador de OTs disponibles
+var EDIF_OTS_VER_TODAS=false; // mostrar OTs ya vinculadas a otro edificio?
+
+async function renderEdifOTs(){
+  if(!EDIF_DETALLE)return;
+  var cont=document.getElementById('edif-det-cont');
+  cont.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  try{
+    // Cargar vínculos actuales
+    var vinc=await sbGet('edificio_ots',
+      '?edificio_id=eq.'+EDIF_DETALLE.id
+      +'&select=id,ot_id,tipo_relacion,observacion,fecha_vinculo,ordenes_trabajo:ot_id(id,numero_ot,tipo_item,tipo_tarea,edificio_id,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo))'
+      +'&order=fecha_vinculo.desc'
+    )||[];
+    EDIF_OTS_DATA=vinc;
+
+    // Header con resumen + buscador
+    var head='<div class="card" style="margin-bottom:1rem;background:#eff6ff;border:1.5px dashed #93c5fd">'
+      +'<div class="card-title" style="color:#2563eb">+ Vincular OT a este edificio</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:.5rem">'
+      +'  <input id="eo-buscar" placeholder="N° OT o N° cliente o apellido..." oninput="buscarOTsParaVincular()" style="flex:1;min-width:220px;padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px"/>'
+      +'  <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="eo-ver-todas" '+(EDIF_OTS_VER_TODAS?'checked':'')+' onchange="EDIF_OTS_VER_TODAS=this.checked;buscarOTsParaVincular()"/> Ver también OTs ya vinculadas a otro edificio</label>'
+      +'</div>'
+      +'<div id="eo-resultados" style="font-size:12px;color:#94a3b8">Empezá a escribir para buscar OTs.</div>'
+      +'</div>';
+
+    // Lista de OTs vinculadas
+    var listHTML='';
+    if(!vinc.length){
+      listHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div>Sin OTs vinculadas a este edificio.</div><div style="font-size:12px;color:#94a3b8;margin-top:8px">Usá el buscador de arriba para asociar OTs existentes (BASICA, REPARACION, etc.) a este edificio.</div></div>';
+    }else{
+      listHTML='<div style="font-size:12px;color:#64748b;margin-bottom:.5rem">'+vinc.length+' OT'+(vinc.length!==1?'s':'')+' vinculada'+(vinc.length!==1?'s':'')+'</div>'
+        +'<div class="ot-table-wrap"><table class="ot-table"><thead><tr>'
+        +'<th>N° OT</th><th>Tipo</th><th>Cliente</th><th>Estado</th><th>Tipo relación</th><th>Vinculada</th><th></th>'
+        +'</tr></thead><tbody>'
+        +vinc.map(function(v){
+          var ot=v.ordenes_trabajo;
+          if(!ot)return '<tr><td colspan="7" style="color:#dc2626;font-size:12px">⚠ OT eliminada (id '+v.ot_id+')</td></tr>';
+          var cl=ot.clientes||{};
+          var dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'');
+          var est=ot.estados_ot?.nombre||'?';
+          var esPrim=ot.edificio_id===EDIF_DETALLE.id;
+          return '<tr>'
+            +'<td style="font-weight:700"><span style="cursor:pointer;color:#2563eb" onclick="cerrarDetalleEdificio();setTimeout(()=>verOT(\''+(ot.numero_ot||'')+'\'),100)">'+(ot.numero_ot||'?')+'</span>'+(esPrim?'<div style="font-size:9px;color:#16a34a;font-weight:700">★ PRIMARIO</div>':'')+'</td>'
+            +'<td style="font-size:11px">'+(ot.tipo_item||ot.tipo_tarea||'—').replace(/_/g,' ')+'</td>'
+            +'<td style="font-size:12px">'+((cl.apellido||'')+' '+(cl.nombre||'')).trim()+'<div style="font-size:11px;color:#94a3b8">'+(cl.codigo_gigared||'')+(dom?' · '+dom:'')+'</div></td>'
+            +'<td style="font-size:11px">'+est.replace(/_/g,' ')+'</td>'
+            +'<td><select onchange="cambiarTipoRelacion('+v.id+',this.value)" style="font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px">'
+              +['CLIENTE_INTERIOR','INFRAESTRUCTURA','GIGATRACER','OT_GIGARED'].map(function(t){return '<option value="'+t+'"'+(v.tipo_relacion===t?' selected':'')+'>'+t.replace(/_/g,' ')+'</option>';}).join('')
+              +'</select></td>'
+            +'<td style="font-size:11px;color:#94a3b8">'+fmtFechaCorta(v.fecha_vinculo)+'</td>'
+            +'<td><button class="btn btn-sm" onclick="desvincularOTdeEdificio('+v.ot_id+')" style="font-size:11px;color:#dc2626;border-color:rgba(220,38,38,.3)">✕ Desvincular</button></td>'
+          +'</tr>';
+        }).join('')
+        +'</tbody></table></div>';
+    }
+
+    cont.innerHTML=head+listHTML;
+    // Restaurar valor del buscador si había
+    if(EDIF_OTS_BUSQ){
+      var inp=document.getElementById('eo-buscar');
+      if(inp){inp.value=EDIF_OTS_BUSQ;buscarOTsParaVincular();}
+    }
+  }catch(e){
+    cont.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';
+  }
+}
+
+async function buscarOTsParaVincular(){
+  if(!EDIF_DETALLE)return;
+  var q=(document.getElementById('eo-buscar')?.value||'').trim();
+  EDIF_OTS_BUSQ=q;
+  var res=document.getElementById('eo-resultados');
+  if(!res)return;
+  if(!q||q.length<2){res.innerHTML='Empezá a escribir para buscar OTs (mínimo 2 caracteres).';return;}
+  res.innerHTML='<span class="spinner" style="width:12px;height:12px"></span> Buscando...';
+  try{
+    // Buscar por numero_ot, codigo_gigared o apellido
+    var promesas=[];
+    // Por numero_ot
+    promesas.push(sbGet('ordenes_trabajo',
+      '?numero_ot=ilike.*'+encodeURIComponent(q)+'*'
+      +(EDIF_OTS_VER_TODAS?'':'&edificio_id=is.null')
+      +'&select=id,numero_ot,tipo_item,tipo_tarea,edificio_id,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio),edificios:edificio_id(nombre)'
+      +'&eliminado=eq.false&limit=15'
+    ));
+    // Por codigo_gigared o apellido (vía clientes)
+    promesas.push(
+      sbGet('clientes','?or=(codigo_gigared.ilike.*'+encodeURIComponent(q)+'*,apellido.ilike.*'+encodeURIComponent(q)+'*)&select=id&eliminado=eq.false&limit=20')
+        .then(function(clis){
+          if(!clis||!clis.length)return [];
+          var ids=clis.map(function(c){return c.id;}).join(',');
+          return sbGet('ordenes_trabajo',
+            '?cliente_id=in.('+ids+')'
+            +(EDIF_OTS_VER_TODAS?'':'&edificio_id=is.null')
+            +'&select=id,numero_ot,tipo_item,tipo_tarea,edificio_id,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio),edificios:edificio_id(nombre)'
+            +'&eliminado=eq.false&limit=30'
+          );
+        })
+    );
+    var resultados=await Promise.all(promesas);
+    var seen=new Set();
+    var lista=[];
+    resultados.forEach(function(arr){(arr||[]).forEach(function(o){if(!seen.has(o.id)){seen.add(o.id);lista.push(o);}});});
+
+    // Excluir las que ya están vinculadas a este edificio
+    var idsVinc=new Set(EDIF_OTS_DATA.map(function(v){return v.ot_id;}));
+    lista=lista.filter(function(o){return !idsVinc.has(o.id);});
+
+    if(!lista.length){
+      res.innerHTML='<span style="color:#94a3b8">Sin resultados '+(EDIF_OTS_VER_TODAS?'':'(probá marcar "Ver también OTs ya vinculadas a otro edificio")')+'</span>';
+      return;
+    }
+    res.innerHTML='<div style="font-size:11px;color:#64748b;margin-bottom:6px">'+lista.length+' resultado'+(lista.length!==1?'s':'')+'</div>'
+      +lista.map(function(o){
+        var cl=o.clientes||{};
+        var dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'');
+        var yaEnOtro=o.edificio_id&&o.edificio_id!==EDIF_DETALLE.id;
+        return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;gap:8px">'
+          +'<div style="flex:1;min-width:0;font-size:12px">'
+          +'<div style="font-weight:700;color:#1e3a5f">'+(o.numero_ot||'?')+' · '+(o.tipo_item||o.tipo_tarea||'—').replace(/_/g,' ')+'</div>'
+          +'<div style="font-size:11px;color:#64748b">'+(cl.codigo_gigared||'')+' — '+((cl.apellido||'')+' '+(cl.nombre||'')).trim()+(dom?' · '+dom:'')+'</div>'
+          +(yaEnOtro?'<div style="font-size:10px;color:#dc2626;font-weight:700">⚠ Ya vinculada a: '+(o.edificios?.nombre||'otro edificio')+'</div>':'')
+          +'</div>'
+          +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">'
+          +'<select id="eo-tr-'+o.id+'" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:5px">'
+            +['CLIENTE_INTERIOR','INFRAESTRUCTURA','GIGATRACER','OT_GIGARED'].map(function(t){return '<option value="'+t+'">'+t.replace(/_/g,' ')+'</option>';}).join('')
+            +'</select>'
+          +'<button class="btn btn-sm btn-primary" onclick="vincularOTaEdificio('+o.id+',document.getElementById(\'eo-tr-'+o.id+'\').value)" style="font-size:11px">+ Vincular</button>'
+          +'</div>'
+        +'</div>';
+      }).join('');
+  }catch(e){
+    res.innerHTML='<span style="color:#dc2626">Error: '+e.message+'</span>';
+  }
+}
+
+async function vincularOTaEdificio(otId, tipoRelacion){
+  if(!EDIF_DETALLE)return;
+  if(!otId||!tipoRelacion)return;
+  try{
+    // Verificar que la OT no esté ya vinculada (constraint UNIQUE) — refresco data
+    var existe=await sbGet('edificio_ots','?edificio_id=eq.'+EDIF_DETALLE.id+'&ot_id=eq.'+otId+'&select=id');
+    if(existe&&existe.length){alert('Esta OT ya está vinculada a este edificio.');return;}
+
+    // Si la OT ya tiene edificio_id apuntando a otro edificio, advertir
+    var ot=await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=numero_ot,edificio_id,edificios:edificio_id(nombre)');
+    if(ot&&ot[0]&&ot[0].edificio_id&&ot[0].edificio_id!==EDIF_DETALLE.id){
+      var nomViejo=ot[0].edificios?.nombre||'otro edificio';
+      if(!confirm('⚠ La OT '+(ot[0].numero_ot||otId)+' ya tiene como edificio principal: "'+nomViejo+'".\n\nAl vincularla acá, este edificio pasará a ser el principal.\n\n¿Continuar?'))return;
+    }
+
+    // Insertar vínculo M2M
+    await sbPost('edificio_ots',{
+      edificio_id:EDIF_DETALLE.id,
+      ot_id:otId,
+      tipo_relacion:tipoRelacion,
+      usuario_id:CU.id||null
+    });
+
+    // Actualizar edificio_id directo (alerta rápida)
+    await sbPatch('ordenes_trabajo','?id=eq.'+otId,{edificio_id:EDIF_DETALLE.id});
+
+    // Refrescar
+    EDIF_OTS_BUSQ='';
+    renderEdifOTs();
+  }catch(e){
+    alert('Error al vincular: '+e.message);
+  }
+}
+
+async function desvincularOTdeEdificio(otId){
+  if(!EDIF_DETALLE)return;
+  if(!confirm('¿Desvincular esta OT del edificio?\n\nEl vínculo se elimina y, si esta OT tenía a este edificio como principal, se buscará otro vínculo o se dejará sin edificio.'))return;
+  try{
+    // Borrar vínculo M2M
+    await sbFetch('edificio_ots','DELETE',null,'?edificio_id=eq.'+EDIF_DETALLE.id+'&ot_id=eq.'+otId);
+
+    // Si esta OT tenía edificio_id = este edificio, buscar otro vínculo o setear NULL
+    var ot=await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=edificio_id');
+    if(ot&&ot[0]&&ot[0].edificio_id===EDIF_DETALLE.id){
+      var otros=await sbGet('edificio_ots','?ot_id=eq.'+otId+'&select=edificio_id&order=fecha_vinculo.desc&limit=1');
+      var nuevoEdId=(otros&&otros[0])?otros[0].edificio_id:null;
+      await sbPatch('ordenes_trabajo','?id=eq.'+otId,{edificio_id:nuevoEdId});
+    }
+
+    renderEdifOTs();
+  }catch(e){
+    alert('Error al desvincular: '+e.message);
+  }
+}
+
+async function cambiarTipoRelacion(vincId, nuevoTipo){
+  try{
+    await sbPatch('edificio_ots','?id=eq.'+vincId,{tipo_relacion:nuevoTipo});
+    // Sin re-render para no perder foco; la próxima vez que entre se refresca
+  }catch(e){
+    alert('Error: '+e.message);
+    renderEdifOTs(); // re-render para revertir visualmente
   }
 }
 
@@ -13333,7 +13740,7 @@ async function renderValidacion(){
     const eIds=ESTADOS.filter(e=>ESTADOS_VAL.includes(e.nombre)).map(e=>e.id);
     if(!eIds.length){el.innerHTML='<div class="card"><p style="color:#dc2626">Estados técnicos no encontrados. Recargá la página.</p></div>';return;}
 
-    let q='?select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,pendiente_devolucion,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad))&eliminado=eq.false&order=fecha_trabajo.desc,horario_visita.asc';
+    let q='?select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,pendiente_devolucion,estado_id,edificio_id,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo))&eliminado=eq.false&order=fecha_trabajo.desc,horario_visita.asc';
     if(desde)q+='&fecha_trabajo=gte.'+desde;
     if(hasta)q+='&fecha_trabajo=lte.'+hasta;
     if(cuadId)q+='&cuadrilla_id=eq.'+cuadId;
@@ -13495,6 +13902,24 @@ async function verGrupoValidacion(grupoId){
       sbGet('catalogo_servicios','?activo=eq.true&order=orden_display&select=id,nombre')||[]
     ]);
     if(!g){det.innerHTML='<p style="color:#dc2626">Grupo no encontrado.</p>';return;}
+
+    // ── v231: Banner informativo si alguna OT pertenece a edificio BLOQUEADO/NO_AUTORIZADO ──
+    let bannerEdif='';
+    try{
+      const edifInfo=await sbGet('ordenes_trabajo',
+        '?id=in.('+idList+')&edificio_id=not.is.null'
+        +'&select=id,numero_ot,edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo)'
+      )||[];
+      const conflictos=edifInfo.filter(o=>o.edificios&&(o.edificios.estado_cableado==='BLOQUEADO'||o.edificios.estado_cableado==='NO_AUTORIZADO'));
+      if(conflictos.length){
+        const lineas=conflictos.map(o=>'<li>OT '+(o.numero_ot||'?')+' — <strong>'+(o.edificios.nombre||'?')+'</strong> ('+o.edificios.estado_cableado.replace(/_/g,' ')+(o.edificios.motivo_bloqueo?': '+o.edificios.motivo_bloqueo:'')+')</li>').join('');
+        bannerEdif='<div style="background:#fef3c7;border:1.5px solid #fbbf24;border-radius:10px;padding:.875rem 1rem;margin-bottom:1rem">'
+          +'<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px">⚠ Atención: edificio(s) con estado especial</div>'
+          +'<ul style="font-size:12px;color:#78350f;margin:0;padding-left:18px">'+lineas+'</ul>'
+          +'<div style="font-size:11px;color:#92400e;margin-top:6px;font-style:italic">Esto NO bloquea la validación. Solo se informa que los edificios están en estado BLOQUEADO o NO_AUTORIZADO.</div>'
+          +'</div>';
+      }
+    }catch(e){console.warn('No se pudo verificar edificios en validación:',e.message);}
 
     const cuadId=g.cuadrillas?.id;
     let serialesDisp=[];
@@ -13801,7 +14226,7 @@ async function verGrupoValidacion(grupoId){
       +'<button class="btn btn-sm" style="font-size:12px;color:#94a3b8;margin-left:auto" onclick="document.getElementById(\'val-detalle\').style.display=\'none\'">✕ Cerrar</button>'
     +'</div>';
 
-    det.innerHTML=html;
+    det.innerHTML=bannerEdif+html;
   }catch(e){det.innerHTML='<div class="card"><p style="color:#dc2626">Error: '+e.message+'</p></div>';}
 }
 
