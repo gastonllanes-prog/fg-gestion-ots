@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v242</title>
+<title>FG Gestión OTs v243</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -79,9 +79,10 @@ body.app-ready #main-content{display:flex}
 @media(max-width:900px){.tipo-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:600px){.tipo-grid{grid-template-columns:1fr 1fr}}
 /* Tabla OTs */
-.ot-table-wrap{overflow-x:auto;border-radius:14px;border:1px solid var(--border);background:#fff;box-shadow:var(--card-shadow)}
+.ot-table-wrap{overflow:auto;max-height:calc(100vh - 240px);border-radius:14px;border:1px solid var(--border);background:#fff;box-shadow:var(--card-shadow)}
 .ot-table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
-.ot-table th{padding:10px 14px;color:#94a3b8;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;background:#f8fafc;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;z-index:5}
+.ot-table thead th{position:sticky;top:0;z-index:5;background:#f8fafc}
+.ot-table th{padding:10px 14px;color:#94a3b8;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;background:#f8fafc;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
 .ot-table th:hover{background:#f1f5f9;color:#64748b}
 .ot-table th .sort-icon{margin-left:4px;opacity:.4}
 .ot-table th.sorted .sort-icon{opacity:1}
@@ -173,7 +174,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V242</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V243</div>
   </div>
 </div>
 
@@ -183,7 +184,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v242</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v243</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -1637,6 +1638,32 @@ const fechaHoyLocal=()=>{
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
 
+// v243: Helpers globales de formato AR
+// Convierte 'YYYY-MM-DD' o timestamp a 'DD/MM/YYYY' para mostrar al usuario.
+function fechaAR(s){
+  if(!s) return '';
+  const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return String(s);
+  return m[3]+'/'+m[2]+'/'+m[1];
+}
+// Convierte 'DD/MM/YYYY' (o variantes con / -) a 'YYYY-MM-DD' (formato BD).
+// Si ya viene en formato ISO, lo devuelve tal cual. Si es inválido, devuelve ''.
+function parseFechaAR(s){
+  if(!s) return '';
+  const t=String(s).trim();
+  // Ya está en formato ISO YYYY-MM-DD
+  let m=t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m) return t;
+  // Formato AR DD/MM/YYYY (acepta / o -)
+  m=t.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if(m){
+    const d=m[1].padStart(2,'0');
+    const mm=m[2].padStart(2,'0');
+    return m[3]+'-'+mm+'-'+d;
+  }
+  return '';
+}
+
 // Labels de tipos de OT — usado en panel Rendimiento y otros
 const TIPO_LABELS={
   BASICA:'📶 Instalación',ONU:'📶 ONU',CABLEMODEM:'📶 Cablemodem',
@@ -2972,15 +2999,16 @@ async function editarFechaFinOT(otId, fechaActual, numOT){
   const hoy=fechaHoyLocal();
   const nueva=prompt(
     'OT '+numOT+'\n\n'+
-    'Fecha de finalización actual: '+(fechaPrev||'(sin fecha)')+'\n\n'+
-    'Ingresá la nueva fecha (formato YYYY-MM-DD).\n'+
+    'Fecha de finalización actual: '+(fechaPrev?fechaAR(fechaPrev):'(sin fecha)')+'\n\n'+
+    'Ingresá la nueva fecha en formato DD/MM/AAAA (ej: '+fechaAR(hoy)+').\n'+
     'No puede ser futura. Cancelar para no cambiar nada.',
-    fechaPrev||hoy
+    fechaPrev?fechaAR(fechaPrev):fechaAR(hoy)
   );
   if(nueva===null) return; // cancelado
-  const nuevaTrim=(nueva||'').trim();
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(nuevaTrim)){
-    alert('⚠️ Formato inválido. Usá YYYY-MM-DD (ej: 2026-04-25).');
+  // v243: aceptar tanto DD/MM/YYYY como YYYY-MM-DD
+  const nuevaTrim=parseFechaAR(nueva);
+  if(!nuevaTrim){
+    alert('⚠️ Formato inválido. Usá DD/MM/AAAA (ej: '+fechaAR(hoy)+').');
     return;
   }
   if(nuevaTrim>hoy){
@@ -2993,8 +3021,7 @@ async function editarFechaFinOT(otId, fechaActual, numOT){
   }
 
   // Confirmación final con valor en formato AR para legibilidad
-  const fmtAR=s=>{const p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
-  if(!confirm('Cambiar fecha de finalización:\n\n  '+fmtAR(fechaPrev)+'  →  '+fmtAR(nuevaTrim)+'\n\nQueda registrado en el historial. ¿Confirmar?')) return;
+  if(!confirm('Cambiar fecha de finalización:\n\n  '+fechaAR(fechaPrev)+'  →  '+fechaAR(nuevaTrim)+'\n\nQueda registrado en el historial. ¿Confirmar?')) return;
 
   try{
     // Patch del campo + registro en historial (estado igual antes y después: solo es ajuste de fecha)
@@ -3008,7 +3035,7 @@ async function editarFechaFinOT(otId, fechaActual, numOT){
         observacion:'FECHA_FIN MODIFICADA: '+(fechaPrev||'(vacía)')+' → '+nuevaTrim+' (por '+(CU.nombre||CU.email||'?')+')'
       });
     }catch(eH){console.warn('[editarFechaFinOT] no se pudo registrar historial:',eH.message);}
-    showToast('Fecha actualizada a '+fmtAR(nuevaTrim),'success');
+    showToast('Fecha actualizada a '+fechaAR(nuevaTrim),'success');
     // v241: refresco contextual — solo reabrir el modal de OT si estaba abierto;
     // refrescar la pantalla de cliente si está visible.
     const otModalAbierto=!document.getElementById('ot-modal').classList.contains('hidden');
@@ -4619,9 +4646,12 @@ async function exportarCSVLogistic(){
 }
 
 async function imprimirOrdenesProgramadas(){
-  // Pedir fecha
-  const fecha=prompt('Fecha del reporte (AAAA-MM-DD):',new Date().toISOString().slice(0,10));
-  if(!fecha)return;
+  // Pedir fecha — v243: formato AR
+  const hoy=fechaHoyLocal();
+  const inp=prompt('Fecha del reporte (DD/MM/AAAA, ej: '+fechaAR(hoy)+'):',fechaAR(hoy));
+  if(!inp)return;
+  const fecha=parseFechaAR(inp);
+  if(!fecha){alert('⚠️ Formato inválido. Usá DD/MM/AAAA (ej: '+fechaAR(hoy)+').');return;}
 
   // Traer todos los grupos asignados para esa fecha con sus OTs
   const grupos=await sbGet('grupos_ot',
@@ -5474,14 +5504,15 @@ async function cambiarFechaFinMasivo(){
     '📅 Cambiar fecha de finalización masiva\n\n'+
     'OTs FINALIZADAS a modificar: '+finalizadas.length+
     (omitidas>0?'\nOTs omitidas (no FINALIZADAS): '+omitidas:'')+'\n\n'+
-    'Ingresá la nueva fecha (formato YYYY-MM-DD).\n'+
+    'Ingresá la nueva fecha en formato DD/MM/AAAA (ej: '+fechaAR(hoy)+').\n'+
     'No puede ser futura.',
-    defaultFecha
+    fechaAR(defaultFecha)
   );
   if(nueva===null) return;
-  const nuevaTrim=(nueva||'').trim();
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(nuevaTrim)){
-    alert('⚠️ Formato inválido. Usá YYYY-MM-DD (ej: 2026-04-25).');
+  // v243: aceptar tanto DD/MM/YYYY como YYYY-MM-DD
+  const nuevaTrim=parseFechaAR(nueva);
+  if(!nuevaTrim){
+    alert('⚠️ Formato inválido. Usá DD/MM/AAAA (ej: '+fechaAR(hoy)+').');
     return;
   }
   if(nuevaTrim>hoy){
@@ -5489,11 +5520,9 @@ async function cambiarFechaFinMasivo(){
     return;
   }
 
-  const fmtAR=s=>{const p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
-
   if(!confirm(
     '¿Cambiar fecha de finalización?\n\n'+
-    '  Nueva fecha: '+fmtAR(nuevaTrim)+'\n'+
+    '  Nueva fecha: '+fechaAR(nuevaTrim)+'\n'+
     '  OTs a modificar: '+finalizadas.length+
     (omitidas>0?'\n  OTs omitidas: '+omitidas+' (no FINALIZADAS)':'')+'\n\n'+
     'Queda registro en el historial. ¿Confirmar?'
@@ -5535,7 +5564,7 @@ async function cambiarFechaFinMasivo(){
   limpiarSeleccion();
   renderOTs();
   alert(
-    '✅ '+okCount+' OT'+(okCount!==1?'s':'')+' actualizada'+(okCount!==1?'s':'')+' a '+fmtAR(nuevaTrim)+'.'+
+    '✅ '+okCount+' OT'+(okCount!==1?'s':'')+' actualizada'+(okCount!==1?'s':'')+' a '+fechaAR(nuevaTrim)+'.'+
     (omitidas>0?'\n⚠️ '+omitidas+' OT'+(omitidas!==1?'s':'')+' omitida'+(omitidas!==1?'s':'')+' (no FINALIZADAS).':'')+
     (errCount>0?'\n❌ '+errCount+' error'+(errCount!==1?'es':'')+':\n'+errores.slice(0,3).join('\n'):'')
   );
