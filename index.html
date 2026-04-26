@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v239</title>
+<title>FG Gestión OTs v240</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -173,7 +173,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V239</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V240</div>
   </div>
 </div>
 
@@ -183,7 +183,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v239</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v240</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2655,7 +2655,7 @@ async function verOT(numeroOT, otIdDirecto){
         ${ot.grupos_ot?.cuadrillas?`
           <div class="ot-info-item"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val">🔧 ${ot.grupos_ot.cuadrillas.nombre}</div></div>
           <div class="ot-info-item"><div class="ot-info-label">Fecha trabajo</div><div class="ot-info-val">${fmtF(ot.grupos_ot.fecha_trabajo)}</div></div>
-          <div class="ot-info-item"><div class="ot-info-label">Finalización</div><div class="ot-info-val">${fmtF(ot.fecha_fin?.slice(0,10))}</div></div>
+          <div class="ot-info-item"><div class="ot-info-label">Finalización</div><div class="ot-info-val">${fmtF(ot.fecha_fin?.slice(0,10))}${(esFinalizada&&ot.validado_admin_at)?` <button onclick="editarFechaFinOT(${ot.id},'${(ot.fecha_fin||'').slice(0,10)}','${(ot.numero_ot||'').replace(/'/g,'')}')" title="Editar fecha de finalización" style="background:none;border:none;cursor:pointer;font-size:13px;padding:1px 4px;margin-left:4px;color:#2563eb;border-radius:4px" onmouseover="this.style.background='rgba(37,99,235,.1)'" onmouseout="this.style.background='none'">✏️</button>`:''}</div></div>
         `:`<div class="ot-info-item" style="grid-column:1/-1"><div class="ot-info-label">Cuadrilla</div><div class="ot-info-val" style="color:#94a3b8">Sin asignar</div></div>`}
       </div>
       ${(ot.lat_inicio_tec||ot.lat_fin_tec)?`
@@ -2923,6 +2923,78 @@ async function eliminarOT(otId, numOt, grupoId){
     renderOTs();
     showToast('OT eliminada (recuperable)','info');
   }catch(e){alert('Error: '+e.message);}
+}
+
+// ─── v240: EDITAR FECHA DE FINALIZACIÓN (post-cierre) ────────────────────────
+// Permite modificar fecha_fin de una OT FINALIZADA y validada por admin.
+// Cualquier usuario autenticado puede editar — queda registro en historial.
+// NO modifica created_at, validado_admin_at, ni ningún otro campo.
+async function editarFechaFinOT(otId, fechaActual, numOT){
+  if(!CU){alert('Sesión no válida.');return;}
+  // Pre-validar estado en BD (defensivo: por si el usuario tiene una pestaña vieja)
+  let otBd;
+  try{
+    const r=await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=id,fecha_fin,estado_id,validado_admin_at,estados_ot(nombre)&eliminado=eq.false')||[];
+    otBd=r[0];
+  }catch(e){alert('No se pudo verificar la OT: '+e.message);return;}
+  if(!otBd){alert('OT no encontrada o eliminada.');return;}
+  if(otBd.estados_ot?.nombre!=='FINALIZADA'){
+    alert('Solo se puede editar la fecha de OTs FINALIZADAS. Estado actual: '+(otBd.estados_ot?.nombre||'desconocido'));
+    return;
+  }
+  if(!otBd.validado_admin_at){
+    alert('Esta OT todavía no fue validada por un admin. Validala primero desde "Validación".');
+    return;
+  }
+
+  const fechaPrev=(otBd.fecha_fin||fechaActual||'').slice(0,10);
+  const hoy=fechaHoyLocal();
+  const nueva=prompt(
+    'OT '+numOT+'\n\n'+
+    'Fecha de finalización actual: '+(fechaPrev||'(sin fecha)')+'\n\n'+
+    'Ingresá la nueva fecha (formato YYYY-MM-DD).\n'+
+    'No puede ser futura. Cancelar para no cambiar nada.',
+    fechaPrev||hoy
+  );
+  if(nueva===null) return; // cancelado
+  const nuevaTrim=(nueva||'').trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(nuevaTrim)){
+    alert('⚠️ Formato inválido. Usá YYYY-MM-DD (ej: 2026-04-25).');
+    return;
+  }
+  if(nuevaTrim>hoy){
+    alert('⚠️ La fecha no puede ser futura.');
+    return;
+  }
+  if(nuevaTrim===fechaPrev){
+    alert('La fecha es la misma. Sin cambios.');
+    return;
+  }
+
+  // Confirmación final con valor en formato AR para legibilidad
+  const fmtAR=s=>{const p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
+  if(!confirm('Cambiar fecha de finalización:\n\n  '+fmtAR(fechaPrev)+'  →  '+fmtAR(nuevaTrim)+'\n\nQueda registrado en el historial. ¿Confirmar?')) return;
+
+  try{
+    // Patch del campo + registro en historial (estado igual antes y después: solo es ajuste de fecha)
+    await sbPatch('ordenes_trabajo','?id=eq.'+otId,{fecha_fin:nuevaTrim});
+    try{
+      await sbPost('historial_estados_ot',{
+        ot_id:otId,
+        estado_anterior_id:otBd.estado_id,
+        estado_nuevo_id:otBd.estado_id,
+        usuario_id:CU.id,
+        observacion:'FECHA_FIN MODIFICADA: '+(fechaPrev||'(vacía)')+' → '+nuevaTrim+' (por '+(CU.nombre||CU.email||'?')+')'
+      });
+    }catch(eH){console.warn('[editarFechaFinOT] no se pudo registrar historial:',eH.message);}
+    showToast('Fecha actualizada a '+fmtAR(nuevaTrim),'success');
+    // Refrescar el modal con los datos nuevos
+    cerrarModal('ot-modal');
+    setTimeout(()=>verOT(null,otId),200);
+    try{renderOTs();}catch(e){}
+  }catch(e){
+    alert('Error al actualizar la fecha: '+e.message);
+  }
 }
 
 // ─── ELIMINAR CLIENTE completo (soft delete) ──────────────────────────────────
