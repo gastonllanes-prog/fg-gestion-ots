@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v232</title>
+<title>FG Gestión OTs v234</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V232</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V234</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v232</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v234</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2848,6 +2848,41 @@ async function editarCliente(cliId){
 // ─── ELIMINAR OT (soft delete) ────────────────────────────────────────────────
 async function eliminarOT(otId, numOt, grupoId){
   if(!CU||!(CU.rol==='superadmin'||CU.rol==='admin')){alert('Sin permisos');return;}
+
+  // ── v233 Bug #4 fix: bloqueo preventivo si la OT tiene stock asociado ─────
+  // Verifica 3 condiciones; si cualquiera matchea, NO elimina y obliga a usar
+  // 'Enviar a Cerrar OT' primero (que revierte correctamente). NO toca datos.
+  try{
+    const [otCheck, sersCheck, matsCheck] = await Promise.all([
+      sbGet('ordenes_trabajo',`?id=eq.${otId}&select=stock_descontado`),
+      sbGet('stock_seriales',`?ot_id=eq.${otId}&ubicacion=in.(COMPROMETIDO,CLIENTE)&select=id,serial,ubicacion`),
+      sbGet('ot_materiales_usados',`?ot_id=eq.${otId}&activo=eq.true&select=id`)
+    ]);
+    const stockDesc = (otCheck && otCheck[0] && otCheck[0].stock_descontado === true);
+    const seriales  = (sersCheck || []).length;
+    const materiales= (matsCheck || []).length;
+
+    if(stockDesc || seriales > 0 || materiales > 0){
+      const motivos = [];
+      if(stockDesc)        motivos.push('• stock ya descontado de la cuadrilla (stock_descontado=true)');
+      if(seriales > 0)     motivos.push('• '+seriales+' serial'+(seriales!==1?'es':'')+' asignado'+(seriales!==1?'s':'')+' (COMPROMETIDO/CLIENTE)');
+      if(materiales > 0)   motivos.push('• '+materiales+' material'+(materiales!==1?'es':'')+' activo'+(materiales!==1?'s':'')+' en ot_materiales_usados');
+      alert(
+        '⛔ No se puede eliminar la OT '+numOT(numOt)+'.\n\n'+
+        'Esta OT tiene stock o materiales asociados:\n'+motivos.join('\n')+'\n\n'+
+        'Primero usá "Enviar a Cerrar OT" para revertir correctamente '+
+        '(devuelve stock, libera seriales, soft-deletea materiales).\n'+
+        'Después de eso vas a poder eliminarla sin dejar inconsistencias.'
+      );
+      return;
+    }
+  }catch(eChk){
+    // Si la verificación falla, NO eliminar (fail-safe)
+    console.error('[eliminarOT] error verificando stock asociado:', eChk.message);
+    alert('No se pudo verificar el stock asociado a la OT.\nPor seguridad, la eliminación fue cancelada.\n\nDetalle: '+eChk.message);
+    return;
+  }
+  // ── fin Bug #4 fix ────────────────────────────────────────────────────────
 
   const conf=confirm(`¿Eliminar OT ${numOT(numOt)}?\nVa a quedar guardada y se puede recuperar después.`);
   if(!conf)return;
@@ -14878,15 +14913,19 @@ function valAutosave(input){
         input.value=cant;
         await sbPatch('ot_servicios_realizados',`?id=eq.${id}`,{cantidad:cant});
       }else if(tabla==='ordenes_trabajo_tag'){
+        // v234 Bug #3b fix: el campo `tag` es un serial (precinto) — debe mover stock_seriales
         const anterior=input.dataset.orig??'';
         const nuevo=input.value.trim()||null;
-        await sbPatch('ordenes_trabajo',`?id=eq.${id}`,{tag:nuevo});
+        const cuadId=window._valCtx?.cuadId;
+        await _actualizarSerialEnOT(id, 'tag', nuevo, cuadId);
         _registrarCambio(id,'tag',anterior,nuevo??'','ADMIN');
         input.dataset.orig=nuevo??'';
       }else if(tabla==='ordenes_trabajo_equipo'){
+        // v234 Bug #3b fix: equipo_instalado es un serial — debe mover stock_seriales
         const anterior=input.dataset.orig??'';
         const nuevo=input.value.trim()||null;
-        await sbPatch('ordenes_trabajo',`?id=eq.${id}`,{equipo_instalado:nuevo});
+        const cuadId=window._valCtx?.cuadId;
+        await _actualizarSerialEnOT(id, 'equipo_instalado', nuevo, cuadId);
         _registrarCambio(id,'equipo_instalado',anterior,nuevo??'','ADMIN');
         input.dataset.orig=nuevo??'';
       }
@@ -15558,6 +15597,72 @@ async function valConfirmarAddServ(otId,grupoId){
 
 // ── SERIAL HANDLERS ───────────────────────────────────────────────────────────
 
+// ─── v234 Bug #3a/#3b fix: helper compartido para edición de seriales ────────
+//
+// Toda edición del campo equipo_instalado/tag/serial_retirado en validación
+// admin debe pasar por acá para mantener stock_seriales consistente con el
+// campo de la OT.
+//
+// Reglas:
+//   - Si el serial cambia, el VIEJO se libera siempre a CUADRILLA_X (ot_id=null).
+//   - El NUEVO se asigna según stock_descontado:
+//       * stock_descontado=false (OT aún no aprobada) → COMPROMETIDO con ot_id
+//       * stock_descontado=true  (OT ya aprobada)     → CLIENTE con ot_id
+//   - Si no hay cuadrilla en el contexto, no se mueven seriales (solo se
+//     actualiza el campo). Caso típico: CAMBIO_DOMICILIO sin cuadrilla.
+//   - Sin cambios reales (mismo valor) no se toca stock_seriales.
+//
+// Devuelve {ok, ubicacionAplicada, error?} para que las funciones llamantes
+// puedan dar feedback al admin.
+async function _actualizarSerialEnOT(otId, campo, serialNuevo, cuadId){
+  // 1. Leer estado actual de la OT
+  const otBD = await sbGet('ordenes_trabajo',
+    `?id=eq.${otId}&select=${campo},stock_descontado`)||[];
+  if(!otBD.length) throw new Error('OT '+otId+' no encontrada');
+  const serialAnterior = otBD[0][campo] || null;
+  const stockDesc = otBD[0].stock_descontado === true;
+
+  // 2. Si el valor no cambió, solo refrescar el campo (idempotente, sin tocar stock)
+  if(serialAnterior === serialNuevo){
+    const patch={};patch[campo]=serialNuevo||null;
+    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,patch);
+    return {ok:true, ubicacionAplicada:null, sinCambio:true};
+  }
+
+  // 3. Liberar serial anterior (si existía)
+  if(serialAnterior && cuadId){
+    try{
+      await sbPatch('stock_seriales',
+        `?serial=eq.${encodeURIComponent(serialAnterior)}&ot_id=eq.${otId}`,
+        {ubicacion:`CUADRILLA_${cuadId}`, ot_id:null});
+    }catch(eL){
+      console.warn('[_actualizarSerialEnOT] no se pudo liberar serial viejo "'+serialAnterior+'":', eL.message);
+      // continuar igual: prioridad es asignar el nuevo
+    }
+  }
+
+  // 4. Asignar serial nuevo según stock_descontado
+  let ubicacionDestino = null;
+  if(serialNuevo && cuadId){
+    ubicacionDestino = stockDesc ? 'CLIENTE' : 'COMPROMETIDO';
+    try{
+      await sbPatch('stock_seriales',
+        `?serial=eq.${encodeURIComponent(serialNuevo)}`,
+        {ubicacion:ubicacionDestino, ot_id:parseInt(otId)});
+    }catch(eA){
+      console.error('[_actualizarSerialEnOT] error asignando serial nuevo "'+serialNuevo+'":', eA.message);
+      // El campo igual se actualiza abajo; el admin verá en la UI que el serial
+      // no aparece en stock_seriales y podrá investigarlo.
+    }
+  }
+
+  // 5. Actualizar el campo en la OT (siempre, último paso)
+  const patch={};patch[campo]=serialNuevo||null;
+  await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,patch);
+
+  return {ok:true, ubicacionAplicada:ubicacionDestino, stockDescontado:stockDesc};
+}
+
 async function valSerialSelectChange(select){
   const otId=select.dataset.ot;
   const campo=select.dataset.campo;
@@ -15572,23 +15677,8 @@ async function valSerialSelectChange(select){
   if(manualInp)manualInp.style.display='none';
   select.style.borderColor='#f59e0b';
   try{
-    // Leer serial anterior para devolverlo al stock
-    const otBD=await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=${campo}`)||[];
-    const serialAnterior=otBD[0]?.[campo]||null;
-
-    if(serialAnterior&&serialAnterior!==val&&cuadId){
-      // Devolver serial anterior a la cuadrilla
-      await sbPatch('stock_seriales',`?serial=eq.${encodeURIComponent(serialAnterior)}&ot_id=eq.${otId}`,
-        {ubicacion:`CUADRILLA_${cuadId}`,ot_id:null});
-    }
-    // Asignar nuevo serial al cliente
-    if(val&&cuadId){
-      await sbPatch('stock_seriales',`?serial=eq.${encodeURIComponent(val)}`,
-        {ubicacion:'CLIENTE',ot_id:parseInt(otId)});
-    }
-    // Actualizar campo en OT
-    const patch={};patch[campo]=val||null;
-    await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,patch);
+    // v234 Bug #3 fix: usa helper compartido (respeta stock_descontado)
+    await _actualizarSerialEnOT(otId, campo, val||null, cuadId);
     valFeedback(select,true);
   }catch(e){valFeedback(select,false);console.error('[valSerialSelectChange]',e.message);}
 }
@@ -15596,14 +15686,16 @@ async function valSerialSelectChange(select){
 function valSerialManualInput(input){
   const otId=input.dataset.ot;
   const campo=input.dataset.campo;
+  const cuadId=window._valCtx?.cuadId;
   input.style.borderColor='#f59e0b';
   clearTimeout(_valTimers['serial-'+otId+campo]);
   _valTimers['serial-'+otId+campo]=setTimeout(async()=>{
     try{
-      const patch={};patch[campo]=input.value.trim()||null;
-      await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,patch);
+      // v234 Bug #3a fix: ahora también mueve stock_seriales (antes solo PATCHaba la OT)
+      const valNuevo=input.value.trim()||null;
+      await _actualizarSerialEnOT(otId, campo, valNuevo, cuadId);
       valFeedback(input,true);
-    }catch(e){valFeedback(input,false);}
+    }catch(e){valFeedback(input,false);input.title='Error: '+e.message;console.error('[valSerialManualInput]',e.message);}
   },500);
 }
 
