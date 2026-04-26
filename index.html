@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v244</title>
+<title>FG Gestión OTs v245</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -78,14 +78,17 @@ body.app-ready #main-content{display:flex}
 .tipo-stat .ts-lbl{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
 @media(max-width:900px){.tipo-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:600px){.tipo-grid{grid-template-columns:1fr 1fr}}
-/* Tabla OTs — v244: scroll natural del body para evitar lag.
-   En desktop el wrap no tiene overflow, así el sticky del thead se ancla al body.
-   En móvil sí hay overflow-x para no romper layout (y el sticky vertical se sacrifica). */
+/* Tabla OTs — v245: scroll del body (sin lag) + toolbar sticky + thead sticky.
+   El toolbar (búsqueda + filtros + barra de selección) queda fijo arriba.
+   El thead se ancla justo debajo del toolbar (offset calculado por JS). */
 .ot-table-wrap{border-radius:14px;border:1px solid var(--border);background:#fff;box-shadow:var(--card-shadow);overflow-x:auto}
 @media(min-width:1100px){.ot-table-wrap{overflow:visible}}
 .ot-table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
 .ot-table thead th{position:sticky;top:0;z-index:5;background:#f8fafc}
 .ot-table th{padding:10px 14px;color:#94a3b8;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;background:#f8fafc;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+
+/* v245: toolbar sticky para Órdenes de trabajo */
+.ot-sticky-toolbar{position:sticky;top:0;z-index:20;background:var(--bg);padding-top:.5rem;padding-bottom:.5rem;margin:-.5rem 0 1rem 0}
 .ot-table th:hover{background:#f1f5f9;color:#64748b}
 .ot-table th .sort-icon{margin-left:4px;opacity:.4}
 .ot-table th.sorted .sort-icon{opacity:1}
@@ -177,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V244</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V245</div>
   </div>
 </div>
 
@@ -187,7 +190,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v244</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v245</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -506,6 +509,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <button class="btn btn-sm" style="color:#dc2626;border-color:#fca5a5" onclick="verEliminados()">🗑️ Eliminados</button>
     </div>
   </div>
+  <div class="ot-sticky-toolbar" id="ot-sticky-toolbar">
   <div class="search-bar">
     <input class="search-input" id="ot-search" placeholder="Buscar OT, cliente, código, dirección, barrio, nodo, teléfono, precinto..." oninput="buscarOTs()"/>
     <select class="filter-select" id="ot-fil-estado" onchange="buscarOTs()"><option value="">Todos los estados</option></select>
@@ -540,6 +544,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <button class="btn btn-sm" style="background:#dc2626;color:#fff;border-color:#dc2626;font-size:13px;font-weight:700;padding:7px 18px" onclick="abrirDevolucionMasiva()">↩️ Devolver a Gigared</button>
       <button class="btn btn-sm" style="background:#16a34a;color:#fff;border-color:#16a34a;font-size:13px;font-weight:700;padding:7px 18px" onclick="asignarSeleccionados()">📍 Asignar seleccionados</button>
     </div>
+  </div>
   </div>
   <div id="ot-lista"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
 </div>
@@ -2493,6 +2498,8 @@ async function renderOTs(){
         </tr>`;
       }).join('')}</tbody>
     </table></div>`;
+    // v245: ajustar offset del thead sticky después del render
+    setTimeout(_ajustarTopThead,30);
   }catch(e){el.innerHTML=`<div class="card"><p style="color:#dc2626">${e.message}</p></div>`;}
 }
 
@@ -5380,7 +5387,25 @@ function actualizarBarraSeleccion(){
   }else{
     bar.style.display='none';
   }
+  // v245: reajustar offset del thead sticky cuando cambia altura del toolbar
+  setTimeout(_ajustarTopThead,30);
 }
+
+// v245: posiciona el thead sticky justo debajo del toolbar (que también es sticky).
+// Se llama después de cada renderOTs y cuando aparece/desaparece la barra de selección.
+function _ajustarTopThead(){
+  try{
+    const tb=document.getElementById('ot-sticky-toolbar');
+    if(!tb) return;
+    // Si la pantalla de OTs no está visible, no hacer nada
+    if(document.getElementById('s-ots')?.style.display==='none') return;
+    const h=Math.ceil(tb.getBoundingClientRect().height);
+    document.querySelectorAll('#s-ots .ot-table thead th').forEach(th=>{
+      th.style.top=h+'px';
+    });
+  }catch(e){}
+}
+window.addEventListener('resize',()=>{ try{_ajustarTopThead();}catch(e){} });
 // Detectar cambios en checkboxes (delegado)
 document.addEventListener('change',e=>{
   if(e.target.classList.contains('ot-sel-cb')) actualizarBarraSeleccion();
