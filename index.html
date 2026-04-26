@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v236</title>
+<title>FG Gestión OTs v237</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -173,7 +173,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V236</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V237</div>
   </div>
 </div>
 
@@ -183,7 +183,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v236</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v237</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -6714,6 +6714,101 @@ function toggleWizSerial(cb){
 }
 
 // Serial INDIVIDUAL por OT (paso seriales)
+// ═══════════════════════════════════════════════════════════════════════════
+// v237 — Helper compartido para resolución de seriales en wizard cierre
+//
+// Antes (v236 y previos): el check inicial solo buscaba el serial en una
+// ubicación específica (DEPOSITO o CUADRILLA_actual). Si el serial existía
+// en cualquier OTRA ubicación (CLIENTE, COMPROMETIDO, otra cuadrilla,
+// BAJA_AJUSTE), el check daba 0 filas → el código intentaba INSERT → fallaba
+// con `duplicate key value violates unique constraint`.
+//
+// Ahora: una sola query sin filtro de ubicación + análisis del estado.
+// Devuelve qué acción tomar; cada llamante la ejecuta.
+//
+// Acciones posibles:
+//   - 'usar_bolso'       → ya está en el bolso de la cuadrilla actual, OK
+//   - 'mover_de_deposito'→ está en DEPOSITO, hay que moverlo a la cuadrilla
+//   - 'usar_misma_ot'    → ya está COMPROMETIDO con esta misma OT, OK
+//   - 'registrar_emergencia' → no existe en BD, ofrecer registro
+//   - 'bloquear'         → existe pero no se puede usar; mensaje al usuario
+// ═══════════════════════════════════════════════════════════════════════════
+async function _wizResolverSerial(mid, serial, cuadId, otId){
+  // Query única sin filtro de ubicación
+  // ilike (en lugar de eq) para que sea case-insensitive — la constraint UNIQUE
+  // de BD usa upper(serial), entonces "1C60D2FC66B8" y "1c60d2fc66b8" son la misma.
+  const filas = await sbGet('stock_seriales',
+    '?material_id=eq.'+mid+
+    '&serial=ilike.'+encodeURIComponent(serial)+
+    '&select=id,serial,ubicacion,ot_id'
+  ) || [];
+
+  if(!filas.length){
+    return {accion:'registrar_emergencia'};
+  }
+
+  // Tomamos la primera (la constraint UNIQUE garantiza que hay 1 sola)
+  const fila = filas[0];
+  const ub = fila.ubicacion || '';
+
+  // Caso 1: en el bolso de la cuadrilla actual → usar
+  if(cuadId && ub === 'CUADRILLA_'+cuadId){
+    return {accion:'usar_bolso', fila:fila};
+  }
+
+  // Caso 2: en DEPOSITO → mover a la cuadrilla actual
+  if(ub === 'DEPOSITO'){
+    return {accion:'mover_de_deposito', fila:fila};
+  }
+
+  // Caso 3: en otra cuadrilla → bloquear
+  if(ub.indexOf('CUADRILLA_')===0){
+    const otraCuad = ub.replace('CUADRILLA_','');
+    return {
+      accion:'bloquear',
+      mensaje:'⛔ Este serial está en el bolso de la cuadrilla #'+otraCuad+'. '+
+              'No podés usarlo en esta cuadrilla. Pediselo al admin que lo transfiera primero.'
+    };
+  }
+
+  // Caso 4: COMPROMETIDO
+  if(ub === 'COMPROMETIDO'){
+    if(otId && fila.ot_id === parseInt(otId)){
+      // Mismo OT → ya está reservado para esta OT, OK
+      return {accion:'usar_misma_ot', fila:fila};
+    }
+    return {
+      accion:'bloquear',
+      mensaje:'⛔ Este serial está reservado para otra OT (id '+(fila.ot_id||'?')+'). '+
+              'Si necesitás usarlo acá, primero hay que liberarlo desde validación admin.'
+    };
+  }
+
+  // Caso 5: CLIENTE
+  if(ub === 'CLIENTE'){
+    return {
+      accion:'bloquear',
+      mensaje:'⛔ Este serial figura instalado en un cliente (OT '+(fila.ot_id||'?')+'). '+
+              'Si el cliente lo devolvió y es realmente el mismo equipo físico, '+
+              'pediselo al admin para regularizar antes de usarlo de nuevo.'
+    };
+  }
+
+  // Caso 6: BAJA_AJUSTE
+  if(ub === 'BAJA_AJUSTE'){
+    return {
+      accion:'bloquear',
+      mensaje:'⛔ Este serial fue dado de baja del sistema. No puede usarse.'
+    };
+  }
+
+  // Caso 7: ubicación desconocida (defensivo)
+  return {
+    accion:'bloquear',
+    mensaje:'⛔ Este serial está en estado "'+ub+'", desconocido para el sistema. Avisá al admin.'
+  };
+}
+
 async function wizIngresarPrecintoManual(mid, maxCant){
   const inp=document.getElementById('wiz-manual-corr-'+mid);
   const errEl=document.getElementById('wiz-manual-corr-err-'+mid);
@@ -6734,36 +6829,58 @@ async function wizIngresarPrecintoManual(mid, maxCant){
 
   errEl.textContent='Buscando...';
   try{
-    // Verificar si está en el bolso de la cuadrilla
-    const enBolso=cuadId?await sbGet('stock_seriales','?material_id=eq.'+mid+'&serial=eq.'+serial+'&ubicacion=eq.CUADRILLA_'+cuadId)||[]:[];
-    if(!enBolso.length){
-      // No está en bolso — verificar depósito
-      const enDep=await sbGet('stock_seriales','?material_id=eq.'+mid+'&serial=eq.'+serial+'&ubicacion=eq.DEPOSITO')||[];
-      if(!enDep.length){
-        const ok=confirm('El precinto '+serial+' no está en el depósito.\n¿Registrarlo como entrada y asignarlo a '+WIZ.cuadNombre+'?');
-        if(!ok){errEl.textContent='Cancelado';return;}
-        await sbPost('stock_seriales',{material_id:mid,serial:String(serial),ubicacion:'DEPOSITO'});
-        await sbPost('movimientos_stock',{tipo_movimiento:'ENTRADA_DEPOSITO',material_id:mid,cantidad:1,cuadrilla_id:cuadId?parseInt(cuadId):null,obs:'Ingreso emergencia wizard — precinto '+serial});
-        const sd=await sbGet('stock_deposito','?material_id=eq.'+mid)||[];
-        if(sd.length) await sbPatch('stock_deposito','?material_id=eq.'+mid,{cantidad:(sd[0].cantidad||0)+1});
-        else await sbPost('stock_deposito',{material_id:mid,cantidad:1});
-      }
-      // Mover de depósito a cuadrilla
+    // v237 fix: resolver el estado actual del serial vía helper compartido
+    // Para CORRELATIVO no aplica el caso "misma OT" — pasamos otId=null
+    const r = await _wizResolverSerial(mid, serial, cuadId, null);
+
+    if(r.accion === 'bloquear'){
+      errEl.textContent = r.mensaje;
+      return;
+    }
+
+    if(r.accion === 'registrar_emergencia'){
+      const ok=confirm('El precinto '+serial+' no está en el sistema.\n¿Registrarlo como entrada de emergencia y asignarlo a '+WIZ.cuadNombre+'?');
+      if(!ok){errEl.textContent='Cancelado';return;}
+      await sbPost('stock_seriales',{material_id:mid,serial:String(serial),ubicacion:'DEPOSITO'});
+      await sbPost('movimientos_stock',{tipo_movimiento:'ENTRADA_DEPOSITO',material_id:mid,cantidad:1,cuadrilla_id:cuadId?parseInt(cuadId):null,obs:'Ingreso emergencia wizard — precinto '+serial});
+      const sd=await sbGet('stock_deposito','?material_id=eq.'+mid)||[];
+      if(sd.length) await sbPatch('stock_deposito','?material_id=eq.'+mid,{cantidad:(sd[0].cantidad||0)+1});
+      else await sbPost('stock_deposito',{material_id:mid,cantidad:1});
+      // Continúa al "mover a cuadrilla" abajo
+    }
+
+    // Si está en DEPOSITO (ya sea originalmente o recién registrado): mover a cuadrilla
+    if(r.accion === 'mover_de_deposito' || r.accion === 'registrar_emergencia'){
       if(cuadId){
-        await sbPatch('stock_seriales','?material_id=eq.'+mid+'&serial=eq.'+serial,{ubicacion:'CUADRILLA_'+cuadId});
+        // v237: PATCH por id si tenemos la fila (case-safe); si no, por serial recién insertado
+        if(r.fila && r.fila.id){
+          await sbPatch('stock_seriales','?id=eq.'+r.fila.id,{ubicacion:'CUADRILLA_'+cuadId});
+        }else{
+          await sbPatch('stock_seriales','?material_id=eq.'+mid+'&serial=eq.'+encodeURIComponent(serial),{ubicacion:'CUADRILLA_'+cuadId});
+        }
         const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+mid)||[];
         if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+mid,{cantidad:(sc[0].cantidad||0)+1});
         else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:mid,cantidad:1});
         await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:mid,cuadrilla_id:parseInt(cuadId),cantidad:-1,obs:'Asignado desde wizard cierre — precinto '+serial});
       }
-      // Agregar al mapa
+      // Agregar al mapa local — usar el serial real de BD si tenemos la fila
+      const serialReal = (r.fila && r.fila.serial) ? r.fila.serial : String(serial);
       if(!WIZ.serialesMap[mid]) WIZ.serialesMap[mid]=[];
-      WIZ.serialesMap[mid].push(String(serial));
+      WIZ.serialesMap[mid].push(serialReal);
       WIZ.scMap[mid]=(WIZ.scMap[mid]||0)+1;
+    } else if(r.accion === 'usar_bolso'){
+      // Ya estaba en el bolso pero el cache local podía estar desactualizado
+      const serialReal = (r.fila && r.fila.serial) ? r.fila.serial : String(serial);
+      if(!WIZ.serialesMap[mid]) WIZ.serialesMap[mid]=[];
+      if(!WIZ.serialesMap[mid].includes(serialReal)){
+        WIZ.serialesMap[mid].push(serialReal);
+        WIZ.scMap[mid]=(WIZ.scMap[mid]||0)+1;
+      }
     }
 
-    // Seleccionar el precinto
-    toggleCorrSelFin(mid,String(serial),maxCant);
+    // Seleccionar el precinto (usar serial real de BD si tenemos la fila)
+    const serialFinal = (r.fila && r.fila.serial) ? r.fila.serial : String(serial);
+    toggleCorrSelFin(mid,serialFinal,maxCant);
     inp.value='';
     errEl.textContent='';
     renderWizPaso();
@@ -6779,7 +6896,7 @@ async function wizIngresarSerialManual(otId, mid, matNombre){
   errEl.textContent='';
   const cuadId=WIZ.cuadId;
 
-  // Verificar si ya está en la lista del bolso
+  // Verificar si ya está en la lista del bolso (cache local)
   if((WIZ.serialesMap[mid]||[]).includes(serial)){
     elegirSerialOT(otId,mid,serial);
     inp.value='';
@@ -6787,13 +6904,18 @@ async function wizIngresarSerialManual(otId, mid, matNombre){
     return;
   }
 
-  // No está en el bolso — hacer el circuito completo
   errEl.textContent='Buscando...';
   try{
-    // 1. Verificar si está en depósito
-    const enDep=await sbGet('stock_seriales','?material_id=eq.'+mid+'&serial=eq.'+serial+'&ubicacion=eq.DEPOSITO')||[];
-    if(!enDep.length){
-      const ok=confirm('El serial '+serial+' no está en el depósito.\n¿Registrarlo como entrada y asignarlo a '+WIZ.cuadNombre+'?');
+    // v237 fix: resolver el estado actual del serial vía helper compartido
+    const r = await _wizResolverSerial(mid, serial, cuadId, otId);
+
+    if(r.accion === 'bloquear'){
+      errEl.textContent = r.mensaje;
+      return;
+    }
+
+    if(r.accion === 'registrar_emergencia'){
+      const ok=confirm('El serial '+serial+' no está en el sistema.\n¿Registrarlo como entrada de emergencia y asignarlo a '+WIZ.cuadNombre+'?');
       if(!ok){errEl.textContent='Cancelado';return;}
       // Entrada al depósito
       await sbPost('stock_seriales',{material_id:mid,serial,ubicacion:'DEPOSITO'});
@@ -6801,20 +6923,48 @@ async function wizIngresarSerialManual(otId, mid, matNombre){
       const sd=await sbGet('stock_deposito','?material_id=eq.'+mid)||[];
       if(sd.length) await sbPatch('stock_deposito','?material_id=eq.'+mid,{cantidad:(sd[0].cantidad||0)+1});
       else await sbPost('stock_deposito',{material_id:mid,cantidad:1});
+      // Continúa al "mover a cuadrilla" abajo
     }
-    // 2. Mover a cuadrilla
-    if(cuadId){
-      await sbPatch('stock_seriales','?material_id=eq.'+mid+'&serial=eq.'+serial,{ubicacion:'CUADRILLA_'+cuadId});
-      const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+mid)||[];
-      if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+mid,{cantidad:(sc[0].cantidad||0)+1});
-      else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:mid,cantidad:1});
-      await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:mid,cuadrilla_id:parseInt(cuadId),cantidad:-1,obs:'Asignado desde wizard cierre — '+serial});
+
+    // Si está en DEPOSITO (o se acaba de registrar): mover a cuadrilla
+    if(r.accion === 'mover_de_deposito' || r.accion === 'registrar_emergencia'){
+      if(cuadId){
+        // v237: PATCH por id si tenemos la fila (case-safe); si no, por serial recién insertado
+        if(r.fila && r.fila.id){
+          await sbPatch('stock_seriales','?id=eq.'+r.fila.id,{ubicacion:'CUADRILLA_'+cuadId});
+        }else{
+          await sbPatch('stock_seriales','?material_id=eq.'+mid+'&serial=eq.'+encodeURIComponent(serial),{ubicacion:'CUADRILLA_'+cuadId});
+        }
+        const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+mid)||[];
+        if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+mid,{cantidad:(sc[0].cantidad||0)+1});
+        else await sbPost('stock_cuadrillas',{cuadrilla_id:parseInt(cuadId),material_id:mid,cantidad:1});
+        await sbPost('movimientos_stock',{tipo_movimiento:'REPARTO_CUADRILLA',material_id:mid,cuadrilla_id:parseInt(cuadId),cantidad:-1,obs:'Asignado desde wizard cierre — '+serial});
+      }
+      // Agregar al mapa local — usar el serial real de BD si tenemos la fila
+      const serialReal = (r.fila && r.fila.serial) ? r.fila.serial : serial;
+      if(!WIZ.serialesMap[mid]) WIZ.serialesMap[mid]=[];
+      WIZ.serialesMap[mid].push(serialReal);
+      WIZ.scMap[mid]=(WIZ.scMap[mid]||0)+1;
+    } else if(r.accion === 'usar_bolso'){
+      // Ya estaba en el bolso pero el cache local no lo reflejaba
+      const serialReal = (r.fila && r.fila.serial) ? r.fila.serial : serial;
+      if(!WIZ.serialesMap[mid]) WIZ.serialesMap[mid]=[];
+      if(!WIZ.serialesMap[mid].includes(serialReal)){
+        WIZ.serialesMap[mid].push(serialReal);
+        WIZ.scMap[mid]=(WIZ.scMap[mid]||0)+1;
+      }
+    } else if(r.accion === 'usar_misma_ot'){
+      // Ya está COMPROMETIDO con esta misma OT — agregar al cache para que se refleje
+      const serialReal = (r.fila && r.fila.serial) ? r.fila.serial : serial;
+      if(!WIZ.serialesMap[mid]) WIZ.serialesMap[mid]=[];
+      if(!WIZ.serialesMap[mid].includes(serialReal)){
+        WIZ.serialesMap[mid].push(serialReal);
+      }
     }
-    // 3. Agregar al mapa de seriales y seleccionar
-    if(!WIZ.serialesMap[mid]) WIZ.serialesMap[mid]=[];
-    WIZ.serialesMap[mid].push(serial);
-    WIZ.scMap[mid]=(WIZ.scMap[mid]||0)+1;
-    elegirSerialOT(otId,mid,serial);
+
+    // Seleccionar (usar serial real de BD si tenemos la fila — preserva el case original)
+    const serialFinal = (r.fila && r.fila.serial) ? r.fila.serial : serial;
+    elegirSerialOT(otId,mid,serialFinal);
     inp.value='';
     errEl.textContent='';
     renderWizPaso();
