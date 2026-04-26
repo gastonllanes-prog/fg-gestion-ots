@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v234</title>
+<title>FG Gestión OTs v235</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V234</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V235</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v234</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v235</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -2198,7 +2198,7 @@ async function renderOTs(){
     const sortMap={'fecha_impresion':'fecha_impresion','fecha_asignacion_giga':'fecha_asignacion_giga','fecha_fin':'fecha_fin','created_at':'created_at','clientes.apellido':'clientes(apellido)','numero_ot':'numero_ot'};
     const orderCol=sortMap[OT_SORT]||'fecha_impresion';
     // El orden secundario y los campos cliente (calle, nodo) se ordenan en memoria
-    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,fecha_fin,hora_fin_tec,created_at,estado_id,edificio_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1,telefono2),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo)`;
+    const SELECT_OTS=`select=id,numero_ot,tipo_tarea,tipo_item,grupo_id,fecha_impresion,fecha_asignacion_giga,fecha_coordinada,hora_coordinada,fecha_fin,hora_fin_tec,created_at,estado_id,edificio_id,estados_ot(nombre),grupos_ot(id,cuadrillas(nombre)),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio,barrio,localidad,nodo,telefono1,telefono2),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo,eliminado)`;
     const tipoItem=document.getElementById('ot-fil-item')?.value||'';
     const cuadFil=document.getElementById('ot-fil-cuad')?.value||'';
 
@@ -2410,7 +2410,8 @@ async function renderOTs(){
             <div style="margin-top:3px">${badges}</div>
             ${cuadNombre?`<div style="font-size:10px;color:#2563eb;margin-top:2px">🔧 ${cuadNombre}</div>`:''}
             ${(()=>{
-              const oCEd=cOts.find(o=>o.edificios);
+              // v235 fix: ignorar edificios soft-eliminados
+              const oCEd=cOts.find(o=>o.edificios&&o.edificios.eliminado!==true);
               if(!oCEd)return'';
               const ed=oCEd.edificios;
               const cab=ed.estado_cableado;
@@ -2492,10 +2493,10 @@ async function verOT(numeroOT, otIdDirecto){
   try{
     let ot;
     if(otIdDirecto){
-      const r=await sbGet('ordenes_trabajo',`?id=eq.${otIdDirecto}&select=*,fecha_coordinada,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo,observaciones_tecnicas,direccion,numero_domicilio,localidad,nodo,cantidad_pisos,cantidad_unidades,gigatracer_codigo)&eliminado=eq.false`)||[];
+      const r=await sbGet('ordenes_trabajo',`?id=eq.${otIdDirecto}&select=*,fecha_coordinada,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo,observaciones_tecnicas,direccion,numero_domicilio,localidad,nodo,cantidad_pisos,cantidad_unidades,gigatracer_codigo,eliminado)&eliminado=eq.false`)||[];
       ot=r[0];
     } else {
-      const r=await sbGet('ordenes_trabajo',`?numero_ot=eq.${numeroOT}&select=*,fecha_coordinada,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo,observaciones_tecnicas,direccion,numero_domicilio,localidad,nodo,cantidad_pisos,cantidad_unidades,gigatracer_codigo)&eliminado=eq.false`)||[];
+      const r=await sbGet('ordenes_trabajo',`?numero_ot=eq.${numeroOT}&select=*,fecha_coordinada,estados_ot(nombre),grupos_ot(id,cuadrilla_id,fecha_trabajo,observaciones,cuadrillas(nombre,id)),clientes(*),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo,observaciones_tecnicas,direccion,numero_domicilio,localidad,nodo,cantidad_pisos,cantidad_unidades,gigatracer_codigo,eliminado)&eliminado=eq.false`)||[];
       ot=r[0];
     }
     if(!ot){body.innerHTML='<p style="color:#dc2626;padding:1rem">OT no encontrada.</p>';return;}
@@ -2572,7 +2573,7 @@ async function verOT(numeroOT, otIdDirecto){
           ${ot.equipo_instalado?`<div><div style="font-size:10px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📱 Equipo instalado</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#1d4ed8">${ot.equipo_instalado}</div></div>`:''}
           ${ot.serial_retirado?`<div><div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📦 Equipo retirado</div><div style="font-family:monospace;font-size:14px;font-weight:800;color:#b91c1c">${ot.serial_retirado}</div></div>`:''}
         </div>`:''}
-      ${ot.edificios?(()=>{
+      ${ot.edificios&&ot.edificios.eliminado!==true?(()=>{
         const ed=ot.edificios;
         const cab=ed.estado_cableado;
         const bloqueado=cab==='BLOQUEADO'||cab==='NO_AUTORIZADO';
@@ -5495,15 +5496,16 @@ async function guardarAsignacion(){
   err.textContent='Guardando...';err.style.color='#64748b';
   try{
     // ── v231: Verificar edificios BLOQUEADO/NO_AUTORIZADO antes de asignar ──
+    // v235: filtrar también por edificios.eliminado=false (no advertir sobre borrados)
     try{
       const gids=grupos.map(g=>g.gid);
       const otsConEdif=await sbGet('ordenes_trabajo',
         '?grupo_id=in.('+gids.join(',')+')'
         +'&edificio_id=not.is.null'
-        +'&select=id,numero_ot,edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo)'
+        +'&select=id,numero_ot,edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo,eliminado)'
         +'&eliminado=eq.false'
       )||[];
-      const conflictos=otsConEdif.filter(o=>o.edificios&&(o.edificios.estado_cableado==='BLOQUEADO'||o.edificios.estado_cableado==='NO_AUTORIZADO'));
+      const conflictos=otsConEdif.filter(o=>o.edificios&&o.edificios.eliminado!==true&&(o.edificios.estado_cableado==='BLOQUEADO'||o.edificios.estado_cableado==='NO_AUTORIZADO'));
       if(conflictos.length){
         const lineas=conflictos.map(o=>'• '+(o.numero_ot||'?')+' — '+o.edificios.nombre+' ('+o.edificios.estado_cableado+(o.edificios.motivo_bloqueo?': '+o.edificios.motivo_bloqueo:'')+')').join('\n');
         if(!confirm('⛔ ATENCIÓN: las siguientes OTs pertenecen a edificios BLOQUEADO o NO_AUTORIZADO:\n\n'+lineas+'\n\n¿Asignar de todas formas?')){
@@ -7363,6 +7365,15 @@ async function abrirDetalleEdificio(id){
 
 function cerrarDetalleEdificio(){
   EDIF_DETALLE=null;
+  // v235 fix #10: limpiar estados que sobrevivían entre detalles distintos
+  EDIF_DET_TAB='info';
+  EDIF_PRESEL_OT_ID=null;
+  EDIF_PRESEL_OT_LABEL='';
+  EDIF_OTS_BUSQ='';
+  EDIF_OTS_VER_TODAS=false;
+  EDIF_DOC_FIL_ORIGEN='';
+  EDIF_ARCHIVO_FORM_ID=null;
+  EDIF_TAREA_FORM_ID=null;
   document.getElementById('edif-det-view').style.display='none';
   document.getElementById('edif-list-view').style.display='';
 }
@@ -7998,7 +8009,7 @@ async function buscarOTsParaVincular(){
     promesas.push(sbGet('ordenes_trabajo',
       '?numero_ot=ilike.*'+encodeURIComponent(q)+'*'
       +(EDIF_OTS_VER_TODAS?'':'&edificio_id=is.null')
-      +'&select=id,numero_ot,tipo_item,tipo_tarea,edificio_id,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio),edificios:edificio_id(nombre)'
+      +'&select=id,numero_ot,tipo_item,tipo_tarea,edificio_id,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio),edificios:edificio_id(nombre,eliminado)'
       +'&eliminado=eq.false&limit=15'
     ));
     // Por codigo_gigared o apellido (vía clientes)
@@ -8010,7 +8021,7 @@ async function buscarOTsParaVincular(){
           return sbGet('ordenes_trabajo',
             '?cliente_id=in.('+ids+')'
             +(EDIF_OTS_VER_TODAS?'':'&edificio_id=is.null')
-            +'&select=id,numero_ot,tipo_item,tipo_tarea,edificio_id,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio),edificios:edificio_id(nombre)'
+            +'&select=id,numero_ot,tipo_item,tipo_tarea,edificio_id,estados_ot(nombre),clientes(codigo_gigared,apellido,nombre,domicilio,calle,numero_domicilio),edificios:edificio_id(nombre,eliminado)'
             +'&eliminado=eq.false&limit=30'
           );
         })
@@ -8032,7 +8043,8 @@ async function buscarOTsParaVincular(){
       +lista.map(function(o){
         var cl=o.clientes||{};
         var dom=cl.calle?(cl.calle+(cl.numero_domicilio?' '+cl.numero_domicilio:'')):(cl.domicilio||'');
-        var yaEnOtro=o.edificio_id&&o.edificio_id!==EDIF_DETALLE.id;
+        // v235: solo advertir si el edificio anterior NO fue soft-eliminado
+        var yaEnOtro=o.edificio_id&&o.edificio_id!==EDIF_DETALLE.id&&o.edificios&&o.edificios.eliminado!==true;
         return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;gap:8px">'
           +'<div style="flex:1;min-width:0;font-size:12px">'
           +'<div style="font-weight:700;color:#1e3a5f">'+(o.numero_ot||'?')+' · '+(o.tipo_item||o.tipo_tarea||'—').replace(/_/g,' ')+'</div>'
@@ -8056,27 +8068,38 @@ async function vincularOTaEdificio(otId, tipoRelacion){
   if(!EDIF_DETALLE)return;
   if(!otId||!tipoRelacion)return;
   try{
-    // Verificar que la OT no esté ya vinculada (constraint UNIQUE) — refresco data
-    var existe=await sbGet('edificio_ots','?edificio_id=eq.'+EDIF_DETALLE.id+'&ot_id=eq.'+otId+'&select=id');
-    if(existe&&existe.length){alert('Esta OT ya está vinculada a este edificio.');return;}
-
-    // Si la OT ya tiene edificio_id apuntando a otro edificio, advertir
-    var ot=await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=numero_ot,edificio_id,edificios:edificio_id(nombre)');
+    // Si la OT ya tiene edificio_id apuntando a otro edificio, advertir antes
+    var ot=await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=numero_ot,edificio_id,edificios:edificio_id(nombre,eliminado)');
     if(ot&&ot[0]&&ot[0].edificio_id&&ot[0].edificio_id!==EDIF_DETALLE.id){
-      var nomViejo=ot[0].edificios?.nombre||'otro edificio';
-      if(!confirm('⚠ La OT '+(ot[0].numero_ot||otId)+' ya tiene como edificio principal: "'+nomViejo+'".\n\nAl vincularla acá, este edificio pasará a ser el principal.\n\n¿Continuar?'))return;
+      // v235: si el edificio anterior fue soft-eliminado, no avisar (no tiene sentido el aviso)
+      var edifAnt=ot[0].edificios;
+      var anteriorVigente=edifAnt&&edifAnt.eliminado!==true;
+      if(anteriorVigente){
+        var nomViejo=edifAnt.nombre||'otro edificio';
+        if(!confirm('⚠ La OT '+(ot[0].numero_ot||otId)+' ya tiene como edificio principal: "'+nomViejo+'".\n\nAl vincularla acá, este edificio pasará a ser el principal.\n\n¿Continuar?'))return;
+      }
     }
 
-    // Insertar vínculo M2M
-    await sbPost('edificio_ots',{
-      edificio_id:EDIF_DETALLE.id,
-      ot_id:otId,
-      tipo_relacion:tipoRelacion,
-      usuario_id:CU.id||null
+    // v235 fix #1: RPC atómico (INSERT edificio_ots + UPDATE ordenes_trabajo.edificio_id en 1 TX)
+    var r=await sbRpc('vincular_ot_edificio',{
+      p_edificio_id:EDIF_DETALLE.id,
+      p_ot_id:parseInt(otId),
+      p_tipo:tipoRelacion,
+      p_usuario_id:(CU&&CU.id)?CU.id:null
     });
 
-    // Actualizar edificio_id directo (alerta rápida)
-    await sbPatch('ordenes_trabajo','?id=eq.'+otId,{edificio_id:EDIF_DETALLE.id});
+    if(!r||!r.ok){
+      var msg='Error al vincular.';
+      if(r){
+        if(r.error==='YA_VINCULADO')           msg='Esta OT ya está vinculada a este edificio.';
+        else if(r.error==='EDIFICIO_NO_EXISTE')msg='El edificio no existe o fue eliminado.';
+        else if(r.error==='OT_NO_EXISTE')      msg='La OT no existe o fue eliminada.';
+        else if(r.error==='TIPO_RELACION_INVALIDO')msg='Tipo de relación inválido: '+(r.tipo||tipoRelacion);
+        else if(r.error)                       msg='Error: '+r.error;
+      }
+      alert(msg);
+      return;
+    }
 
     // Refrescar
     EDIF_OTS_BUSQ='';
@@ -8090,15 +8113,22 @@ async function desvincularOTdeEdificio(otId){
   if(!EDIF_DETALLE)return;
   if(!confirm('¿Desvincular esta OT del edificio?\n\nEl vínculo se elimina y, si esta OT tenía a este edificio como principal, se buscará otro vínculo o se dejará sin edificio.'))return;
   try{
-    // Borrar vínculo M2M
-    await sbFetch('edificio_ots','DELETE',null,'?edificio_id=eq.'+EDIF_DETALLE.id+'&ot_id=eq.'+otId);
+    // v235 fix #1/#4: RPC atómico (DELETE edificio_ots + recálculo de edificio_id primario en 1 TX)
+    var r=await sbRpc('desvincular_ot_edificio',{
+      p_edificio_id:EDIF_DETALLE.id,
+      p_ot_id:parseInt(otId)
+    });
 
-    // Si esta OT tenía edificio_id = este edificio, buscar otro vínculo o setear NULL
-    var ot=await sbGet('ordenes_trabajo','?id=eq.'+otId+'&select=edificio_id');
-    if(ot&&ot[0]&&ot[0].edificio_id===EDIF_DETALLE.id){
-      var otros=await sbGet('edificio_ots','?ot_id=eq.'+otId+'&select=edificio_id&order=fecha_vinculo.desc&limit=1');
-      var nuevoEdId=(otros&&otros[0])?otros[0].edificio_id:null;
-      await sbPatch('ordenes_trabajo','?id=eq.'+otId,{edificio_id:nuevoEdId});
+    if(!r||!r.ok){
+      var msg='Error al desvincular.';
+      if(r){
+        if(r.error==='VINCULO_NO_EXISTE')msg='Este vínculo ya no existe (puede haberlo eliminado otro usuario).';
+        else if(r.error)                 msg='Error: '+r.error;
+      }
+      alert(msg);
+      // Refrescar igual para sincronizar la vista
+      renderEdifOTs();
+      return;
     }
 
     renderEdifOTs();
@@ -13775,7 +13805,7 @@ async function renderValidacion(){
     const eIds=ESTADOS.filter(e=>ESTADOS_VAL.includes(e.nombre)).map(e=>e.id);
     if(!eIds.length){el.innerHTML='<div class="card"><p style="color:#dc2626">Estados técnicos no encontrados. Recargá la página.</p></div>';return;}
 
-    let q='?select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,pendiente_devolucion,estado_id,edificio_id,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo))&eliminado=eq.false&order=fecha_trabajo.desc,horario_visita.asc';
+    let q='?select=id,horario_visita,fecha_trabajo,cuadrillas(id,nombre),ordenes_trabajo(id,numero_ot,tipo_item,tipo_tarea,obs_trabajo,tag,equipo_instalado,hora_inicio_tec,hora_fin_tec,validado_admin_at,validado_admin_por,modificada_post_cierre,pendiente_devolucion,estado_id,edificio_id,estados_ot(id,nombre),clientes(id,codigo_gigared,apellido,nombre,calle,numero_domicilio,domicilio,nodo,localidad),edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo,eliminado))&eliminado=eq.false&order=fecha_trabajo.desc,horario_visita.asc';
     if(desde)q+='&fecha_trabajo=gte.'+desde;
     if(hasta)q+='&fecha_trabajo=lte.'+hasta;
     if(cuadId)q+='&cuadrilla_id=eq.'+cuadId;
@@ -13943,9 +13973,9 @@ async function verGrupoValidacion(grupoId){
     try{
       const edifInfo=await sbGet('ordenes_trabajo',
         '?id=in.('+idList+')&edificio_id=not.is.null'
-        +'&select=id,numero_ot,edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo)'
+        +'&select=id,numero_ot,edificios:edificio_id(id,nombre,estado_cableado,motivo_bloqueo,eliminado)'
       )||[];
-      const conflictos=edifInfo.filter(o=>o.edificios&&(o.edificios.estado_cableado==='BLOQUEADO'||o.edificios.estado_cableado==='NO_AUTORIZADO'));
+      const conflictos=edifInfo.filter(o=>o.edificios&&o.edificios.eliminado!==true&&(o.edificios.estado_cableado==='BLOQUEADO'||o.edificios.estado_cableado==='NO_AUTORIZADO'));
       if(conflictos.length){
         const lineas=conflictos.map(o=>'<li>OT '+(o.numero_ot||'?')+' — <strong>'+(o.edificios.nombre||'?')+'</strong> ('+o.edificios.estado_cableado.replace(/_/g,' ')+(o.edificios.motivo_bloqueo?': '+o.edificios.motivo_bloqueo:'')+')</li>').join('');
         bannerEdif='<div style="background:#fef3c7;border:1.5px solid #fbbf24;border-radius:10px;padding:.875rem 1rem;margin-bottom:1rem">'
