@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v245</title>
+<title>FG Gestión OTs v246</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V245</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V246</div>
   </div>
 </div>
 
@@ -190,7 +190,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v245</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v246</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -5958,7 +5958,7 @@ function renderEditarCierre(){
     html+='<div style="margin-top:.5rem;display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
       +'<select id="ec-new-ser-mat" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;max-width:200px">'
       +'<option value="">Material...</option>'
-      +EC.catalogoMats.filter(m=>m.serial_tipo==='INDIVIDUAL').map(m=>'<option value="'+m.id+'" data-nom="'+m.nombre+'">'+m.nombre+'</option>').join('')
+      +EC.catalogoMats.filter(m=>m.serial_tipo==='INDIVIDUAL'||m.serial_tipo==='CORRELATIVO').map(m=>'<option value="'+m.id+'" data-nom="'+m.nombre+'">'+m.nombre+'</option>').join('')
       +'</select>'
       +'<input id="ec-new-ser-val" placeholder="Serial / MAC" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:monospace;width:160px"/>'
       +'<button type="button" onclick="ecAgregarSerial()" style="padding:6px 12px;border:1px solid #2563eb;color:#2563eb;background:none;border-radius:8px;font-size:12px;cursor:pointer">Agregar</button>'
@@ -6081,20 +6081,54 @@ async function confirmarEditarCierre(){
           await sbPost('movimientos_stock',{tipo_movimiento:'DEVOLUCION',material_id:s.material_id,cuadrilla_id:parseInt(cuadId),cantidad:1,obs:'Serial devuelto - edicion cierre OT '+otId+' - serial: '+s.serial});
         }
       } else if(!s._eliminar&&s._nuevo){
-        // Serial nuevo: buscar en bolso o deposito y mover a CLIENTE
-        const enBolso=cuadId?await sbGet('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+s.serial+'&ubicacion=eq.CUADRILLA_'+cuadId)||[]:[];
-        if(enBolso.length){
-          await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+s.serial,{ubicacion:'CLIENTE'});
-          if(cuadId){
+        // v246: usar helper compartido (mismo patrón que wizard cierre v237)
+        // para resolver dónde está el serial y mover correctamente sin duplicar.
+        const r = await _wizResolverSerial(s.material_id, s.serial, cuadId, otId);
+
+        if(r.accion === 'bloquear'){
+          // El serial está en uso por otro cliente / cuadrilla / dado de baja, etc.
+          // Abortamos este serial y lo registramos. El admin debe liberarlo primero.
+          alert('No se pudo agregar serial '+s.serial+' (mat #'+s.material_id+'):\n\n'+r.mensaje+
+                '\n\nLos otros cambios SÍ se guardaron. Liberá el serial del otro cliente y volvé a intentar.');
+          continue;
+        }
+
+        if(r.accion === 'usar_misma_ot'){
+          // Ya está en COMPROMETIDO con esta misma OT — solo asegurar que quede en CLIENTE
+          if(r.fila && r.fila.id){
+            await sbPatch('stock_seriales','?id=eq.'+r.fila.id,{ubicacion:'CLIENTE',ot_id:otId});
+          }
+          await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:s.material_id,cuadrilla_id:cuadId?parseInt(cuadId):null,cantidad:-1,obs:'Serial agregado - edicion cierre OT '+otId+' - serial: '+s.serial});
+          continue;
+        }
+
+        if(r.accion === 'usar_bolso' || r.accion === 'mover_de_deposito'){
+          // Está en el bolso de la cuadrilla actual o en depósito — mover a CLIENTE
+          if(r.fila && r.fila.id){
+            await sbPatch('stock_seriales','?id=eq.'+r.fila.id,{ubicacion:'CLIENTE',ot_id:otId});
+          } else {
+            await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+encodeURIComponent(s.serial),{ubicacion:'CLIENTE',ot_id:otId});
+          }
+          // Si vino de la cuadrilla, descontar del stock_cuadrillas
+          if(cuadId && r.accion === 'usar_bolso'){
             const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id)||[];
             if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id,{cantidad:Math.max(0,(sc[0].cantidad||0)-1)});
           }
-        } else {
-          // No estaba en bolso: crear y marcar como CLIENTE
-          await sbPost('stock_seriales',{material_id:s.material_id,serial:s.serial,ubicacion:'CLIENTE',ot_id:otId});
+          await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:s.material_id,cuadrilla_id:cuadId?parseInt(cuadId):null,cantidad:-1,obs:'Serial agregado - edicion cierre OT '+otId+' - serial: '+s.serial});
+          continue;
         }
-        await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=eq.'+s.serial,{ot_id:otId});
-        await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:s.material_id,cuadrilla_id:cuadId?parseInt(cuadId):null,cantidad:-1,obs:'Serial agregado - edicion cierre OT '+otId+' - serial: '+s.serial});
+
+        if(r.accion === 'registrar_emergencia'){
+          // No existe en BD: confirm y crear directo en CLIENTE (mantiene comportamiento legacy)
+          const ok=confirm('El serial '+s.serial+' no existe en el sistema.\n¿Registrarlo de emergencia y asignarlo a esta OT?');
+          if(!ok){
+            alert('Serial '+s.serial+' omitido. Los demás cambios sí se guardaron.');
+            continue;
+          }
+          await sbPost('stock_seriales',{material_id:s.material_id,serial:s.serial,ubicacion:'CLIENTE',ot_id:otId});
+          await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:s.material_id,cuadrilla_id:cuadId?parseInt(cuadId):null,cantidad:-1,obs:'Serial agregado emergencia - edicion cierre OT '+otId+' - serial: '+s.serial});
+          continue;
+        }
       }
     }
 
