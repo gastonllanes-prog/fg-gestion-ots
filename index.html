@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v246</title>
+<title>FG Gestión OTs v247</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V246</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V247</div>
   </div>
 </div>
 
@@ -190,7 +190,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v246</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v247</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -5947,12 +5947,36 @@ function renderEditarCierre(){
   if(matsConSerial.length||EC.seriales.filter(s=>!s._eliminar).length){
     html+='<div style="font-size:12px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .5rem">📱 Seriales / MACs</div>';
     EC.seriales.filter(s=>!s._eliminar).forEach((s,i)=>{
+      // v247: modo edición inline. Si está editando este serial, mostrar input + botones ✓ ⊘
+      const editing=s._editando===true;
+      const editValor=(s._editandoVal!==undefined?s._editandoVal:s.serial);
+      const matNom=(s.catalogo_materiales?.nombre||'?').replace(/'/g,'&apos;').replace(/"/g,'&quot;');
       html+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border2)">'
-        +'<span style="font-size:11px;color:#64748b;min-width:80px">'+(s.catalogo_materiales?.nombre||'?')+'</span>'
-        +'<span style="font-family:monospace;font-size:12px;font-weight:700;flex:1">'+s.serial+'</span>'
-        +'<button type="button" onclick="EC.seriales['+i+']._eliminar=true;renderEditarCierre()"'
-          +' style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;line-height:1;padding:0 4px" title="Quitar serial (vuelve al bolso)">×</button>'
-        +'</div>';
+        +'<span style="font-size:11px;color:#64748b;min-width:80px">'+matNom+'</span>';
+      if(editing){
+        // Input + ✓ ⊘
+        html+='<input type="text" value="'+editValor.replace(/"/g,'&quot;')+'"'
+          +' oninput="EC.seriales['+i+']._editandoVal=this.value"'
+          +' onkeydown="if(event.key===\'Enter\'){event.preventDefault();ecConfirmarEdicionSerial('+i+')}else if(event.key===\'Escape\'){ecCancelarEdicionSerial('+i+')}"'
+          +' style="font-family:monospace;font-size:12px;font-weight:700;flex:1;padding:4px 8px;border:1px solid #2563eb;border-radius:6px"/>'
+          +'<button type="button" onclick="ecConfirmarEdicionSerial('+i+')"'
+          +' style="background:none;border:none;color:#16a34a;cursor:pointer;font-size:18px;line-height:1;padding:0 4px" title="Confirmar cambio">✓</button>'
+          +'<button type="button" onclick="ecCancelarEdicionSerial('+i+')"'
+          +' style="background:none;border:none;color:#64748b;cursor:pointer;font-size:16px;line-height:1;padding:0 4px" title="Cancelar">⊘</button>';
+      } else {
+        // Vista normal: serial + ✏️ + ✕
+        // Si fue editado anteriormente, mostrar el original tachado al lado
+        const editado=s._serial_original&&s._serial_original!==s.serial;
+        html+='<span style="font-family:monospace;font-size:12px;font-weight:700;flex:1">'
+          +s.serial
+          +(editado?' <span style="font-size:10px;color:#dc2626;text-decoration:line-through;font-weight:400">'+s._serial_original+'</span>':'')
+          +'</span>'
+          +'<button type="button" onclick="ecEditarSerial('+i+')"'
+          +' style="background:none;border:none;color:#2563eb;cursor:pointer;font-size:14px;line-height:1;padding:0 4px" title="Editar serial">✏️</button>'
+          +'<button type="button" onclick="EC.seriales['+i+']._eliminar=true;renderEditarCierre()"'
+          +' style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;line-height:1;padding:0 4px" title="Quitar serial (vuelve al bolso)">×</button>';
+      }
+      html+='</div>';
     });
     // Agregar serial nuevo
     html+='<div style="margin-top:.5rem;display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
@@ -6010,8 +6034,61 @@ function ecAgregarSerial(){
   if(!matId||!serial){alert('Selecciona el material e ingresa el serial');return;}
   const mat=EC.catalogoMats.find(m=>m.id===matId);
   if(!mat)return;
-  EC.seriales.push({material_id:matId,serial,catalogo_materiales:{id:matId,nombre:mat.nombre},_nuevo:true});
+  EC.seriales.push({material_id:matId,serial,catalogo_materiales:{id:matId,nombre:mat.nombre,serial_tipo:mat.serial_tipo},_nuevo:true});
   inp.value='';sel.value='';
+  renderEditarCierre();
+}
+
+// v247: edición inline de seriales (para corregir errores sin tener que eliminar+agregar)
+function ecEditarSerial(idx){
+  const s=EC.seriales[idx];
+  if(!s)return;
+  s._editando=true;
+  s._editandoVal=s.serial;
+  renderEditarCierre();
+  // Foco al input recién renderizado
+  setTimeout(()=>{
+    const inputs=document.querySelectorAll('#editar-cierre-modal input[type="text"]');
+    const last=inputs[inputs.length-1];
+    if(last){last.focus();last.select();}
+  },50);
+}
+
+function ecCancelarEdicionSerial(idx){
+  const s=EC.seriales[idx];
+  if(!s)return;
+  delete s._editando;
+  delete s._editandoVal;
+  renderEditarCierre();
+}
+
+function ecConfirmarEdicionSerial(idx){
+  const s=EC.seriales[idx];
+  if(!s)return;
+  // Normalizar igual que ecAgregarSerial
+  const nuevo=(s._editandoVal||'').trim().toLowerCase().replace(/[:.-]/g,'').replace(/-/g,'');
+  if(!nuevo){alert('El serial no puede quedar vacío. Si querés quitar este serial, usá la X.');return;}
+  if(nuevo===s.serial){
+    // Sin cambios reales
+    delete s._editando;
+    delete s._editandoVal;
+    renderEditarCierre();
+    return;
+  }
+  // Si es un serial _nuevo (recién agregado, no existe en BD): solo cambiar el valor
+  if(s._nuevo){
+    s.serial=nuevo;
+    delete s._editando;
+    delete s._editandoVal;
+    renderEditarCierre();
+    return;
+  }
+  // Es un serial que ya existe en BD: marcar el original para liberar al guardar
+  if(!s._serial_original) s._serial_original=s.serial;
+  s.serial=nuevo;
+  s._editado=true;
+  delete s._editando;
+  delete s._editandoVal;
   renderEditarCierre();
 }
 
@@ -6129,6 +6206,61 @@ async function confirmarEditarCierre(){
           await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:s.material_id,cuadrilla_id:cuadId?parseInt(cuadId):null,cantidad:-1,obs:'Serial agregado emergencia - edicion cierre OT '+otId+' - serial: '+s.serial});
           continue;
         }
+      } else if(!s._eliminar && s._editado && s._serial_original && !s._nuevo){
+        // v247: serial editado en línea — liberar el original al bolso y aplicar el nuevo
+        const serialViejo=s._serial_original;
+        const serialNuevo=s.serial;
+
+        // 1. Liberar el viejo: vuelve al bolso de la cuadrilla (o depósito) y se desasigna de la OT
+        const locDevolver=cuadId?('CUADRILLA_'+cuadId):'DEPOSITO';
+        try{
+          await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=ilike.'+encodeURIComponent(serialViejo),{ubicacion:locDevolver,ot_id:null});
+          if(cuadId){
+            const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id)||[];
+            if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id,{cantidad:(sc[0].cantidad||0)+1});
+            await sbPost('movimientos_stock',{tipo_movimiento:'DEVOLUCION',material_id:s.material_id,cuadrilla_id:parseInt(cuadId),cantidad:1,obs:'Serial corregido (viejo) - edicion cierre OT '+otId+' - serial: '+serialViejo+' → '+serialNuevo});
+          }
+        }catch(eDev){
+          alert('Aviso: no se pudo liberar el serial original '+serialViejo+': '+eDev.message+'\n\nContinúo aplicando el nuevo igualmente.');
+        }
+
+        // 2. Aplicar el nuevo usando el helper robusto (mismas acciones que para serial nuevo)
+        const r2 = await _wizResolverSerial(s.material_id, serialNuevo, cuadId, otId);
+        if(r2.accion === 'bloquear'){
+          alert('No se pudo aplicar el serial corregido '+serialNuevo+':\n\n'+r2.mensaje+
+                '\n\nEl serial original '+serialViejo+' SÍ se liberó. Liberá el serial conflictivo y volvé a editar.');
+          continue;
+        }
+        if(r2.accion === 'usar_misma_ot'){
+          if(r2.fila && r2.fila.id){
+            await sbPatch('stock_seriales','?id=eq.'+r2.fila.id,{ubicacion:'CLIENTE',ot_id:otId});
+          }
+          await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:s.material_id,cuadrilla_id:cuadId?parseInt(cuadId):null,cantidad:-1,obs:'Serial corregido (nuevo) - edicion cierre OT '+otId+' - serial: '+serialViejo+' → '+serialNuevo});
+          continue;
+        }
+        if(r2.accion === 'usar_bolso' || r2.accion === 'mover_de_deposito'){
+          if(r2.fila && r2.fila.id){
+            await sbPatch('stock_seriales','?id=eq.'+r2.fila.id,{ubicacion:'CLIENTE',ot_id:otId});
+          } else {
+            await sbPatch('stock_seriales','?material_id=eq.'+s.material_id+'&serial=ilike.'+encodeURIComponent(serialNuevo),{ubicacion:'CLIENTE',ot_id:otId});
+          }
+          if(cuadId && r2.accion === 'usar_bolso'){
+            const sc=await sbGet('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id)||[];
+            if(sc.length) await sbPatch('stock_cuadrillas','?cuadrilla_id=eq.'+cuadId+'&material_id=eq.'+s.material_id,{cantidad:Math.max(0,(sc[0].cantidad||0)-1)});
+          }
+          await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:s.material_id,cuadrilla_id:cuadId?parseInt(cuadId):null,cantidad:-1,obs:'Serial corregido (nuevo) - edicion cierre OT '+otId+' - serial: '+serialViejo+' → '+serialNuevo});
+          continue;
+        }
+        if(r2.accion === 'registrar_emergencia'){
+          const ok=confirm('El serial corregido '+serialNuevo+' no existe en el sistema.\n¿Registrarlo de emergencia y asignarlo a esta OT?');
+          if(!ok){
+            alert('Serial corregido '+serialNuevo+' omitido. El serial original '+serialViejo+' SÍ se liberó.');
+            continue;
+          }
+          await sbPost('stock_seriales',{material_id:s.material_id,serial:serialNuevo,ubicacion:'CLIENTE',ot_id:otId});
+          await sbPost('movimientos_stock',{tipo_movimiento:'CONSUMO_OT',material_id:s.material_id,cuadrilla_id:cuadId?parseInt(cuadId):null,cantidad:-1,obs:'Serial corregido emergencia - edicion cierre OT '+otId+' - serial: '+serialViejo+' → '+serialNuevo});
+          continue;
+        }
       }
     }
 
@@ -6144,10 +6276,28 @@ async function confirmarEditarCierre(){
       }
     }
 
-    // Actualizar equipo_instalado y tag en la OT con los seriales actuales
-    const serialesFinales=EC.seriales.filter(s=>!s._eliminar).map(s=>s.serial).join(', ');
+    // v247: Recalcular tag (precintos CORRELATIVO) y equipo_instalado (MACs INDIVIDUAL)
+    // por separado, según el serial_tipo del material asociado.
+    // Antes: se metía todo junto en equipo_instalado y tag nunca se actualizaba.
+    const serialesActivos=EC.seriales.filter(s=>!s._eliminar);
+    const serialesIndividual=[];
+    const serialesCorrelativo=[];
+    for(const s of serialesActivos){
+      // Resolver serial_tipo desde catalogo (puede venir embed o por id)
+      let stipo=s.catalogo_materiales?.serial_tipo;
+      if(!stipo){
+        const matCat=EC.catalogoMats.find(m=>m.id===s.material_id);
+        stipo=matCat?.serial_tipo;
+      }
+      if(stipo==='INDIVIDUAL') serialesIndividual.push(s.serial);
+      else if(stipo==='CORRELATIVO') serialesCorrelativo.push(s.serial);
+      else serialesIndividual.push(s.serial); // fallback defensivo
+    }
+    const equipoInstaladoFinal=serialesIndividual.length?serialesIndividual.join(', '):null;
+    const tagFinal=serialesCorrelativo.length?serialesCorrelativo.join(' - '):null;
     await sbPatch('ordenes_trabajo','?id=eq.'+otId,{
-      equipo_instalado:serialesFinales||null
+      equipo_instalado:equipoInstaladoFinal,
+      tag:tagFinal
     });
 
     cerrarModal('editar-cierre-modal');
