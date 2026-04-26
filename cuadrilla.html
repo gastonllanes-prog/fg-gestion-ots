@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="FG Cuadrillas"/>
 <meta name="theme-color" content="#2563eb"/>
 <link rel="manifest" href="./manifest-cuad.json"/>
-<title>FG Cuadrillas v4.37</title>
+<title>FG Cuadrillas v4.38</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -155,7 +155,7 @@ body{display:flex;flex-direction:column;max-width:500px;margin:0 auto;min-height
     <div class="login-logo">
       <div class="login-logo-icon">🔧</div>
       <div class="login-logo-title">FG Cuadrillas</div>
-      <div class="login-logo-sub">v4.37 · Órdenes de trabajo</div>
+      <div class="login-logo-sub">v4.38 · Órdenes de trabajo</div>
     </div>
     <div class="field">
       <label>Seleccioná tu cuadrilla</label>
@@ -405,7 +405,7 @@ async function iniciarApp(){
   document.getElementById('btn-retiro').style.display='flex';
   var fechaStr=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   document.getElementById('topbar-title').textContent=CUAD.nombre;
-  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.37';
+  document.getElementById('topbar-sub').textContent=fechaStr+' · v4.38';
 
   // Cargar estados con fallback
   try{
@@ -3163,7 +3163,8 @@ async function guardarModificacion(){
     await sbPatch('ordenes_trabajo','?id=eq.'+otId,patchOT);
 
     // Recargar grupos y volver
-    await cargarGrupos();
+    // v4.38 fix Bug #2: cargarGrupos() no existe; la función real es cargarDatos()
+    await cargarDatos();
     cerrarModificacion();
     var msgMod='✅ Cambios guardados correctamente.';
     if(sersError.length){

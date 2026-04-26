@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v231</title>
+<title>FG Gestión OTs v232</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -170,7 +170,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V231</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V232</div>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v231</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v232</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -14239,18 +14239,56 @@ async function aprobarOT(otId, grupoId){
   const eFin=ESTADOS.find(e=>e.nombre==='FINALIZADA');
   if(!eFin){alert('Estado FINALIZADA no encontrado.');return;}
   try{
-    const ot=(await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,estado_id&eliminado=eq.false`))||[];
+    const ot=(await sbGet('ordenes_trabajo',`?id=eq.${otId}&select=id,numero_ot,estado_id,tipo_item,tipo_tarea&eliminado=eq.false`))||[];
     const estadoAnt=ot[0]?.estado_id;
+    const tipoOT=ot[0]?.tipo_item||ot[0]?.tipo_tarea||'';
+    const numOTAprob=ot[0]?.numero_ot;
     const now=new Date().toISOString();
+    const adminNombre=CU.nombre||CU.email||'admin';
+
+    // v232 Bug #1 fix: leer cuadrilla_id del grupo (necesario para descontar stock)
+    let cuadrillaId=null;
+    if(grupoId){
+      try{
+        const grupoData=await sbGet('grupos_ot',`?id=eq.${grupoId}&select=cuadrilla_id`)||[];
+        cuadrillaId=grupoData[0]?.cuadrilla_id||null;
+      }catch(eG){console.warn('[aprobarOT] no se pudo leer cuadrilla del grupo:',eG.message);}
+    }
+
     await sbPatch('ordenes_trabajo',`?id=eq.${otId}`,{
       estado_id:eFin.id,
       fecha_fin:fechaHoyLocal(),
       validado_admin_at:now,
-      validado_admin_por:CU.nombre||CU.email||'admin'
+      validado_admin_por:adminNombre
     });
-    await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:estadoAnt,estado_nuevo_id:eFin.id,observacion:'APROBADO POR ADMIN: '+(CU.nombre||CU.email),usuario_id:CU.id});
+    await sbPost('historial_estados_ot',{ot_id:otId,estado_anterior_id:estadoAnt,estado_nuevo_id:eFin.id,observacion:'APROBADO POR ADMIN: '+adminNombre,usuario_id:CU.id});
+
+    // v232 Bug #1 fix: descontar stock real (idempotente: skip si ya stock_descontado=true)
+    const resStock=await _descontarStockRealValidacion(otId,cuadrillaId);
+
+    // Al validar CAMBIO_DOMICILIO: actualizar domicilio del cliente con historial
+    if(tipoOT==='CAMBIO_DOMICILIO'){
+      try{
+        await _actualizarDomicilioEnValidacion(otId,grupoId,adminNombre);
+      }catch(eD){console.warn('[aprobarOT] error actualizando domicilio:',eD.message);}
+    }
+
     await verGrupoValidacion(grupoId);
     renderValidacion();
+
+    // Mensaje final con resumen de stock + faltantes (mismo formato que aprobarGrupo)
+    let msgFin='✅ OT aprobada correctamente.';
+    if(resStock&&resStock.reason==='already_discounted'){
+      msgFin+='\n\n(Stock ya estaba descontado de antes — no se descontó dos veces.)';
+    }else if(resStock&&!resStock.ok){
+      msgFin+='\n\n⚠️ Hubo un error en el descuento de stock — quedó pendiente de reintentar (ver consola).';
+    }
+    if(resStock&&resStock.faltantes&&resStock.faltantes.length){
+      msgFin+='\n\n📉 '+resStock.faltantes.length+' faltante(s) detectado(s) al descontar:\n• '
+        +resStock.faltantes.slice(0,5).map(f=>'"'+f.material+'" faltan '+f.faltante+' (usó '+f.usado+', tenía '+f.disponible+')').join('\n• ');
+      if(resStock.faltantes.length>5)msgFin+='\n• … y '+(resStock.faltantes.length-5)+' más (ver consola)';
+    }
+    alert(msgFin);
   }catch(e){alert('Error: '+e.message);}
 }
 
