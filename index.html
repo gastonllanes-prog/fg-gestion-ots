@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#2563eb"/>
-<title>FG Gestión OTs v247</title>
+<title>FG Gestión OTs v248</title>
 <style>
 :root{--bg:#f0f4f8;--bg2:#fff;--bg3:#f8fafc;--border:rgba(0,0,0,.1);--border2:rgba(0,0,0,.06);--text1:#1e293b;--text2:#64748b;--text3:#94a3b8;--accent:#2563eb;--accent-hover:#1d4ed8;--card-shadow:0 1px 4px rgba(0,0,0,.06)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -180,7 +180,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
       <p class="err-msg" id="l-err"></p>
       <button class="btn btn-primary btn-full" style="margin-top:.75rem" onclick="doLogin()"><span class="spinner" id="l-spin" style="display:none"></span>Ingresar</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V247</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:1rem;letter-spacing:2px">FG GESTIÓN OTS · V248</div>
   </div>
 </div>
 
@@ -190,7 +190,7 @@ tr:hover td{background:rgba(37,99,235,.02)}
   <div class="sb-footer">
     <div class="sb-user" id="sb-nombre">—</div>
     <div class="sb-user-rol" id="sb-rol">—</div>
-    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v247</div>
+    <div class="sb-ver" style="font-size:11px;font-weight:700;color:#2563eb;margin-top:5px">v248</div>
     <button class="sb-logout" onclick="logout()">Cerrar sesión</button>
   </div>
 </aside>
@@ -3328,9 +3328,15 @@ function parsearPag(txt){
     const despues=txt.slice(m.index+11,m.index+120).replace(/\s+/g,' ').trim();
     const nmM=despues.match(/^\s*([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ\s]+?)\s*,\s*([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑa-záéíóúüñ\s]{1,40}?)(?=\s+(?:Activo|Inactivo|Conexi|\d{3}|$))/);
     if(nmM){ot.codigo_cliente=num;ot.apellido=nmM[1].trim();ot.nombre=nmM[2].trim();break;}
-    // Fallback: empresa o persona sin coma (ej: "GRUPO TMC SRL Activo")
-    const nmCo=despues.match(/^\s*([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ\s\.]{2,60}?)(?=\s+(?:Activo|Inactivo|Conexi[oó]n\s+Pendiente))/);
-    if(nmCo){ot.codigo_cliente=num;ot.apellido=nmCo[1].trim();ot.nombre='';break;}
+    // v248: Fallback empresa o persona sin coma. Acepta "," y "." dentro del nombre
+    // (ej: "DIRECCION DE ZONA DE SALUD CAPITAL, . Activo" → empresa con coma+punto antes de Activo)
+    const nmCo=despues.match(/^\s*([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ\s\.,]{2,80}?)(?=\s+(?:Activo|Inactivo|Conexi[oó]n\s+Pendiente))/);
+    if(nmCo){
+      const limpio=nmCo[1].replace(/[\s,.]+$/,'').trim(); // quita ", . " sobrante al final
+      if(limpio.length>=3){
+        ot.codigo_cliente=num;ot.apellido=limpio;ot.nombre='';break;
+      }
+    }
   }
 
   // DOMICILIO: en PDF.js el address viene SIEMPRE ANTES de "Domicilio:" (tanto INSTALAR como REPARAR)
@@ -3369,6 +3375,20 @@ function parsearPag(txt){
     if(!domTxt){
       let raw=before.slice(-120).replace(/\s*(Telef[.\w]*|Cliente:|Activo|Inactivo|Conexi[oó]n[\s\w]*|\d{11})\s*/gi,' ').replace(/\s{2,}/g,' ').trim();
       if(raw.length>8&&/\d{4,6}/.test(raw)&&/[A-ZÁÉÍÓÚÑ]/.test(raw))domTxt=raw;
+    }
+  }
+
+  // v248: Fallback final — buscar el domicilio DESPUÉS de "Domicilio:" hasta el siguiente label.
+  // Algunos PDFs (ej: cliente empresa con cambio de tecnología) tienen el orden normal:
+  // "Domicilio: AV. TAMBOR DE TACUARI (48) 03504 Y ROCAMORA  Telef.1 376-..."
+  if(!domTxt&&domLabelIdx>10){
+    const after=txt.slice(domLabelIdx+10,domLabelIdx+250); // 240 chars después del label
+    // Capturar hasta el primer label conocido posterior
+    const mAfter=after.match(/^\s*(.+?)(?=\s+(?:Telef[.\w]*|Cliente:|Barrio:|Localidad:|Provincia:|Nodo:|Activo|Inactivo|Cantidad\s+Descrip)|$)/);
+    if(mAfter){
+      const cand=mAfter[1].replace(/\s+/g,' ').trim();
+      // Mismo criterio mínimo: >8 chars, contiene números (altura) y letras mayúsculas
+      if(cand.length>8&&/\d{1,6}/.test(cand)&&/[A-ZÁÉÍÓÚÑ]/.test(cand)) domTxt=cand;
     }
   }
 
